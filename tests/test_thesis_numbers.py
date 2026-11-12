@@ -52,6 +52,8 @@ def test_thesis_quotes_the_committed_summary():
         f"${intents['prior'] / 1e6:.1f}M → ${intents['recent'] / 1e6:.1f}M a day ({pct(intents['pct_change'])}",
         f"${fees['prior']:,.0f} → ${fees['recent']:,.0f} a day",
         f"{n_out} of {17 * len(s['lead_vs_price'])} lag tests",
+        f"{sum(w['blocks_found'] for w in s['signer_census']['windows'].values())} random blocks",
+        f"each of the {sum(w['accounts'] for w in s['signer_census']['windows'].values()):,} accounts",
     ]
     missing = [q for q in quoted if q not in text]
     assert not missing, f"THESIS.md does not quote these summary.json values: {missing}"

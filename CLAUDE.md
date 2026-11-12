@@ -7,7 +7,7 @@ Start with `README.md` (what it is, how to run it) and `THESIS.md` (the argument
 
 ```bash
 python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
-python -m pytest -q                  # 26 tests, no network
+python -m pytest -q                  # 27 tests, no network
 python -m thesis build --offline     # rebuilds docs/ from the committed data, no network
 python -m thesis build               # same, after refreshing data/raw/ from the public APIs
 ```
@@ -25,5 +25,6 @@ reproduces it exactly.
 * **THESIS.md is a snapshot.** `tests/test_thesis_numbers.py` checks its key numbers against the committed
   `docs/summary.json`. Change them together, and do not type numbers by hand: take them from `summary.json`.
 * **Public FastNEAR endpoints are rate-limited without a key.** `thesis/census.py` paces its requests on purpose;
-  do not make it faster. It is an optional cross-check and is not used by THESIS.md.
+  do not make it faster. Its committed results (`data/raw/census_*`) are the independent check quoted in THESIS.md;
+  the build compares them with BigQuery in `cross_check` of `docs/summary.json`.
 * Everything in the repository is in English.
