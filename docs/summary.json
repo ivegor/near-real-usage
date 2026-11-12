@@ -238,5 +238,300 @@
       "all_history": 234
     },
     "returning_accounts_two_years_earlier": 525010.9444444445
+  },
+  "population": {
+    "source": "sql/account_age.sql on bigquery-public-data.crypto_near_mainnet_us (482.64 GB scanned)",
+    "latest_month": "2026-10",
+    "prior_month": "2025-10",
+    "first_month": "2024-12",
+    "segments": {
+      "all": {
+        "accounts": {
+          "latest": 1379518.0,
+          "prior": 43642992.0,
+          "pct_change": -96.8390847263634
+        },
+        "txs": {
+          "latest": 22627451.0,
+          "prior": 140982323.0,
+          "pct_change": -83.95015026103663
+        },
+        "returning_accounts": {
+          "latest": 372945.0,
+          "prior": 30549888.0,
+          "pct_change": -98.77922629372651
+        },
+        "old_accounts": {
+          "latest": 1037203.0,
+          "prior": 7658881.0,
+          "pct_change": -86.45751252696053
+        },
+        "old_txs": {
+          "latest": 13895314.0,
+          "prior": 67285064.0,
+          "pct_change": -79.34859064710112
+        },
+        "old_tx_share": {
+          "latest": 0.6140909994678587,
+          "prior": 0.4772588688299596
+        },
+        "returning_share": {
+          "latest": 0.2703444246468694,
+          "prior": 0.6999952707183779
+        },
+        "peak_accounts": {
+          "month": "2025-08",
+          "value": 52792870.0
+        },
+        "txs_per_account": {
+          "latest": 16.40243258877376,
+          "prior": 3.23035421127864
+        }
+      },
+      "core": {
+        "accounts": {
+          "latest": 621166.0,
+          "prior": 1814743.0,
+          "pct_change": -65.77113122905006
+        },
+        "txs": {
+          "latest": 14874221.0,
+          "prior": 19356678.0,
+          "pct_change": -23.157160541700385
+        },
+        "returning_accounts": {
+          "latest": 248954.0,
+          "prior": 924642.0,
+          "pct_change": -73.07563359657034
+        },
+        "old_accounts": {
+          "latest": 289621.0,
+          "prior": 866488.0,
+          "pct_change": -66.57530167757662
+        },
+        "old_txs": {
+          "latest": 6335520.0,
+          "prior": 10112177.0,
+          "pct_change": -37.34761565190167
+        },
+        "old_tx_share": {
+          "latest": 0.4259396172747467,
+          "prior": 0.5224128334417714
+        },
+        "returning_share": {
+          "latest": 0.4007849753528042,
+          "prior": 0.5095167745515481
+        },
+        "peak_accounts": {
+          "month": "2026-03",
+          "value": 7297049.0
+        },
+        "txs_per_account": {
+          "latest": 23.945645769407857,
+          "prior": 10.66634669482125
+        }
+      },
+      "near": {
+        "accounts": {
+          "latest": 71332.0,
+          "prior": 62880.0,
+          "pct_change": 13.441475826972017
+        },
+        "txs": {
+          "latest": 10766431.0,
+          "prior": 8962236.0,
+          "pct_change": 20.1310811275222
+        },
+        "returning_accounts": {
+          "latest": 47531.0,
+          "prior": 42316.0,
+          "pct_change": 12.323943661971825
+        },
+        "old_accounts": {
+          "latest": 42512.0,
+          "prior": 36014.0,
+          "pct_change": 18.042983284278336
+        },
+        "old_txs": {
+          "latest": 4651190.0,
+          "prior": 3552540.0,
+          "pct_change": 30.92576016033599
+        },
+        "old_tx_share": {
+          "latest": 0.4320085272454725,
+          "prior": 0.396389918765808
+        },
+        "returning_share": {
+          "latest": 0.6663348847642012,
+          "prior": 0.6729643765903308
+        },
+        "peak_accounts": {
+          "month": "2025-03",
+          "value": 497610.0
+        },
+        "txs_per_account": {
+          "latest": 150.93409689900747,
+          "prior": 142.52919847328243
+        }
+      },
+      "implicit": {
+        "accounts": {
+          "latest": 549200.0,
+          "prior": 1751719.0,
+          "pct_change": -68.64793953824785
+        },
+        "txs": {
+          "latest": 3629019.0,
+          "prior": 9500524.0,
+          "pct_change": -61.80190692639691
+        },
+        "returning_accounts": {
+          "latest": 200883.0,
+          "prior": 882266.0,
+          "pct_change": -77.23101649615876
+        },
+        "old_accounts": {
+          "latest": 247063.0,
+          "prior": 830441.0,
+          "pct_change": -70.24918085691819
+        },
+        "old_txs": {
+          "latest": 1215697.0,
+          "prior": 5853265.0,
+          "pct_change": -79.23044659689934
+        },
+        "old_tx_share": {
+          "latest": 0.33499328606436063,
+          "prior": 0.6160991751612859
+        },
+        "returning_share": {
+          "latest": 0.3657738528769119,
+          "prior": 0.5036572646640243
+        },
+        "peak_accounts": {
+          "month": "2026-03",
+          "value": 7260230.0
+        },
+        "txs_per_account": {
+          "latest": 6.607827749453751,
+          "prior": 5.423543387952063
+        }
+      },
+      "kaiching": {
+        "accounts": {
+          "latest": 560095.0,
+          "prior": 40388022.0,
+          "pct_change": -98.61321507648975
+        },
+        "txs": {
+          "latest": 642787.0,
+          "prior": 76731996.0,
+          "pct_change": -99.16229599970265
+        },
+        "returning_accounts": {
+          "latest": 2.0,
+          "prior": 28320654.0,
+          "pct_change": -99.99999293801619
+        },
+        "old_accounts": {
+          "latest": 560095.0,
+          "prior": 5714997.0,
+          "pct_change": -90.19955741009139
+        },
+        "old_txs": {
+          "latest": 642787.0,
+          "prior": 23631453.0,
+          "pct_change": -97.27995142744714
+        },
+        "old_tx_share": {
+          "latest": 1.0,
+          "prior": 0.30797391221257947
+        },
+        "returning_share": {
+          "latest": 3.5708228068452674e-06,
+          "prior": 0.7012141867210036
+        },
+        "peak_accounts": {
+          "month": "2025-08",
+          "value": 48944696.0
+        },
+        "txs_per_account": {
+          "latest": 1.1476392397718245,
+          "prior": 1.8998701149563602
+        }
+      },
+      "tg": {
+        "accounts": {
+          "latest": 198246.0,
+          "prior": 1440211.0,
+          "pct_change": -86.23493363125264
+        },
+        "txs": {
+          "latest": 3098993.0,
+          "prior": 40066586.0,
+          "pct_change": -92.26539291368623
+        },
+        "returning_accounts": {
+          "latest": 123980.0,
+          "prior": 1304583.0,
+          "pct_change": -90.49658013326864
+        },
+        "old_accounts": {
+          "latest": 187479.0,
+          "prior": 1077385.0,
+          "pct_change": -82.59869962919475
+        },
+        "old_txs": {
+          "latest": 2935274.0,
+          "prior": 28714444.0,
+          "pct_change": -89.77770908606135
+        },
+        "old_tx_share": {
+          "latest": 0.9471702582096829,
+          "prior": 0.7166680984499153
+        },
+        "returning_share": {
+          "latest": 0.6253846231449814,
+          "prior": 0.9058276877485313
+        },
+        "peak_accounts": {
+          "month": "2024-12",
+          "value": 3571980.0
+        },
+        "txs_per_account": {
+          "latest": 15.632058149975283,
+          "prior": 27.819941661326013
+        }
+      }
+    },
+    "reward_apps_share_of_lost": {
+      "accounts": 0.9717586632845184,
+      "txs": 0.9621269752207581
+    },
+    "near_share_of_all_txs": {
+      "latest": 0.4758128080798849,
+      "prior": 0.06356992713192845
+    },
+    "core_accounts_last_4_months": {
+      "2026-07": 959812.0,
+      "2026-08": 866325.0,
+      "2026-09": 786032.0,
+      "2026-10": 621166.0
+    },
+    "one_day": {
+      "date": "2025-10-01",
+      "transactions": 4632736,
+      "relayed_transactions": 3448826,
+      "relayers": 17,
+      "relayed_users": 2694016,
+      "direct_function_call_signers": 284712,
+      "create_account_transactions": 238403,
+      "account_creators": 12,
+      "nearblocks": {
+        "txns": 4632736,
+        "active_accounts": 288151,
+        "new_accounts": 267015
+      }
+    }
   }
 }

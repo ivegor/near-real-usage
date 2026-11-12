@@ -5,7 +5,7 @@ import argparse
 import json
 from pathlib import Path
 
-from . import bq, charts, dashboard, metrics, sources
+from . import bq, census, charts, dashboard, metrics, population, sources
 
 ROOT = Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs"
@@ -18,6 +18,15 @@ def build(offline: bool, use_bq: bool) -> None:
     bq_note = bq.run() if use_bq else None
     if bq_note:
         summary["bigquery"] = bq_note
+    cs = census.load()
+    if cs:
+        summary["signer_census"] = census.summarize(*cs)
+    pop = population.load()
+    if pop is not None:
+        summary["population"] = population.summarize(pop, summary["last_date"])
+        day = population.one_day(daily)
+        if day:
+            summary["population"]["one_day"] = day
     built = charts.build_all(daily, summary, DOCS)
     page = dashboard.render(built, summary, DOCS, bq_note)
     print(json.dumps(summary, indent=2, default=str))
@@ -32,9 +41,32 @@ def main() -> None:
     b = sub.add_parser("build", help="fetch data, compute metrics, render charts + dashboard")
     b.add_argument("--offline", action="store_true", help="use cached data/raw/*.json")
     b.add_argument("--bq", action="store_true", help="also run the optional BigQuery cross-check")
+    c = sub.add_parser("census", help="sample blocks from the chain and measure account ages (network, ~1.5 h, resumable)")
+    c.add_argument("--seed", type=int, default=census.SEED, help="another seed draws an independent sample")
+    pn = sub.add_parser("panel", help="the same census for every month (network, hours, resumable)")
+    pn.add_argument("--first-month", default="2025-07")
+    pn.add_argument("--seed", type=int, default=census.SEED)
+    sub.add_parser("firstseen", help="look up the first transaction of every sampled account (network, resumable)")
+    ba = sub.add_parser("bq-age", help="unpack a BigQuery result of sql/account_age.sql into data/bq/account_age.csv")
+    ba.add_argument("result_csv", help="the result saved from the BigQuery console as CSV (columns m, cells)")
     args = ap.parse_args()
+    if args.cmd == "bq-age":
+        df = population.unpack(Path(args.result_csv))
+        print(f"{len(df)} rows, months {df['month'].min()} .. {df['month'].max()} -> {population.CSV}")
+        return
+    if args.cmd == "firstseen":
+        census.fetch_first_seen()
+        return
+    if args.cmd == "panel":
+        last_date = str(sources.load_daily(offline=True).index.max().date())
+        census.fetch_panel(args.first_month, last_date, seed=args.seed)
+        return
     if args.cmd == "build":
         build(args.offline, args.bq)
+    elif args.cmd == "census":
+        last_date = str(sources.load_daily(offline=True).index.max().date())
+        census.fetch(last_date, seed=args.seed)
+        print(json.dumps(census.summarize(*census.load()), indent=2))
 
 
 if __name__ == "__main__":

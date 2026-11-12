@@ -7,12 +7,13 @@ from pathlib import Path
 import matplotlib
 
 matplotlib.use("Agg")
+import matplotlib.dates as mdates  # noqa: E402
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 from matplotlib.ticker import FuncFormatter, LogLocator, NullFormatter  # noqa: E402
 
-from . import metrics  # noqa: E402
+from . import metrics, population  # noqa: E402
 
 INK, ACCENT, MUTED, GRID = "#1f2328", "#00a27a", "#8c959f", "#e6e8eb"
 
@@ -62,6 +63,141 @@ def _save(fig, out: Path, slug: str):
     plt.close(fig)
 
 
+LEAD_LABELS = {"returning_accounts": "active - new (proxy)", "active_accounts": "active accounts",
+               "intents_volume_usd": "intents volume", "fees_usd": "fees", "txns": "transactions"}
+FAMILY_STYLE = {"kaiching": ("KaiChing reward app", MUTED, "--"), "tg": ("HOT wallet (.tg)", "#c9a227", "--"),
+                "core": ("everyone else (core)", ACCENT, "-"), "near": ("named .near accounts", INK, "-")}
+POP_AGE = {"ge2y": ("older than 2 years", ACCENT), "lt2y": ("1 to 2 years", "#9bd8c6"), "lt1y": ("30 days to 1 year", "#d9dde1"),
+           "lt30": ("under 30 days", "#b9c0c7"), "m0": ("first seen that month", MUTED)}
+
+
+def _population_chart(pop: pd.DataFrame, summary: dict, out: Path) -> Chart:
+    """Every account that acted in a month (BigQuery, full population): how many, how sticky, how old."""
+    ps = summary["population"]
+    months = population.complete_months(pop, summary["last_date"])
+    x = pd.to_datetime(months)
+    fig, axes = plt.subplots(1, 3, figsize=(12, 3.7))
+
+    ax = axes[0]
+    for name, (label, color, style) in FAMILY_STYLE.items():
+        m = population.monthly(population.segment(pop, name)).reindex(months)["accounts"]
+        ax.plot(x, _pos(m), color=color, linestyle=style, label=label)
+    ax.set_yscale("log")
+    ax.set_ylim(bottom=10_000)  # KaiChing falls to a handful of accounts after April 2026 and leaves the chart
+    _plain(ax)
+    _style(ax, "Accounts active in the month (log scale)")
+    ax.legend(frameon=False, fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=2)
+
+    ax = axes[1]
+    core = population.monthly(population.segment(pop, "core")).reindex(months)
+    ax.plot(x, core["accounts"] / 1e6, color=MUTED, label="core accounts")
+    ax.plot(x, core["returning_accounts"] / 1e6, color=ACCENT, label="also active the month before")
+    ax.plot(x, core["old_accounts"] / 1e6, color=INK, linewidth=0.9, label="older than 1 year")
+    ax.set_ylim(0, 3)  # two one-month bursts of single-use implicit accounts (Feb-Mar 2026) run off the scale
+    _style(ax, "Core accounts, millions (no reward apps)")
+    ax.legend(frameon=False, fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=2)
+
+    ax = axes[2]
+    core_df = population.segment(pop, "core")
+    order = ["ge2y", "lt2y", "lt1y", "lt30", "m0"]
+    mix = core_df.pivot_table(index="month", columns="age", values="txs", aggfunc="sum", fill_value=0)
+    mix = mix.reindex(index=months, columns=order, fill_value=0)
+    mix = mix.div(mix.sum(axis=1), axis=0) * 100
+    ax.stackplot(x, [mix[a] for a in order], colors=[POP_AGE[a][1] for a in order], labels=[POP_AGE[a][0] for a in order])
+    ax.set_ylim(0, 100)
+    _style(ax, "Core transactions by account age, %")
+    ax.grid(False)
+    ax.legend(frameon=False, fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=3)
+    for a in axes:
+        a.xaxis.set_major_locator(mdates.MonthLocator(bymonth=[1, 7]))
+        a.xaxis.set_major_formatter(mdates.DateFormatter("%b %Y"))
+        a.tick_params(axis="x", labelsize=7)
+    _save(fig, out, "population")
+
+    seg = ps["segments"]
+    c, n, k, al = seg["core"], seg["near"], seg["kaiching"], seg["all"]
+    lm, pm = ps["latest_month"], ps["prior_month"]
+
+    def M(v: float) -> str:
+        return f"{v / 1e6:.2f}M" if v >= 1e6 else f"{v / 1e3:.0f}K"
+
+    return Chart(
+        "population", "Every active account, counted (full chain, not a sample)",
+        f"In {lm}, {M(al['accounts']['latest'])} accounts acted on NEAR against {M(al['accounts']['prior'])} in {pm} "
+        f"({_pct(al['accounts']['pct_change'])}); one reward app, KaiChing, peaked at {M(k['peak_accounts']['value'])} accounts "
+        f"a month ({k['peak_accounts']['month']}); in {lm} only {k['returning_accounts']['latest']:,.0f} of its accounts were active "
+        f"two months running. Outside the reward apps, core accounts "
+        f"went {M(c['accounts']['prior'])} to {M(c['accounts']['latest'])} ({_pct(c['accounts']['pct_change'])}), those also active "
+        f"the month before {M(c['returning_accounts']['prior'])} to {M(c['returning_accounts']['latest'])} "
+        f"({_pct(c['returning_accounts']['pct_change'])}), while core transactions changed {_pct(c['txs']['pct_change'])}. "
+        f"Named .near accounts: {M(n['accounts']['prior'])} to {M(n['accounts']['latest'])} ({_pct(n['accounts']['pct_change'])}), "
+        f"transactions {_pct(n['txs']['pct_change'])}. Accounts older than a year send "
+        f"{c['old_tx_share']['latest'] * 100:.0f}% of core transactions ({c['old_tx_share']['prior'] * 100:.0f}% a year earlier).",
+        "sql/account_age.sql on the NEAR BigQuery public dataset (all transactions, 482.64 GB scanned, result in "
+        "data/bq/account_age.csv). The actor of a relayed transaction is the user, not the relayer. Age = first appearance "
+        "in any transaction since genesis. Core = accounts outside the kaiching, .tg and .sweat namespaces. "
+        "Feb-Mar 2026 contain two one-month bursts of single-use implicit accounts.",
+    )
+
+
+AGE_LABELS = {"365d+": "older than 1 year", "30-365d": "30 days to 1 year", "new": "newer than 30 days"}
+AGE_COLORS = {"365d+": ACCENT, "30-365d": "#9bd8c6", "new": MUTED}
+
+
+def _short(name: str, n: int = 26) -> str:
+    return name if len(name) <= n else name[: n - 1] + "…"
+
+
+def _census_chart(cs: dict, out: Path) -> Chart:
+    """Who signs transactions: account age measured on sampled blocks, a year ago vs now."""
+    w = cs["windows"]
+    order = [("prior", f"{w['prior']['start']} to {w['prior']['end']}"), ("recent", f"{w['recent']['start']} to {w['recent']['end']}")]
+    fig, axes = plt.subplots(1, 3, figsize=(11, 3.6), gridspec_kw={"width_ratios": [1.25, 1, 1]})
+    ax = axes[0]
+    rows = [(f"transactions\n{lab}", w[k]["tx_share_by_account_age"]) for k, lab in order]
+    rows += [(f"sampled accounts\n{lab}", w[k]["account_share_by_age"]) for k, lab in order]
+    for i, (lab, shares) in enumerate(rows):
+        left = 0.0
+        for c in ("365d+", "30-365d", "new"):
+            v = shares[c] * 100
+            ax.barh(i, v, left=left, color=AGE_COLORS[c], label=AGE_LABELS[c] if i == 0 else None)
+            if v >= 7:
+                ax.text(left + v / 2, i, f"{v:.0f}%", ha="center", va="center", fontsize=8, color=INK)
+            left += v
+    ax.set_yticks(range(len(rows)), [r[0] for r in rows], fontsize=7)
+    ax.invert_yaxis()
+    ax.set_xlim(0, 100)
+    _style(ax, "Age of the account behind each transaction")
+    ax.grid(False)
+    ax.legend(frameon=False, fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=3)
+    for ax, (k, lab) in zip(axes[1:], order):
+        t = w[k]["top_targets"]
+        names, vals = list(t)[:6][::-1], [v * 100 for v in list(t.values())[:6]][::-1]
+        ax.barh([_short(n) for n in names], vals, color=ACCENT if k == "recent" else MUTED)
+        _style(ax, f"Most-called contracts, {lab[:4]}" + (" (a year earlier)" if k == "prior" else " (now)"))
+        ax.set_xlabel("% of sampled transactions", fontsize=7, color=MUTED)
+        ax.tick_params(axis="y", labelsize=7)
+    _save(fig, out, "signer_census")
+    p, r = w["prior"], w["recent"]
+
+    def share(win: dict, c: str) -> str:
+        lo, hi = win["tx_share_ci95"][c]
+        return f"{win['tx_share_by_account_age'][c] * 100:.0f}% (95% interval {lo * 100:.0f}-{hi * 100:.0f}%)"
+
+    return Chart(
+        "signer_census", "Who signs the transactions (measured on the chain)",
+        f"Accounts older than one year sign {share(r, '365d+')} of transactions now, against {share(p, '365d+')} a year "
+        f"earlier; accounts newer than 30 days sign {share(r, 'new')} now, against {share(p, 'new')}. "
+        f"The ten busiest accounts send {r['top10_accounts_tx_share'] * 100:.0f}% of transactions now "
+        f"({p['top10_accounts_tx_share'] * 100:.0f}% a year earlier).",
+        f"Random block heights (seed {cs['seed']}) from the FastNEAR block archive: {r['blocks_found']} blocks / "
+        f"{r['transactions']} transactions now, {p['blocks_found']} blocks / {p['transactions']} transactions a year earlier. "
+        "For a relayed (meta) transaction the user is read from the delegate action. An account's age class comes from "
+        "view_account on an archival RPC node at the block 30 and 365 days before the window starts. Intervals resample "
+        "whole blocks. Sampled accounts over-represent frequent senders. Re-run: python -m thesis census [--seed N].",
+    )
+
+
 def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
     out.mkdir(parents=True, exist_ok=True)
     d = metrics.add_derived(daily)
@@ -80,12 +216,21 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
     _style(ax, "Daily accounts, 30-day average (log scale)")
     _legend_below(ax)
     _save(fig, out, "accounts")
+    proxy_title, proxy_note = "New vs returning accounts", ""
+    if "population" in summary:
+        core = summary["population"]["segments"]["core"]["returning_accounts"]
+        proxy_title = "What the daily aggregates show, and why they mislead"
+        proxy_note = (
+            f" This proxy is wrong about the direction: counted directly on the full chain, core accounts active two months "
+            f"running changed {_pct(core['pct_change'])} over the same year (see the first chart). The aggregator's "
+            "\"active accounts\" are transaction signers, so users acting through relayers are missing, and its "
+            "\"new accounts\" are mostly created by a few factory accounts and never sign anything.")
     charts.append(Chart(
-        "accounts", "New vs returning accounts",
-        f"Over the last 90 days returning accounts averaged {yoy['returning_accounts']['recent']:,.0f}/day "
+        "accounts", proxy_title,
+        f"Over the last 90 days the proxy active - new averaged {yoy['returning_accounts']['recent']:,.0f}/day "
         f"({_pct(yoy['returning_accounts']['pct_change'])} vs a year earlier), new accounts "
         f"{yoy['new_accounts']['recent']:,.0f}/day ({_pct(yoy['new_accounts']['pct_change'])}). "
-        f"By medians returning accounts changed {_pct(yoy['returning_accounts'].get('median_pct_change'))}.",
+        f"By medians it changed {_pct(yoy['returning_accounts'].get('median_pct_change'))}." + proxy_note,
         "returning_accounts = active_accounts - new_accounts (NearBlocks daily charts), 30-day rolling mean. "
         "This is a lower bound: new accounts that did not transact on their first day are subtracted anyway. "
         f"New accounts exceeded active accounts (returning clipped to 0) on {bad.get('recent', 0)} of the last 90 days, "
@@ -95,24 +240,24 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
 
     # 2. Usage vs price
     fig, ax = plt.subplots(figsize=(8, 3.6))
-    ax.plot(r.index, _pos(r["returning_accounts"]), color=ACCENT, label="returning accounts, 30d avg (left)")
+    ax.plot(r.index, _pos(r["txns"]), color=ACCENT, label="transactions per day, 30d avg (left)")
     ax.set_yscale("log")
-    ax.set_ylim(bottom=1_000)
+    ax.set_ylim(bottom=10_000)
     ax2 = ax.twinx()
     ax2.plot(d.index, _pos(d["price_usd"]), color=INK, linewidth=0.9, label="NEAR price, USD (right)")
     ax2.set_yscale("log")
     ax2.tick_params(colors=MUTED, labelsize=8)
     _plain(ax)
     _plain(ax2, dense=True)
-    _style(ax, "Returning accounts vs NEAR price (log scales)")
+    _style(ax, "Transactions vs NEAR price (log scales)")
     h1, l1 = ax.get_legend_handles_labels()
     h2, l2 = ax2.get_legend_handles_labels()
     _legend_below(ax, h1 + h2, l1 + l2)
     _save(fig, out, "usage_vs_price")
     charts.append(Chart(
         "usage_vs_price", "Usage vs price",
-        f"Price changed {_pct(yoy['price_usd']['pct_change'])} year-on-year (90-day averages) while returning "
-        f"accounts changed {_pct(yoy['returning_accounts']['pct_change'])}.",
+        f"Price changed {_pct(yoy['price_usd']['pct_change'])} year-on-year (90-day averages) while daily "
+        f"transactions changed {_pct(yoy['txns']['pct_change'])} and active accounts {_pct(yoy['active_accounts']['pct_change'])}.",
         "Same 90-day window compared with the window 365 days earlier.",
     ))
 
@@ -125,7 +270,8 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
         "tx_per_active", "Transactions per active account",
         f"Each active account sent {yoy['tx_per_active']['recent']:.1f} transactions a day on average in the last 90 days "
         f"({_pct(yoy['tx_per_active']['pct_change'])} YoY); a rising value with flat accounts points to automated activity.",
-        "txns / active_accounts (NearBlocks), 30-day rolling mean.",
+        "txns / active_accounts (NearBlocks), 30-day rolling mean. NearBlocks' active accounts are transaction signers; "
+        "users acting through relayers are not counted (see the first chart for the full count).",
     ))
 
     # 4. Fees per active account
@@ -145,7 +291,8 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
         f"({_pct(fa['pct_change'])} YoY in USD, {_pct(fn['pct_change'])} in NEAR terms, "
         f"{_pct(fa.get('median_pct_change'))} by USD medians); total fees were "
         f"${yoy['fees_usd']['recent']:,.0f}/day ({_pct(yoy['fees_usd']['pct_change'])} YoY).",
-        "txn_fee_usd / active_accounts (NearBlocks), 30-day rolling mean; NEAR terms = the same divided by the daily price.",
+        "txn_fee_usd / active_accounts (NearBlocks), 30-day rolling mean; NEAR terms = the same divided by the daily price. "
+        "The denominator counts transaction signers only, so read the level with care; total fees do not depend on it.",
     ))
 
     # 5. Intents
@@ -173,6 +320,16 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
             "DefiLlama dexs/near-intents totalDataChart, 7-day rolling mean.",
         ))
 
+    # 5a. Full-population account census from BigQuery (only when data/bq/account_age.csv exists)
+    pop = population.load()
+    if pop is not None and "population" in summary:
+        charts.append(_population_chart(pop, summary, out))
+
+    # 5b. Signer census (only when data/raw/census_* exists)
+    cs = summary.get("signer_census")
+    if cs and {"prior", "recent"} <= set(cs["windows"]):
+        charts.append(_census_chart(cs, out))
+
     # 6. Lead-lag
     leads = summary["lead_vs_price"]
     if leads:
@@ -185,13 +342,13 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
             band = ll["band"].iloc[0]
             ax.axhline(band, color=INK, linestyle=":", linewidth=0.8)
             ax.axhline(-band, color=INK, linestyle=":", linewidth=0.8)
-            _style(ax, name.replace("_", " "))
+            _style(ax, LEAD_LABELS.get(name, name.replace("_", " ")))
             ax.set_xlabel("weeks metric leads price →", fontsize=7, color=MUTED)
         _save(fig, out, "lead_lag")
         parts = []
         for name, b in leads.items():
             outside = ", ".join(f"{o['lag_weeks']:+d} wk r={o['corr']:+.2f}" for o in b.get("outside_band", []))
-            parts.append(f"{name.replace('_', ' ').replace(' usd', '')}: {outside or 'nothing outside the noise band'}")
+            parts.append(f"{LEAD_LABELS.get(name, name.replace('_', ' '))}: {outside or 'nothing outside the noise band'}")
         n_out = sum(len(b.get("outside_band", [])) for b in leads.values())
         n_tests = 17 * len(leads)
         charts.append(Chart(
@@ -201,4 +358,5 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
             "corr(Δlog metric_t, Δlog price_{t+k}), k in weeks, positive k = metric moves first (green bars); "
             "dotted lines = ±2/√n noise band.",
         ))
+    charts.sort(key=lambda c: c.slug != "population")  # the full-chain census leads the dashboard
     return charts

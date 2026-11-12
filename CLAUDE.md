@@ -4,32 +4,37 @@ NEAR HACKATHON (Nov 2026), track **Investment Thesis**. Deadline: **2026-11-14 2
 Submission = public GitHub repo (with LICENSE) + public demo post on X tagging @NEARProtocol and #NEARHackathon
 + form with a NEAR wallet address for the prize. Rules: https://nearhackathon.com/HACKATHON.md
 
-The owner writes Python and Rust. Answer in Russian.
+The owner writes Python and Rust.
 
-## State (2026-11-12, after the first live build)
+## State (2026-11-12, late evening UTC)
 
-* `.venv` recreated on Python 3.12; `python -m pytest -q` passes (8 tests); `python -m thesis build` ran on live data
-  through 2026-11-11. `data/raw/`, `data/daily.csv` and `docs/` are committed outputs of that run.
-* `Makefile` and `.github/workflows/build.yml` recreated.
-* The YoY table in THESIS.md matched the Python build exactly. Fixed after the build: the lead-lag details
-  (9 of 85 lag tests are outside the noise band, see `lead_vs_price.*.outside_band` in `docs/summary.json`) and the
-  "525,011" figure (it is the same 90-day window of 2024, not a 2024 average).
-* Added to the code and the docs: medians, fees in NEAR terms, a quarter-on-quarter table (`qoq_90d`) and `checks`.
-* Known weak point, stated in THESIS.md "Evidence against": `returning = active − new` is only a lower bound
-  (new > active on 7 of 90 days in the year-earlier window), so "+37% returning" is the favourable end of the range.
-  The owner has not yet decided whether to keep claim 1 as "Supported, size uncertain" or reframe it.
-* Git: local repository on `main`, committed. Nothing pushed, no GitHub repo yet.
+* `python -m pytest -q` passes (18 tests); `python -m thesis build` and `--offline` work on live data through 2026-11-11.
+* The thesis was rewritten around a full-chain account census from BigQuery (`sql/account_age.sql`, result in
+  `data/bq/account_age.csv`, code in `thesis/population.py`). It refuted the first draft's claim that returning
+  accounts grew 37%: core accounts active two months running fell 73%. THESIS.md says so openly.
+* The BigQuery query was run once in the owner's personal sandbox project through the browser console. It costs
+  482.64 GB of the free 1 TB a month, so there is no second full run in November 2026. Never query the `accounts`
+  table (1.03 TB). Always read the dry-run estimate first.
+* `thesis/census.py` is an optional keyless check (random blocks + account ages over public FastNEAR endpoints). Its
+  long background runs may still be going or finished; outputs land in `data/raw/census_*` and the cache in
+  `data/census_cache/` (gitignored). When `data/raw/census_sample.csv` exists the build adds a "signer census" chart.
+  It is not referenced in THESIS.md yet; add it as an independent cross-check once the files are complete.
+* Git: local repository on `main`, author `ivegor` (GitHub noreply address in the repo-local config), commit messages
+  without attribution trailers. Nothing pushed, no GitHub repo yet.
 
 ## Next steps
 
-1. Owner decisions: GitHub repo name, framing of claim 1 (LICENSE holder is set to "ivegor").
+1. If the census run finished: compare its transaction shares by account age with BigQuery for the same months,
+   add one paragraph and the chart reference to THESIS.md, commit `data/raw/census_*`.
 2. Create the public GitHub repo (ask the owner first), push, enable GitHub Pages (source: GitHub Actions),
    check the first workflow run and the live dashboard.
-3. X post: draft is in `POST_DRAFT.md`; put the real dashboard + repo links in, show it to the owner before posting.
-4. Fill the submission form with the owner (needs their NEAR wallet address).
+3. X post: draft is in `POST_DRAFT.md` (gitignored); it needs the real links and a screenshot of the first chart.
+   The owner posts it; the post must say the project was built at NEAR HACKATHON.
+4. Fill the submission form with the owner (needs their NEAR wallet address). One submission only, after the repo
+   and the post are public.
 
 ## Thesis in one line
 
-Headline NEAR activity fell ~75% YoY, but returning accounts (active − new, a lower bound) grew ~37% (+11% by medians),
-fees per account ~+120% in USD (+43% in NEAR), tx per account ~−30%, Intents volume ~+223%; usage does NOT lead price
-(returning accounts and Intents: nothing outside the noise band at any lag; fees co-move with price in the same week).
+Accounts acting on NEAR fell 97% in a year (43.6M to 1.38M a month) and 97% of the loss is two reward and wallet apps;
+outside them the base also fell 66%, the only growing group is 71K named `.near` accounts (+13%) that now send 48% of
+all transactions, Intents volume is up 223%, and usage does not lead price.

@@ -13,14 +13,20 @@ code{background:#f6f8fa;padding:1px 4px;border-radius:4px}
 <p class="sub">Data 2020-07-21 → 2026-11-11 (2305 days). Rebuilt by <code>python -m thesis build</code>. Thesis: see THESIS.md in the repo.</p>
 
 <section class="card">
-  <h2>New vs returning accounts</h2>
-  <p class="lead">Over the last 90 days returning accounts averaged 60,746/day (+37% vs a year earlier), new accounts 10,946/day (-96%). By medians returning accounts changed +11%.</p>
-  <img src="accounts.png" alt="New vs returning accounts">
+  <h2>Every active account, counted (full chain, not a sample)</h2>
+  <p class="lead">In 2026-10, 1.38M accounts acted on NEAR against 43.64M in 2025-10 (-97%); one reward app, KaiChing, peaked at 48.94M accounts a month (2025-08); in 2026-10 only 2 of its accounts were active two months running. Outside the reward apps, core accounts went 1.81M to 621K (-66%), those also active the month before 925K to 249K (-73%), while core transactions changed -23%. Named .near accounts: 63K to 71K (+13%), transactions +20%. Accounts older than a year send 43% of core transactions (52% a year earlier).</p>
+  <img src="population.png" alt="Every active account, counted (full chain, not a sample)">
+  <p class="method"><b>Method:</b> sql/account_age.sql on the NEAR BigQuery public dataset (all transactions, 482.64 GB scanned, result in data/bq/account_age.csv). The actor of a relayed transaction is the user, not the relayer. Age = first appearance in any transaction since genesis. Core = accounts outside the kaiching, .tg and .sweat namespaces. Feb-Mar 2026 contain two one-month bursts of single-use implicit accounts.</p>
+</section>
+<section class="card">
+  <h2>What the daily aggregates show, and why they mislead</h2>
+  <p class="lead">Over the last 90 days the proxy active - new averaged 60,746/day (+37% vs a year earlier), new accounts 10,946/day (-96%). By medians it changed +11%. This proxy is wrong about the direction: counted directly on the full chain, core accounts active two months running changed -73% over the same year (see the first chart). The aggregator&#x27;s &quot;active accounts&quot; are transaction signers, so users acting through relayers are missing, and its &quot;new accounts&quot; are mostly created by a few factory accounts and never sign anything.</p>
+  <img src="accounts.png" alt="What the daily aggregates show, and why they mislead">
   <p class="method"><b>Method:</b> returning_accounts = active_accounts - new_accounts (NearBlocks daily charts), 30-day rolling mean. This is a lower bound: new accounts that did not transact on their first day are subtracted anyway. New accounts exceeded active accounts (returning clipped to 0) on 0 of the last 90 days, 7 of the 90 days a year earlier and 234 days in all history (mostly mid-2022, shown as a gap).</p>
 </section>
 <section class="card">
   <h2>Usage vs price</h2>
-  <p class="lead">Price changed +39% year-on-year (90-day averages) while returning accounts changed +37%.</p>
+  <p class="lead">Price changed +39% year-on-year (90-day averages) while daily transactions changed -84% and active accounts -75%.</p>
   <img src="usage_vs_price.png" alt="Usage vs price">
   <p class="method"><b>Method:</b> Same 90-day window compared with the window 365 days earlier.</p>
 </section>
@@ -28,13 +34,13 @@ code{background:#f6f8fa;padding:1px 4px;border-radius:4px}
   <h2>Transactions per active account</h2>
   <p class="lead">Each active account sent 11.2 transactions a day on average in the last 90 days (-30% YoY); a rising value with flat accounts points to automated activity.</p>
   <img src="tx_per_active.png" alt="Transactions per active account">
-  <p class="method"><b>Method:</b> txns / active_accounts (NearBlocks), 30-day rolling mean.</p>
+  <p class="method"><b>Method:</b> txns / active_accounts (NearBlocks), 30-day rolling mean. NearBlocks&#x27; active accounts are transaction signers; users acting through relayers are not counted (see the first chart for the full count).</p>
 </section>
 <section class="card">
   <h2>Fees per active account</h2>
   <p class="lead">An active account paid $0.066 a day in fees over the last 90 days (+120% YoY in USD, +43% in NEAR terms, +53% by USD medians); total fees were $4,122/day (-52% YoY).</p>
   <img src="fees_per_active.png" alt="Fees per active account">
-  <p class="method"><b>Method:</b> txn_fee_usd / active_accounts (NearBlocks), 30-day rolling mean; NEAR terms = the same divided by the daily price.</p>
+  <p class="method"><b>Method:</b> txn_fee_usd / active_accounts (NearBlocks), 30-day rolling mean; NEAR terms = the same divided by the daily price. The denominator counts transaction signers only, so read the level with care; total fees do not depend on it.</p>
 </section>
 <section class="card">
   <h2>NEAR Intents volume</h2>
@@ -44,7 +50,7 @@ code{background:#f6f8fa;padding:1px 4px;border-radius:4px}
 </section>
 <section class="card">
   <h2>Does usage lead price?</h2>
-  <p class="lead">Weekly-change correlation with price, lags outside the noise band (9 of 85 tested; about 4 expected by chance): returning accounts: nothing outside the noise band; active accounts: -5 wk r=+0.12, +0 wk r=+0.14; intents volume: nothing outside the noise band; fees: -1 wk r=+0.18, +0 wk r=+0.38, +1 wk r=+0.18; txns: -8 wk r=+0.14, +2 wk r=-0.13, +4 wk r=+0.11, +6 wk r=-0.15.</p>
+  <p class="lead">Weekly-change correlation with price, lags outside the noise band (9 of 85 tested; about 4 expected by chance): active - new (proxy): nothing outside the noise band; active accounts: -5 wk r=+0.12, +0 wk r=+0.14; intents volume: nothing outside the noise band; fees: -1 wk r=+0.18, +0 wk r=+0.38, +1 wk r=+0.18; transactions: -8 wk r=+0.14, +2 wk r=-0.13, +4 wk r=+0.11, +6 wk r=-0.15.</p>
   <img src="lead_lag.png" alt="Does usage lead price?">
   <p class="method"><b>Method:</b> corr(Δlog metric_t, Δlog price_{t+k}), k in weeks, positive k = metric moves first (green bars); dotted lines = ±2/√n noise band.</p>
 </section>

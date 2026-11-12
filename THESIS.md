@@ -1,92 +1,100 @@
-# Thesis: NEAR's usage got smaller and better. The case rests on paying repeat users and Intents, not on activity momentum
+# Thesis: NEAR did not lose its users in 2026, it lost one reward app. What is left is small, concentrated and busier
 
-*Data through 2026-11-11 (NearBlocks daily charts, DefiLlama NEAR Intents). "YoY" = mean of the last 90 days vs the
-same 90 days a year earlier. Every number below is reproduced by `python -m thesis build` and stored in
-`docs/summary.json`; if a re-run on newer data changes a number, the dashboard is the source of truth.*
+*Data through 2026-11-11. Account counts come from a full scan of the NEAR BigQuery public dataset
+(`sql/account_age.sql`, every transaction, not a sample); prices, fees and Intents volume from NearBlocks and DefiLlama.
+"YoY" for accounts = October 2026 vs October 2025, the last complete month; for prices, fees and volume = mean of the
+last 90 days vs the same 90 days a year earlier. Every number below is in `docs/summary.json`, rebuilt by
+`python -m thesis build`.*
 
 ## One-paragraph summary
 
-Headline NEAR activity collapsed over the past year: active accounts −75%, daily transactions −84%, new accounts −96%.
-Read naively, that is a dying network. It is not what the composition shows. The accounts that left were one-off and
-farm accounts; the core of **returning** accounts (active − new) *grew* 37% by this measure (+11% by medians; the
-measure is a lower bound, see "Evidence against"), and they now make up at least 83% of daily actives. Each active
-account pays **2.2× more in fees** in USD (1.4× in NEAR terms) while sending **30% fewer transactions**: less
-automation, more paid usage. NEAR Intents volume **tripled** to about $135M a day. What the data does **not** support is the popular idea
-that usage *leads* price: weekly changes in usage do not predict weekly changes in NEAR price. The investment case is
-therefore a slow, fundamentals one (a smaller, stickier, paying user base plus cross-chain flow through Intents), not a
-"buy when activity spikes" signal.
+In October 2025, 43.6 million accounts acted on NEAR. In October 2026, 1.38 million did (−97%). Read from the daily
+aggregates, that is a network that died. Counted account by account, **97% of the accounts that disappeared belonged to
+two reward and wallet apps**, KaiChing and HOT, and KaiChing alone was 40.4 million of them. That part of the collapse
+says nothing about demand for NEAR. The rest is not a comfortable story either: **outside those apps the account base
+also fell by two thirds** (1.81M → 0.62M), and accounts that come back month after month fell 73%. One group grew:
+**named `.near` accounts**, 71 thousand of them (+13%), which now send 48% of all transactions (6% a year ago), 20%
+more than a year earlier. Add NEAR Intents volume, which tripled to about $135M a day, and the long-term case becomes
+clear and narrow: NEAR today is a small set of heavy accounts and one cross-chain product, not a growing user base.
+Usage does not lead price.
+
+## A correction we made to our own first draft
+
+The first version of this thesis claimed that "returning accounts" *grew* 37% year on year. It used the only proxy the
+daily aggregates allow, `active accounts − new accounts`. The full-chain count says the opposite: core accounts active
+two months running fell 73%. The proxy fails for two reasons, both visible on a single day (2025-10-01, 4,632,736
+transactions, the same number in BigQuery and in NearBlocks):
+
+* **"Active accounts" are transaction signers.** 74% of that day's transactions (3,448,826) were relayed: 17 relayer
+  accounts signed them on behalf of 2,694,016 users. NearBlocks reported 288,151 active accounts. The users behind
+  relayers are not in that number.
+* **"New accounts" mostly never transact.** 238,403 accounts were created that day by 12 creator accounts (NearBlocks
+  reported 267,015 new accounts). Subtracting them from 288,151 signers subtracts accounts that were never part of it.
+
+We kept the proxy on the dashboard, labelled as misleading, because every aggregate-based analysis of NEAR inherits it.
 
 ## Claims and what the data says
 
-| # | Claim | Result | Evidence (90-day mean, YoY) |
+| # | Claim | Result | Evidence (October 2025 → October 2026 unless stated) |
 |---|---|---|---|
-| 1 | Repeat usage holds up independently of headline activity | **Supported, size uncertain** | Returning accounts 44,236 → 60,746/day (+37%; +11% by medians) while active accounts fell 290,216 → 71,693 (−75%). `active − new` is a lower bound, and a loose one a year ago |
-| 2 | Activity is becoming less automated and more paid-for | **Supported** | Tx per active account 16.0 → 11.2 (−30%); fees per active account $0.030 → $0.066 (+120% in USD, +43% in NEAR terms, +53% by USD medians) |
-| 3 | Cross-chain demand through NEAR is growing | **Supported** | NEAR Intents volume $41.7M → $134.9M/day (+223%) |
-| 4 | Usage changes lead price changes | **Not supported** | See "Evidence against" |
+| 1 | The collapse in activity is the exit of reward apps, not of NEAR's own users | **Mostly supported** | Reward and wallet apps (KaiChing, HOT, Sweat namespaces) account for 97.2% of the accounts lost and 96.2% of the transactions lost. KaiChing had 40.39M active accounts in October 2025; in October 2026 only 2 of its accounts were active two months running |
+| 2 | A stable core of returning users remains (our first draft) | **Refuted** | Core accounts 1,814,743 → 621,166 (−66%); of them active the month before 924,642 → 248,954 (−73%); still falling: 959,812 (Jul) → 621,166 (Oct) |
+| 3 | The remaining core is used more intensively | **Supported** | Core transactions fell only 23% (19.36M → 14.87M a month) while core accounts fell 66%: 10.7 → 23.9 transactions per account a month |
+| 4 | Named `.near` accounts are a growing core | **Supported, and small** | 62,880 → 71,332 accounts (+13%), transactions 8.96M → 10.77M (+20%), share of all NEAR transactions 6.4% → 47.6% |
+| 5 | Cross-chain demand through NEAR is growing | **Supported** | NEAR Intents volume $41.7M → $134.9M a day (+223%, 90-day means, DefiLlama) |
+| 6 | Usage changes lead price changes | **Not supported** | See "Evidence against" |
 
 ## Evidence for
 
-* **The user base shrank to its core, and the core grew.** New accounts fell from 248,771 to 10,946 a day (−96%), so
-  almost all of the drop in actives is the disappearance of accounts that appeared once. Returning accounts rose 37%
-  (+11% by medians) and their share of actives went from at least 15% to at least 83%.
-  *(charts: accounts, usage_vs_price)*
-* **Less bot-like, more paid usage per account.** Transactions per active account fell 30% while fees per active
-  account rose 120% in USD and 43% in NEAR terms (the NEAR price itself is up 39%, so part of the USD rise is the
-  token price). Rising fees with falling transaction counts per user is the opposite of the automated-spam
-  pattern. *(charts: tx_per_active, fees_per_active)*
-* **Intents is a real, growing flow.** Daily Intents volume tripled year on year. Per active account it went from
-  about $155 to about $2,097 a day. *(chart: intents)*
+* **The headline numbers measured an app, not a network.** KaiChing peaked at 48.9 million accounts a month (August
+  2025) and averaged under 2 transactions per account a month; it was 93% of all active accounts in October 2025. It
+  stopped between March and April 2026. HOT wallet accounts (`.tg`) fell 86% over the year. *(chart: population)*
+* **Activity per remaining account doubled.** Outside the reward apps, transactions per account went from 10.7 to 23.9
+  a month. Named `.near` accounts send about 150 transactions a month each. *(chart: population)*
+* **The named-account core grew on every measure.** Accounts +13%, transactions +20%, accounts active two months
+  running +12% (42,316 → 47,531), accounts older than a year +18% (36,014 → 42,512). *(chart: population)*
+* **Intents is a real, growing flow.** Daily volume tripled year on year while the NEAR price rose 39%. *(chart: intents)*
 
 ## Evidence against
 
-* **Total fees fell.** Network fees are down 52% YoY ($8,652 → $4,122/day). Per-user quality is up, but the absolute
-  fee base is small, so this is not (yet) a cash-flow story.
+* **The core shrank by two thirds, and has not stopped.** 1.81M → 0.62M accounts in a year, and 0.96M → 0.62M in the
+  last four months alone. Implicit (unnamed) accounts fell 69% and their transactions 62%. Whatever NEAR's organic base
+  is, it is smaller than a year ago.
+* **The growing cohort is tiny and heavy.** 71 thousand named accounts at 150 transactions a month each is the profile
+  of bots, market makers, solvers and application back ends, not of retail users. Half of NEAR's transactions now
+  depend on them. This is concentration risk, not adoption.
+* **Old accounts did not take over the core.** Accounts older than a year send 43% of core transactions, down from 52%.
+  The base is not "a loyal old guard"; it turns over.
+* **Total fees fell.** Network fees are down 52% YoY ($8,652 → $4,122 a day). Intents volume is not the same thing as
+  revenue for the token; we did not measure value capture.
 * **Usage does not lead price.** On weekly log-changes over ~6 years (n = 292–317 weeks, noise band ≈ ±0.11–0.12):
-  * returning accounts vs price: no correlation outside the noise band at any lag from −8 to +8 weeks;
-  * NEAR Intents volume vs price (n = 100 weeks, band ±0.20): nothing outside the band at any lag;
-  * fees vs price: r = 0.38 at lag 0 and r = 0.18 at both −1 and +1 week. The pattern is symmetric: they move
-    together in the same week (fees are priced in USD, so part of this is mechanical) and weekly averaging spreads
-    that into the neighbouring weeks; it is not one moving before the other;
-  * active accounts: r = 0.14 at lag 0 and r = 0.12 at −5 weeks (price first); nothing at positive lags;
-  * transactions: four bars just outside the band with mixed signs (+0.14 at −8, −0.13 at +2, +0.11 at +4,
-    −0.15 at +6 weeks), with no run of adjacent lags of one sign.
-
-  In total 9 of 85 lag tests fall outside the band, where about 4 are expected by chance; 4 of the 9 are fees
-  (lags −1, 0, +1) and active accounts (lag 0) moving with price in the same week.
-* **`active − new` is only a lower bound for returning accounts.** The formula assumes every new account is also
-  counted as active on its first day. That is not always true: new accounts exceeded active accounts on 234 days in
-  the history, including 7 of the 90 days in the year-earlier window (0 of the last 90). True returning accounts lie
-  between `active − new` and `active`: 60,746–71,693 a day now, but anywhere in 44,236–290,216 a year ago, when new
-  accounts were 86% of actives. So +37% sits near the favourable end of that range; this data cannot rule out
-  that returning accounts fell. What is solid: at least 83% of today's active accounts existed before the day they
-  were counted.
-* **The latest quarter points down.** Against the previous 90 days, returning accounts are down 30%
-  (87,241 → 60,746/day) and transactions per active account are up 48% (7.6 → 11.2). The YoY comparison hides this.
-* **Returning ≠ human.** In the same 90-day window of 2024 "returning" accounts averaged 525,011 a day, then fell
-  to 44,236 a year later. A swing that large means the metric can be inflated by campaigns or automated accounts;
-  claim 1 relies on the tx-per-account and fee checks, not on this metric alone.
+  Intents volume (n = 100 weeks, band ±0.20) shows nothing outside the band at any lag from −8 to +8 weeks; fees move
+  with price in the same week (r = 0.38, and 0.18 at ±1 week, a symmetric pattern that weekly averaging produces);
+  active accounts r = 0.14 at lag 0; transactions show four isolated bars of mixed sign. In total 9 of 85 lag tests
+  fall outside the band where about 4 are expected by chance. *(chart: lead_lag)*
 
 ## What would change our mind
 
-* Returning accounts fall for two consecutive quarters: the "stickier core" was a pause, not a floor.
-  (Status: the latest quarter is the first down quarter, −30%.)
-* Tx per active account rises again while fees per account fall: automation is back.
-  (Status: tx per account is rising, +48% on the previous quarter; fees per account are rising too, +96% in NEAR
-  terms, so not triggered.)
-* Intents volume falls back towards 2025 levels while the price rises: the price is not tracking this flow at all.
-* A re-run shows a consistent positive lead (several adjacent positive lags outside the band for more than one
-  metric): then usage *would* be a timing signal, contrary to our result.
+* **Core accounts stop falling.** Two consecutive quarters with core accounts flat or up would mean the base has found
+  a floor. Today it has not.
+* **The named-account core stops growing.** If `.near` accounts or their transactions fall below their October 2025
+  level, the one positive trend is gone.
+* **A new reward app re-inflates the headline.** Active accounts jumping by millions with under 2 transactions per
+  account is KaiChing again, not growth; this thesis would ignore it, and so should a reader.
+* **Intents volume falls back towards 2025 levels while the price holds.** Then the price is not tracking this flow.
+* **A re-run shows a consistent lead**: several adjacent positive lags outside the band for more than one metric.
 
 ## Limits
 
-* NearBlocks counts an "active account" per signing/receiving account per day; it cannot separate people from bots.
-* DefiLlama Intents data starts in December 2024, so its lead-lag test has about 100 weeks of data.
-* Lead-lag scans 17 lags × 5 metrics = 85 tests; about 4 bars outside ±2/√n are expected by chance.
-* YoY figures are means of 90 daily values; medians are in `docs/summary.json` (`median_pct_change`) and are
-  quoted above where they differ materially.
-* New accounts fell from about 135,000 to 22,000 a day and transactions from 3.5M to 0.9M a day between March and
-  April 2026. A step that sharp looks like one large automated source stopping (or a change in how the data
-  provider counts); most of the YoY drop in headline activity comes from it.
-* The optional BigQuery cross-check (`--bq`) can measure heavy signers and cohort retention directly, but the
-  dataset's upstream source (NEAR Lake) was deprecated in March 2026; the pipeline reports how fresh it is.
+* **"Core" is not "human".** It is every account outside three namespaces (`.kaiching`, `.tg`, `.sweat`). It still
+  contains bots, application accounts and other apps that use implicit accounts.
+* **Account age is first appearance in a transaction**, as signer or receiver, since genesis. An account created by a
+  contract call and first used later looks younger than it is.
+* **"Active two months running" is a calendar-month measure.** It says nothing about retention within a month.
+* **February and March 2026** each contain a one-off burst of single-use implicit accounts (about 3.5 and 6 million). They
+  inflate core account counts in those two months; the year-on-year comparison uses October to avoid them.
+* **Intents volume, prices and fees are aggregator data** (DefiLlama, NearBlocks). We verified NearBlocks' daily
+  transaction count against BigQuery for one day (exact match) and nothing else.
+* **Lead-lag scans 17 lags × 5 metrics = 85 tests**; about 4 bars outside ±2/√n are expected by chance. One of the
+  five metrics is the `active − new` proxy shown above to be unreliable; it is reported for completeness.
+* **Re-running the account census costs 482.64 GB** of BigQuery scanning. It fits the free 1 TB a month, once.
