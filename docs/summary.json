@@ -297,6 +297,135 @@
     },
     "returning_accounts_two_years_earlier": 525010.9444444445
   },
+  "signer_census": {
+    "seed": 20261112,
+    "windows": {
+      "prior": {
+        "start": "2025-08-14",
+        "end": "2025-11-11",
+        "height_start": 159518079,
+        "height_end": 172244341,
+        "ref_heights": {
+          "30d_before_start": 155278842,
+          "365d_before_start": 125723581
+        },
+        "blocks_requested": 120,
+        "blocks_found": 120,
+        "transactions_sampled": 4878,
+        "transactions": 1200,
+        "blocks_with_transactions": 116,
+        "accounts": 1034,
+        "tx_share_by_account_age": {
+          "365d+": 0.38333333333333336,
+          "30-365d": 0.4066666666666667,
+          "new": 0.21
+        },
+        "tx_share_ci95": {
+          "365d+": [
+            0.3197,
+            0.4732
+          ],
+          "30-365d": [
+            0.345,
+            0.4607
+          ],
+          "new": [
+            0.1567,
+            0.2566
+          ]
+        },
+        "account_share_by_age": {
+          "365d+": 0.29690522243713735,
+          "30-365d": 0.46131528046421666,
+          "new": 0.24177949709864605
+        },
+        "relayed_tx_share": 0.7791666666666667,
+        "top10_accounts_tx_share": 0.13833333333333334,
+        "top_targets": {
+          "earn.kaiching": 0.5475,
+          "game.hot.tg": 0.2217,
+          "wallet.kaiching": 0.055,
+          "token.sweat": 0.0275,
+          "embr.playember_reserve.near": 0.0142,
+          "v2.jars.sweat": 0.01,
+          "claim.sweat": 0.0092,
+          "intents.near": 0.0083
+        },
+        "top_calls": {
+          "earn.kaiching :: claim": 0.5475,
+          "game.hot.tg :: l2_claim": 0.2167,
+          "wallet.kaiching :: storage_deposit": 0.0458,
+          "token.sweat :: ft_transfer": 0.02,
+          "wallet.kaiching :: ft_transfer_call": 0.0092,
+          "claim.sweat :: claim": 0.0092,
+          "intents.near :: execute_intents": 0.0067,
+          "embr.playember_reserve.near :: earn_sprk": 0.005
+        }
+      },
+      "recent": {
+        "start": "2026-08-14",
+        "end": "2026-11-11",
+        "height_start": 211226321,
+        "height_end": 224136135,
+        "ref_heights": {
+          "30d_before_start": 206998881,
+          "365d_before_start": 159518079
+        },
+        "blocks_requested": 330,
+        "blocks_found": 329,
+        "transactions_sampled": 1653,
+        "transactions": 1200,
+        "blocks_with_transactions": 309,
+        "accounts": 519,
+        "tx_share_by_account_age": {
+          "365d+": 0.69,
+          "30-365d": 0.13833333333333334,
+          "new": 0.17166666666666666
+        },
+        "tx_share_ci95": {
+          "365d+": [
+            0.6492,
+            0.7279
+          ],
+          "30-365d": [
+            0.1114,
+            0.1687
+          ],
+          "new": [
+            0.1453,
+            0.2009
+          ]
+        },
+        "account_share_by_age": {
+          "365d+": 0.6551059730250481,
+          "30-365d": 0.1348747591522158,
+          "new": 0.21001926782273603
+        },
+        "relayed_tx_share": 0.35,
+        "top10_accounts_tx_share": 0.3883333333333333,
+        "top_targets": {
+          "game.hot.tg": 0.135,
+          "token.sweat": 0.1242,
+          "v2.ref-finance.near": 0.1133,
+          "intents.near": 0.1117,
+          "v2.jars.sweat": 0.0983,
+          "wrap.near": 0.0417,
+          "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1": 0.0383,
+          "aa-harvest-moon.near": 0.0342
+        },
+        "top_calls": {
+          "game.hot.tg :: l2_claim": 0.135,
+          "intents.near :: execute_intents": 0.1092,
+          "v2.ref-finance.near :: swap": 0.095,
+          "token.sweat :: ft_transfer": 0.0608,
+          "v2.jars.sweat :: record_score": 0.0542,
+          "token.sweat :: defer_batch": 0.0458,
+          "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1 :: ft_transfer_call": 0.0383,
+          "wrap.near :: ft_transfer_call": 0.0358
+        }
+      }
+    }
+  },
   "population": {
     "source": "sql/account_age.sql on bigquery-public-data.crypto_near_mainnet_us (482.64 GB scanned)",
     "query_end": "2026-11-11",
@@ -1436,5 +1565,63 @@
         "top_via": "omft.near"
       }
     ]
+  },
+  "cross_check": {
+    "prior": {
+      "sample_window": [
+        "2025-08-14",
+        "2025-11-11"
+      ],
+      "sample_transactions": 1200,
+      "bigquery_months": [
+        "2025-09",
+        "2025-10"
+      ],
+      "relayed_tx_share": {
+        "sample": 0.7791666666666667,
+        "bigquery": 0.74532969362309
+      },
+      "older_than_1y_tx_share": {
+        "sample": 0.38333333333333336,
+        "sample_ci95": [
+          0.3197,
+          0.4732
+        ],
+        "bigquery": 0.46441459299128035
+      },
+      "top10_tx_share": {
+        "sample": 0.13833333333333334,
+        "bigquery_month": "2025-10",
+        "bigquery": 0.16899330705453053
+      }
+    },
+    "recent": {
+      "sample_window": [
+        "2026-08-14",
+        "2026-11-11"
+      ],
+      "sample_transactions": 1200,
+      "bigquery_months": [
+        "2026-09",
+        "2026-10"
+      ],
+      "relayed_tx_share": {
+        "sample": 0.35,
+        "bigquery": 0.34101017694534835
+      },
+      "older_than_1y_tx_share": {
+        "sample": 0.69,
+        "sample_ci95": [
+          0.6492,
+          0.7279
+        ],
+        "bigquery": 0.6387981172315499
+      },
+      "top10_tx_share": {
+        "sample": 0.3883333333333333,
+        "bigquery_month": "2026-10",
+        "bigquery": 0.37192054907112604
+      }
+    }
   }
 }

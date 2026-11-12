@@ -84,6 +84,26 @@ by very few accounts. NEAR Intents is the extreme case: its volume more than dou
 it received fell 13% and the accounts sending them fell from 26,272 to 5,353. Intents users sign off-chain and a
 relayer submits, so its customers cannot be counted from the chain at all.
 
+## An independent check: a keyless sample of the chain
+
+Everything above comes from one source, BigQuery. As a check we measured the chain a second way, with no key and no
+Google account (`python -m thesis census`): 449 random blocks from the FastNEAR block archive, 2,400 of their
+transactions, and for each of the 1,553 accounts behind them a `view_account` call on an archival RPC node to
+learn whether the account already existed 30 and 365 days before the window.
+
+| | Sample, Aug 14 – Nov 11, 2025 | BigQuery, Sep–Oct 2025 | Sample, Aug 14 – Nov 11, 2026 | BigQuery, Sep–Oct 2026 |
+|---|---|---|---|---|
+| Transactions sent through a relayer | 78% | 75% | 35% | 34% |
+| Transactions from accounts older than one year | 38% (95% interval 32–47%) | 46% | 69% (65–73%) | 64% |
+| Transactions sent by the ten largest accounts | 14% | 17% (October) | 39% | 37% (October) |
+
+The two agree on size and direction. They should not match exactly: the sample measures age at the start of a 90-day
+window and asks whether the account existed, BigQuery measures it at the start of each month and asks when the account
+first appeared in a transaction. The 2026 old-account share is the one cell where the BigQuery figure falls just
+outside the sample's interval. The sample also reads what a relayed transaction finally calls, which the BigQuery
+tables above do not: a year ago 55% of sampled transactions were a single call, `earn.kaiching :: claim`.
+*(chart: signer_census)*
+
 ## Evidence for
 
 * **The headline numbers measured an app, not a network.** KaiChing peaked at 48.9 million accounts a month (August

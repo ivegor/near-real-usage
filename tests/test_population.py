@@ -78,3 +78,16 @@ def test_summary_reports_robust_and_decomposed_figures():
     near_rate, implicit_rate = (900 + 20) / 40, 80 / 34
     assert abs(s["core_txs_per_account_at_prior_mix"] - (near_rate * 40 / 98 + implicit_rate * 58 / 98)) < 1e-9
     assert s["segments"]["near"]["accounts_range_12m"] == {"min": 40.0, "max": 40.0}
+
+
+def test_cross_check_compares_the_same_months():
+    df = table()
+    sample = {"windows": {"recent": {"start": "2025-12-14", "end": "2026-03-11", "transactions": 100, "relayed_tx_share": 0.2,
+                                     "tx_share_by_account_age": {"365d+": 0.9}, "tx_share_ci95": {"365d+": [0.8, 0.95]},
+                                     "top10_accounts_tx_share": 0.5}}}
+    top = {"months": {"2026-02": {"top10_share": 0.4}}}
+    c = population.cross_check(sample, df, top)["recent"]
+    assert c["bigquery_months"] == ["2026-01", "2026-02"]          # only the calendar months fully inside the window
+    assert abs(c["older_than_1y_tx_share"]["bigquery"] - 980 / 1000) < 1e-9
+    assert abs(c["relayed_tx_share"]["bigquery"] - 175 / 1000) < 1e-9
+    assert c["top10_tx_share"] == {"sample": 0.5, "bigquery_month": "2026-02", "bigquery": 0.4}

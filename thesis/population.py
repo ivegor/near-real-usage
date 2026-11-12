@@ -188,3 +188,31 @@ def summarize(df: pd.DataFrame, query_end: str | None = None) -> dict:
                                 "accounts": {f: int(v) for f, v in part.items()},
                                 "latest_complete_accounts": {f: int(v) for f, v in full.items()}}
     return out
+
+
+def cross_check(sample: dict, df: pd.DataFrame, top: dict | None = None) -> dict:
+    """Put the keyless block sample (thesis/census.py) next to the full BigQuery count for the same period.
+
+    The two were collected independently: random blocks from the FastNEAR archive with account ages from an
+    archival RPC node, against a scan of every transaction in BigQuery. They use slightly different definitions
+    (age at the start of a 90-day window vs at the start of each month; "the account existed" vs "first seen in
+    a transaction"), so the comparison is about agreement in size and direction, not equality.
+    """
+    out: dict = {}
+    for label, w in sample["windows"].items():
+        start, end = pd.Timestamp(w["start"]), pd.Timestamp(w["end"])
+        months = [str(m) for m in pd.period_range(start, end, freq="M") if m.start_time >= start and m.end_time.normalize() <= end]
+        d = df[df["month"].isin(months)]
+        total = d["txs"].sum()
+        row = {
+            "sample_window": [w["start"], w["end"]], "sample_transactions": w["transactions"], "bigquery_months": months,
+            "relayed_tx_share": {"sample": w["relayed_tx_share"], "bigquery": float(d["relayed_txs"].sum() / total)},
+            "older_than_1y_tx_share": {"sample": w["tx_share_by_account_age"]["365d+"], "sample_ci95": w["tx_share_ci95"]["365d+"],
+                                       "bigquery": float(d[d["age"].isin(OLDER_THAN_1Y)]["txs"].sum() / total)},
+        }
+        hit = [m for m in months if top and m in top.get("months", {})]
+        if hit:
+            row["top10_tx_share"] = {"sample": w["top10_accounts_tx_share"], "bigquery_month": hit[-1],
+                                     "bigquery": top["months"][hit[-1]]["top10_share"]}
+        out[label] = row
+    return out

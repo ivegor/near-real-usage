@@ -27,6 +27,8 @@ def build(offline: bool) -> None:
     top = clients.load()
     if top:
         summary["clients"] = clients.summarize(top)
+    if cs and pop is not None:
+        summary["cross_check"] = population.cross_check(summary["signer_census"], pop, summary.get("clients"))
     built = charts.build_all(daily, summary, DOCS)
     page = dashboard.render(built, summary, DOCS)
     print(json.dumps(summary, indent=2, default=str))

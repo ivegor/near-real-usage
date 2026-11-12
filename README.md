@@ -82,7 +82,7 @@ thesis/sources.py    fetch + cache raw API responses, parse into a daily table
 thesis/metrics.py    pure metric functions (unit-tested)
 thesis/charts.py     charts, each with a one-sentence, number-backed caption
 thesis/dashboard.py  static docs/index.html (GitHub Pages ready)
-thesis/census.py     optional keyless check: sample random blocks and look up account ages over public RPC
+thesis/census.py     keyless cross-check: random blocks + account ages over public RPC (results in data/raw/census_*)
 sql/account_age.sql  the account census query (run once, result in data/bq/account_age.csv)
 sql/top_accounts.sql the largest accounts and contracts (result in data/bq/top_accounts_result.csv)
 sql/top_accounts.sql the largest accounts, contracts and relayers (result in data/bq/top_accounts_result.csv)

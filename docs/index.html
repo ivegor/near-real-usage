@@ -58,6 +58,12 @@ Code and data: <a href="https://github.com/ivegor/near-real-usage">github.com/iv
   <p class="method"><b>Method:</b> DefiLlama dexs/near-intents totalDataChart, 7-day rolling mean. The 90-day year-on-year figure shrinks every day as its base moves through the ramp-up of autumn 2025; the calendar-month comparison does not.<br><b>Query / code:</b> <a href="https://github.com/ivegor/near-real-usage/blob/main/thesis/sources.py"><code>thesis/sources.py</code></a></p>
 </section>
 <section class="card">
+  <h2>Who signs the transactions (measured on the chain)</h2>
+  <p class="lead">Accounts older than one year sign 69% (95% interval 65-73%) of transactions now, against 38% (95% interval 32-47%) a year earlier; accounts newer than 30 days sign 17% (95% interval 15-20%) now, against 21% (95% interval 16-26%). The ten busiest accounts send 39% of transactions now (14% a year earlier).</p>
+  <img src="signer_census.png" alt="Who signs the transactions (measured on the chain)">
+  <p class="method"><b>Method:</b> Random block heights (seed 20261112) from the FastNEAR block archive: 329 blocks / 1200 transactions now, 120 blocks / 1200 transactions a year earlier. For a relayed (meta) transaction the user is read from the delegate action. An account&#x27;s age class comes from view_account on an archival RPC node at the block 30 and 365 days before the window starts. Intervals resample whole blocks. Sampled accounts over-represent frequent senders. Re-run: python -m thesis census [--seed N].<br><b>Query / code:</b> <a href="https://github.com/ivegor/near-real-usage/blob/main/thesis/census.py"><code>thesis/census.py</code></a></p>
+</section>
+<section class="card">
   <h2>Does usage lead price?</h2>
   <p class="lead">Weekly-change correlation with price, lags outside the noise band (6 of 85 tested; about 4 expected by chance): active - new (proxy): nothing outside the noise band; active accounts: -5 wk r=+0.12, +0 wk r=+0.14; intents volume: nothing outside the noise band; fees (in NEAR): nothing outside the noise band; transactions: -8 wk r=+0.14, +2 wk r=-0.13, +4 wk r=+0.11, +6 wk r=-0.15. Fees are tested in NEAR: in USD they correlate with price in the same week (r=0.38) only because USD fees are NEAR fees multiplied by the price.</p>
   <img src="lead_lag.png" alt="Does usage lead price?">

@@ -1,0 +1,38 @@
+{
+  "seed": 20261112,
+  "window_days": 90,
+  "max_tx_per_window": 1200,
+  "sources": {
+    "blocks": "https://mainnet.neardata.xyz/v0/block/{height}",
+    "rpc": "https://archival-rpc.mainnet.fastnear.com"
+  },
+  "fetched_at_utc": "2026-11-12T23:46:47.936465+00:00",
+  "windows": {
+    "prior": {
+      "start": "2025-08-14",
+      "end": "2025-11-11",
+      "height_start": 159518079,
+      "height_end": 172244341,
+      "ref_heights": {
+        "30d_before_start": 155278842,
+        "365d_before_start": 125723581
+      },
+      "blocks_requested": 120,
+      "blocks_found": 120,
+      "transactions_sampled": 4878
+    },
+    "recent": {
+      "start": "2026-08-14",
+      "end": "2026-11-11",
+      "height_start": 211226321,
+      "height_end": 224136135,
+      "ref_heights": {
+        "30d_before_start": 206998881,
+        "365d_before_start": 159518079
+      },
+      "blocks_requested": 330,
+      "blocks_found": 329,
+      "transactions_sampled": 1653
+    }
+  }
+}
