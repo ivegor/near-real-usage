@@ -1566,6 +1566,100 @@
       }
     ]
   },
+  "predictions": {
+    "sha256": "5fea0635893e0d78d1689e7b42b0f04ea1884c0dd8bb21bead5e281a33a3416b",
+    "data_through": "2026-11-11",
+    "items": [
+      {
+        "id": "A1",
+        "check_on": "2026-11-17",
+        "metric": "intents_volume_7d_mean_usd",
+        "operator": ">=",
+        "threshold": 100000000.0,
+        "scoring": "automatic",
+        "statement": "NEAR Intents volume averages at least $100M a day over the 7 days ending 2026-11-17",
+        "status": "open",
+        "measured": null
+      },
+      {
+        "id": "A2",
+        "check_on": "2026-11-30",
+        "metric": "buyback_month_usd",
+        "operator": ">=",
+        "threshold": 1200000.0,
+        "scoring": "automatic",
+        "statement": "Buybacks funded by Intents revenue reach at least $1.2M in November 2026",
+        "status": "open",
+        "measured": null
+      },
+      {
+        "id": "A3",
+        "check_on": "2027-02-11",
+        "metric": "buyback_coverage_90d",
+        "operator": "<",
+        "threshold": 0.3,
+        "scoring": "automatic",
+        "statement": "Buybacks still cover less than 30% of net new NEAR supply over the 90 days ending 2027-02-11",
+        "status": "open",
+        "measured": null
+      },
+      {
+        "id": "A4",
+        "check_on": "2027-02-11",
+        "metric": "lags_outside_band",
+        "operator": "<=",
+        "threshold": 8.0,
+        "scoring": "automatic",
+        "statement": "No more than 8 of the 85 weekly lead-lag tests fall outside the noise band: usage still does not lead price",
+        "status": "open",
+        "measured": null
+      },
+      {
+        "id": "B1",
+        "check_on": "2027-02-01",
+        "metric": "core_accounts_2027_01",
+        "operator": "<",
+        "threshold": 621166.0,
+        "scoring": "bigquery",
+        "statement": "Accounts outside the reward apps in January 2027 are below the October 2026 count of 621166",
+        "status": "open",
+        "measured": null
+      },
+      {
+        "id": "B2",
+        "check_on": "2027-02-01",
+        "metric": "core_self_paid_txs_mean_2026_11_to_2027_01",
+        "operator": ">=",
+        "threshold": 10000000.0,
+        "scoring": "bigquery",
+        "statement": "Self-paid transactions outside the reward apps average at least 10M a month over November 2026 to January 2027",
+        "status": "open",
+        "measured": null
+      },
+      {
+        "id": "B3",
+        "check_on": "2027-02-01",
+        "metric": "accounts_for_half_of_txs_2027_01",
+        "operator": "<=",
+        "threshold": 50.0,
+        "scoring": "bigquery",
+        "statement": "In January 2027 at most 50 accounts still send half of all transactions",
+        "status": "open",
+        "measured": null
+      },
+      {
+        "id": "B4",
+        "check_on": "2027-02-01",
+        "metric": "reward_apps_tx_share_2027_01",
+        "operator": ">=",
+        "threshold": 0.35,
+        "scoring": "bigquery",
+        "statement": "In January 2027 reward and wallet apps still send at least 35% of all transactions",
+        "status": "open",
+        "measured": null
+      }
+    ]
+  },
   "value_capture": {
     "window": [
       "2026-08-14",

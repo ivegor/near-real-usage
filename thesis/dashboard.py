@@ -28,6 +28,19 @@ def render(charts: list[Chart], summary: dict, out: Path) -> Path:
   <img src="{c.slug}.png" alt="{html.escape(c.title)}">
   <p class="method"><b>Method:</b> {html.escape(c.method)}{query}</p>
 </section>""")
+    pred = summary.get("predictions")
+    pred_card = ""
+    if pred:
+        def row(p: dict) -> str:
+            measured = "" if p["measured"] is None else f" ({p['measured']:,.2f})"
+            cells = [str(p["id"]), str(p["check_on"]), str(p["statement"])]
+            return ("<tr>" + "".join(f"<td>{html.escape(c)}</td>" for c in cells)
+                    + f"<td><b>{html.escape(p['status'])}</b>{measured}</td></tr>")
+
+        trs = "".join(row(p) for p in pred["items"])
+        pred_card = (f'<section class="card"><h2>Predictions</h2><p class="lead">Written on 2026-11-13, scored by the build as the '
+                     f'data reaches each check date (data through {html.escape(pred["data_through"])}). Details: {_repo_link("PREDICTIONS.md")}.</p>'
+                     f'<table><tr><th>Id</th><th>Check on</th><th>Prediction</th><th>Status</th></tr>{trs}</table></section>')
     src = "".join(f'<li><code>{html.escape(k)}</code>: <a href="{html.escape(v)}">{html.escape(v)}</a></li>' for k, v in SOURCES.items())
     page = f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -39,6 +52,7 @@ h1{{font-size:24px;margin:0 0 4px}} .sub{{color:#57606a;margin:0 0 24px}}
 .card h2{{font-size:17px;margin:0 0 6px}} .lead{{margin:0 0 10px}}
 img{{width:100%;height:auto}} .method{{color:#57606a;font-size:13px;margin:8px 0 0}}
 code{{background:#f6f8fa;padding:1px 4px;border-radius:4px}}
+table{{border-collapse:collapse;font-size:13px;width:100%}} td,th{{border-top:1px solid #e6e8eb;padding:5px 8px;text-align:left;vertical-align:top}}
 </style></head><body>
 <h1>NEAR Real Usage</h1>
 <p class="sub">Daily data {summary['first_date']} → {summary['last_date']} ({summary['days']} days); account census through
@@ -46,6 +60,7 @@ code{{background:#f6f8fa;padding:1px 4px;border-radius:4px}}
 The argument: {_repo_link('THESIS.md')} (its numbers are a snapshot as of {SNAPSHOT}; the daily figures on this page move on).
 Code and data: <a href="{REPO_URL}">{REPO_URL.split('//')[1]}</a>.</p>
 {''.join(cards)}
+{pred_card}
 <section class="card"><h2>Sources</h2><ul>{src}
 <li><code>bigquery</code>: NEAR public dataset <code>bigquery-public-data.crypto_near_mainnet_us</code>, queries in {_repo_link('sql/account_age.sql')}, {_repo_link('sql/top_accounts.sql')} and {_repo_link('sql/one_day_actions.sql')}; results in <code>data/bq/</code></li></ul>
 <p class="method">Raw API responses are committed in <code>data/raw/</code>; every number on this page is in {_repo_link('docs/summary.json')}.</p></section>

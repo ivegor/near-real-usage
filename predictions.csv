@@ -1,0 +1,9 @@
+id,check_on,metric,operator,threshold,scoring,statement
+A1,2026-11-17,intents_volume_7d_mean_usd,>=,100000000,automatic,NEAR Intents volume averages at least $100M a day over the 7 days ending 2026-11-17
+A2,2026-11-30,buyback_month_usd,>=,1200000,automatic,Buybacks funded by Intents revenue reach at least $1.2M in November 2026
+A3,2027-02-11,buyback_coverage_90d,<,0.30,automatic,Buybacks still cover less than 30% of net new NEAR supply over the 90 days ending 2027-02-11
+A4,2027-02-11,lags_outside_band,<=,8,automatic,No more than 8 of the 85 weekly lead-lag tests fall outside the noise band: usage still does not lead price
+B1,2027-02-01,core_accounts_2027_01,<,621166,bigquery,Accounts outside the reward apps in January 2027 are below the October 2026 count of 621166
+B2,2027-02-01,core_self_paid_txs_mean_2026_11_to_2027_01,>=,10000000,bigquery,Self-paid transactions outside the reward apps average at least 10M a month over November 2026 to January 2027
+B3,2027-02-01,accounts_for_half_of_txs_2027_01,<=,50,bigquery,In January 2027 at most 50 accounts still send half of all transactions
+B4,2027-02-01,reward_apps_tx_share_2027_01,>=,0.35,bigquery,In January 2027 reward and wallet apps still send at least 35% of all transactions

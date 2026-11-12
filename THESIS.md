@@ -156,6 +156,9 @@ tables above do not: a year ago 55% of sampled transactions were a single call, 
 
 ## What would change our mind
 
+Eight of these are written down as dated predictions with thresholds in [`PREDICTIONS.md`](PREDICTIONS.md); the build
+scores the ones that need only daily data as soon as it reaches their check date.
+
 * **Core accounts stop falling.** Two consecutive quarters with core accounts flat or up would mean the base has found
   a floor. Today it has not.
 * **Self-paid core transactions fall back below 10M a month** for a quarter: then September and October 2026 were a

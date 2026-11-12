@@ -5,7 +5,7 @@ import argparse
 import json
 from pathlib import Path
 
-from . import census, charts, clients, dashboard, metrics, population, sources, value
+from . import census, charts, clients, dashboard, metrics, population, predictions, sources, value
 
 ROOT = Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs"
@@ -27,7 +27,15 @@ def build(offline: bool) -> None:
     top = clients.load()
     if top:
         summary["clients"] = clients.summarize(top)
+    if not offline:
+        try:
+            value.fetch()  # keep the fee and buyback series current; fall back to the saved copies on an outage
+        except RuntimeError as e:
+            print(f"[value] {e}; using the saved copies")
     fees = value.load()
+    pred = predictions.evaluate(daily, fees)
+    if pred:
+        summary["predictions"] = pred
     if fees is not None:
         v = value.summarize(daily, fees)
         if v:
@@ -55,8 +63,13 @@ def main() -> None:
     sub.add_parser("firstseen", help="look up the first transaction of every sampled account (network, resumable)")
     ba = sub.add_parser("bq-age", help="unpack a BigQuery result of sql/account_age.sql into data/bq/account_age.csv")
     ba.add_argument("result_csv", help="the result saved from the BigQuery console as CSV (columns m, cells)")
+    sub.add_parser("video", help="render demo/near-real-usage.mp4 from the build outputs (needs ffmpeg)")
     sub.add_parser("fetch-value", help="download the NEAR Intents fee and buyback series from DefiLlama into data/raw/")
     args = ap.parse_args()
+    if args.cmd == "video":
+        from . import video
+        print(video.build())
+        return
     if args.cmd == "fetch-value":
         value.fetch()
         return
