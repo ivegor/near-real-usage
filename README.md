@@ -14,6 +14,8 @@ NEAR, account by account over the whole chain, and tests with re-runnable code w
   **73%**. Our own first draft claimed they grew 37%; the full-chain count refuted it (see THESIS.md, "A correction").
 * The remaining base is busier: transactions per core account **10.7 → 23.9** a month. Named `.near` accounts grew
   **+13%** to 71K and now send **48%** of all NEAR transactions (6% a year ago).
+* **30 accounts send half of all transactions.** 43% of transactions still belong to reward and wallet apps (Sweat
+  alone 26%); 41% to trading, Intents, token transfers and bridges, and that part grew **+37%** in a year.
 * NEAR Intents volume **+223%** (~$135M/day). Usage does **not** lead price: 9 of 85 weekly lead-lag tests fall outside
   the noise band where about 4 are expected by chance, and the strongest is fees moving with price in the same week.
 
@@ -36,8 +38,9 @@ open docs/index.html            # or: python -m http.server -d docs 8000
 |---|---|
 | `python -m thesis build` | `data/raw/*.json` (exact API responses), `data/daily.csv`, `docs/*.png`, `docs/index.html`, `docs/summary.json`; summary printed to stdout |
 | `python -m thesis build --offline` | Same outputs rebuilt from the committed `data/raw/` files, no network |
-| `python -m pytest -q` | 18 tests: parsing, metric formulas, a planted 3-week lead recovered by the lead-lag test, the account census on a hand-made table, block parsing with relayed transactions, full offline build |
+| `python -m pytest -q` | 20 tests: parsing, metric formulas, a planted 3-week lead recovered by the lead-lag test, the account census on a hand-made table, block parsing with relayed transactions, full offline build |
 | Paste [`sql/account_age.sql`](sql/account_age.sql) into the BigQuery console, save the result as CSV, then `python -m thesis bq-age result.csv` | `data/bq/account_age.csv` rebuilt from the chain: 25 months × family × age × returning. Scans 482.64 GB (free tier is 1 TB a month); check the dry-run estimate first |
+| Paste [`sql/top_accounts.sql`](sql/top_accounts.sql) into the BigQuery console (13.53 GB), save the result as `data/bq/top_accounts_result.csv` | The 40 largest accounts and the 40 largest contracts or relayers for October 2026 and October 2025, plus concentration: 30 accounts send half of all transactions |
 | Paste [`sql/one_day_actions.sql`](sql/one_day_actions.sql) into the BigQuery console (0.6 GB) | One day by action kind: 3,448,826 relayed transactions signed by 17 relayers for 2,694,016 users; 238,403 accounts created by 12 creators; total equal to NearBlocks' count for that day |
 
 **Live dashboard:** rebuilt from scratch by GitHub Actions on every push and daily
@@ -60,7 +63,7 @@ so the published charts are always the output of the code in this repository.
 ## Data sources
 
 * NEAR public BigQuery dataset `bigquery-public-data.crypto_near_mainnet_us`, tables `transactions` and
-  `transaction_actions` (`sql/account_age.sql`, `sql/one_day_actions.sql`). Fresh to within minutes in November 2026.
+  `transaction_actions` (`sql/account_age.sql`, `sql/top_accounts.sql`, `sql/one_day_actions.sql`). Fresh to within minutes in November 2026.
   Results are committed in `data/bq/`. Do not query the `accounts` table: one query on it scans 1.03 TB.
 * NearBlocks daily network charts: `https://api.nearblocks.io/v1/charts` (no key needed).
 * DefiLlama NEAR Intents volume: `https://api.llama.fi/summary/dexs/near-intents`.
@@ -71,6 +74,7 @@ No numbers are typed by hand: every figure in the dashboard and `THESIS.md` come
 
 ```
 thesis/population.py account census from BigQuery: families, age, returning accounts (unit-tested)
+thesis/clients.py    largest accounts, the apps behind them, concentration (unit-tested)
 thesis/sources.py    fetch + cache raw API responses, parse into a daily table
 thesis/metrics.py    pure metric functions (unit-tested)
 thesis/charts.py     charts, each with a one-sentence, number-backed caption
@@ -78,6 +82,7 @@ thesis/dashboard.py  static docs/index.html (GitHub Pages ready)
 thesis/census.py     optional keyless check: sample random blocks and look up account ages over public RPC
 thesis/bq.py         optional BigQuery API runner for the older queries in sql/
 sql/account_age.sql  the account census query (run once, result in data/bq/account_age.csv)
+sql/top_accounts.sql the largest accounts and contracts (result in data/bq/top_accounts_result.csv)
 sql/                 other BigQuery queries (one day by action kind, freshness, heavy signers, signer cohorts)
 data/bq/             committed BigQuery results
 tests/               unit + offline end-to-end tests

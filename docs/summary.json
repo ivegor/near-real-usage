@@ -533,5 +533,197 @@
         "new_accounts": 267015
       }
     }
+  },
+  "clients": {
+    "source": "sql/top_accounts.sql on bigquery-public-data.crypto_near_mainnet_us (13.53 GB scanned)",
+    "latest_month": "2026-10",
+    "prior_month": "2025-10",
+    "months": {
+      "2026-10": {
+        "transactions": 22627451,
+        "actors": 1379518,
+        "accounts_with_1000_plus_txs": 486,
+        "their_tx_share": 0.695450185705849,
+        "top10_share": 0.37192054907112604,
+        "top25_share": 0.483310515179107,
+        "top100_share": 0.6085614327482136,
+        "accounts_for_half_of_txs": 30
+      },
+      "2025-10": {
+        "transactions": 140982323,
+        "actors": 43642992,
+        "accounts_with_1000_plus_txs": 423,
+        "their_tx_share": 0.20955512983000005,
+        "top10_share": 0.16899330705453053,
+        "top25_share": 0.18695888561858923,
+        "top100_share": 0.20418498849674935,
+        "accounts_for_half_of_txs": null
+      }
+    },
+    "apps": {
+      "Sweat (move-to-earn app)": {
+        "latest": 5845533,
+        "prior": 10582398,
+        "latest_share": 0.25833811329433437,
+        "prior_share": 0.07506187850231408,
+        "pct_change": -44.761735478102416
+      },
+      "HOT wallet (Telegram)": {
+        "latest": 3005497,
+        "prior": 40164406,
+        "latest_share": 0.1328252572505847,
+        "prior_share": 0.28488965953554335,
+        "pct_change": -92.51701369615675
+      },
+      "KaiChing (reward app)": {
+        "latest": 82681,
+        "prior": 69990111,
+        "latest_share": 0.003654012995100509,
+        "prior_share": 0.49644600479451595,
+        "pct_change": -99.88186759698095
+      },
+      "Meteor wallet (Harvest Moon)": {
+        "latest": 698531,
+        "prior": 984323,
+        "latest_share": 0.030870954046039036,
+        "prior_share": 0.006981889495465328,
+        "pct_change": -29.034371847452512
+      },
+      "Ref Finance / Rhea (DEX, lending)": {
+        "latest": 3040021,
+        "prior": 1553205,
+        "latest_share": 0.13435101461494714,
+        "prior_share": 0.01101701948832266,
+        "pct_change": 95.72567690678306
+      },
+      "NEAR Intents": {
+        "latest": 2013815,
+        "prior": 2321056,
+        "latest_share": 0.08899875642201148,
+        "prior_share": 0.016463454074309727,
+        "pct_change": -13.237121379234285
+      },
+      "Token contracts (wNEAR, USDC, USDT)": {
+        "latest": 2103215,
+        "prior": 1430841,
+        "latest_share": 0.09294970962482695,
+        "prior_share": 0.010149080888672831,
+        "pct_change": 46.9915245649237
+      },
+      "Bridges, Aurora, chain signatures": {
+        "latest": 2025617,
+        "prior": 1413970,
+        "latest_share": 0.08952033527771201,
+        "prior_share": 0.010029413403835032,
+        "pct_change": 43.257424132053714
+      },
+      "Other contracts in the top 40": {
+        "latest": 1605862,
+        "prior": 4217966,
+        "latest_share": 0.07096963772013029,
+        "prior_share": 0.02991840331642145,
+        "pct_change": -61.92804778416896
+      },
+      "Everything outside the top 40": {
+        "latest": 2206679,
+        "prior": 8324047,
+        "latest_share": 0.09752220875431351,
+        "prior_share": 0.05904319650059958,
+        "pct_change": -73.49031066258996
+      }
+    },
+    "reward_apps_share": {
+      "latest": 0.4256883375860586,
+      "prior": 0.8633794323278388
+    },
+    "finance_share": {
+      "latest": 0.40581981593949756,
+      "prior": 0.04765896785514025
+    },
+    "finance_txs": {
+      "latest": 9182668,
+      "prior": 6719072,
+      "pct_change": 36.665718122978895
+    },
+    "reward_apps_txs": {
+      "latest": 9632242,
+      "prior": 121721238,
+      "pct_change": -92.08663815923397
+    },
+    "sweat_users": {
+      "latest": 413927,
+      "prior": 1263047
+    },
+    "intents": {
+      "latest": {
+        "transactions": 2013815,
+        "actors": 5353,
+        "top2_signers": [
+          "intents.near",
+          "escrow.ai.near"
+        ],
+        "top2_share": 0.9716051375126314
+      },
+      "prior": {
+        "transactions": 2321056,
+        "actors": 26272,
+        "top2_signers": [
+          "intents.near"
+        ],
+        "top2_share": 0.9836578695214592
+      }
+    },
+    "top_actors_latest": [
+      {
+        "actor": "intents.near",
+        "txs": 1443294,
+        "top_via": "intents.near"
+      },
+      {
+        "actor": "jars-oracle.sweat",
+        "txs": 1390940,
+        "top_via": "relayer:sweat-relayer.near"
+      },
+      {
+        "actor": "spin.sweat",
+        "txs": 1228164,
+        "top_via": "relayer:sweat-relayer.near"
+      },
+      {
+        "actor": "oracle.sweat",
+        "txs": 1026468,
+        "top_via": "relayer:sweat-relayer.near"
+      },
+      {
+        "actor": "closemeat6237.near",
+        "txs": 771177,
+        "top_via": "v2.ref-finance.near"
+      },
+      {
+        "actor": "omni-relayer.bridge.near",
+        "txs": 662590,
+        "top_via": "omni.bridge.near"
+      },
+      {
+        "actor": "escrow.ai.near",
+        "txs": 513339,
+        "top_via": "intents.near"
+      },
+      {
+        "actor": "wx-cruce.near",
+        "txs": 474431,
+        "top_via": "wrap.near"
+      },
+      {
+        "actor": "tinykoala595.near",
+        "txs": 461352,
+        "top_via": "v2.ref-finance.near"
+      },
+      {
+        "actor": "bridge-mng.near",
+        "txs": 443859,
+        "top_via": "omft.near"
+      }
+    ]
   }
 }

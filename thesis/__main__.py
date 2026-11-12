@@ -5,7 +5,7 @@ import argparse
 import json
 from pathlib import Path
 
-from . import bq, census, charts, dashboard, metrics, population, sources
+from . import bq, census, charts, clients, dashboard, metrics, population, sources
 
 ROOT = Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs"
@@ -27,6 +27,9 @@ def build(offline: bool, use_bq: bool) -> None:
         day = population.one_day(daily)
         if day:
             summary["population"]["one_day"] = day
+    top = clients.load()
+    if top:
+        summary["clients"] = clients.summarize(top)
     built = charts.build_all(daily, summary, DOCS)
     page = dashboard.render(built, summary, DOCS, bq_note)
     print(json.dumps(summary, indent=2, default=str))

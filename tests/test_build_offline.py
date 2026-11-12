@@ -1,7 +1,7 @@
 """End-to-end: synthetic raw files -> charts + dashboard, no network."""
 import json
 
-from thesis import charts, dashboard, metrics, population, sources
+from thesis import charts, clients, dashboard, metrics, population, sources
 
 from .test_metrics import synthetic_raw
 
@@ -14,6 +14,7 @@ def test_full_build(tmp_path, monkeypatch):
     (raw / "defillama_intents.json").write_text(json.dumps(ll))
     monkeypatch.setattr(sources, "RAW_DIR", raw)
     monkeypatch.setattr(population, "CSV", tmp_path / "no_bigquery_table.csv")
+    monkeypatch.setattr(clients, "CSV", tmp_path / "no_top_accounts.csv")
 
     daily = sources.load_daily(offline=True)
     summary = metrics.summarize(daily)

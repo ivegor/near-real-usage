@@ -19,6 +19,12 @@ code{background:#f6f8fa;padding:1px 4px;border-radius:4px}
   <p class="method"><b>Method:</b> sql/account_age.sql on the NEAR BigQuery public dataset (all transactions, 482.64 GB scanned, result in data/bq/account_age.csv). The actor of a relayed transaction is the user, not the relayer. Age = first appearance in any transaction since genesis. Core = accounts outside the kaiching, .tg and .sweat namespaces. Feb-Mar 2026 contain two one-month bursts of single-use implicit accounts.</p>
 </section>
 <section class="card">
+  <h2>Who sends the transactions</h2>
+  <p class="lead">In 2026-10, 30 accounts sent half of NEAR&#x27;s 22.6M transactions and the top 10 sent 37% (17% in 2025-10). Reward and wallet apps (Sweat, HOT, Meteor, KaiChing) are 43% of transactions, down from 86%; Sweat alone is 26%. Trading, Intents, token transfers and bridges are 41% (was 5%); transactions on the Ref/Rhea exchange changed +96%. intents.near received 2.01M transactions (2.32M a year earlier), 97% of them signed by two accounts.</p>
+  <img src="clients.png" alt="Who sends the transactions">
+  <p class="method"><b>Method:</b> sql/top_accounts.sql on the NEAR BigQuery public dataset (13.53 GB), result in data/bq/top_accounts_result.csv. A direct transaction is assigned to the contract it calls, a relayed one to its relayer; contracts and relayers are grouped into apps by the table in thesis/clients.py. Intents users sign off-chain, so its on-chain signers are relayers, not users.</p>
+</section>
+<section class="card">
   <h2>What the daily aggregates show, and why they mislead</h2>
   <p class="lead">Over the last 90 days the proxy active - new averaged 60,746/day (+37% vs a year earlier), new accounts 10,946/day (-96%). By medians it changed +11%. This proxy is wrong about the direction: counted directly on the full chain, core accounts active two months running changed -73% over the same year (see the first chart). The aggregator&#x27;s &quot;active accounts&quot; are transaction signers, so users acting through relayers are missing, and its &quot;new accounts&quot; are mostly created by a few factory accounts and never sign anything.</p>
   <img src="accounts.png" alt="What the daily aggregates show, and why they mislead">

@@ -13,7 +13,7 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 from matplotlib.ticker import FuncFormatter, LogLocator, NullFormatter  # noqa: E402
 
-from . import metrics, population  # noqa: E402
+from . import clients, metrics, population  # noqa: E402
 
 INK, ACCENT, MUTED, GRID = "#1f2328", "#00a27a", "#8c959f", "#e6e8eb"
 
@@ -29,6 +29,7 @@ class Chart:
 def _style(ax, title: str):
     ax.set_title(title, loc="left", fontsize=11, color=INK)
     ax.grid(True, color=GRID, linewidth=0.8)
+    ax.set_axisbelow(True)
     for s in ("top", "right"):
         ax.spines[s].set_visible(False)
     ax.tick_params(colors=MUTED, labelsize=8)
@@ -137,6 +138,50 @@ def _population_chart(pop: pd.DataFrame, summary: dict, out: Path) -> Chart:
         "data/bq/account_age.csv). The actor of a relayed transaction is the user, not the relayer. Age = first appearance "
         "in any transaction since genesis. Core = accounts outside the kaiching, .tg and .sweat namespaces. "
         "Feb-Mar 2026 contain two one-month bursts of single-use implicit accounts.",
+    )
+
+
+def _clients_chart(cl: dict, out: Path) -> Chart:
+    """Which apps send the transactions, and how few accounts it takes."""
+    lm, pm = cl["latest_month"], cl["prior_month"]
+    apps = sorted(cl["apps"].items(), key=lambda kv: kv[1]["latest_share"])
+    fig, axes = plt.subplots(1, 2, figsize=(11, 3.9), gridspec_kw={"width_ratios": [1.7, 1]})
+    ax = axes[0]
+    names = [k for k, _ in apps]
+    y = np.arange(len(names))
+    ax.barh(y + 0.19, [v["latest_share"] * 100 for _, v in apps], height=0.38, color=ACCENT, label=lm)
+    ax.barh(y - 0.19, [v["prior_share"] * 100 for _, v in apps], height=0.38, color=MUTED, label=pm)
+    ax.set_yticks(y, names, fontsize=7.5)
+    ax.set_xlabel("% of all transactions in the month", fontsize=7, color=MUTED)
+    _style(ax, "Who the transactions belong to")
+    ax.legend(frameon=False, fontsize=7, loc="center right")
+    ax = axes[1]
+    labels = ["top 10", "top 25", "top 100", "1,000+ tx"]
+    keys = ["top10_share", "top25_share", "top100_share", "their_tx_share"]
+    x = np.arange(len(labels))
+    ax.bar(x - 0.19, [cl["months"][pm][k] * 100 for k in keys], width=0.38, color=MUTED, label=pm)
+    ax.bar(x + 0.19, [cl["months"][lm][k] * 100 for k in keys], width=0.38, color=ACCENT, label=lm)
+    ax.set_xticks(x, labels, fontsize=7.5)
+    ax.set_ylim(0, 100)
+    _style(ax, "Share of transactions sent by the largest accounts, %")
+    ax.legend(frameon=False, fontsize=7, loc="upper left")
+    _save(fig, out, "clients")
+    a, L, P, i = cl["apps"], cl["months"][lm], cl["months"][pm], cl["intents"]
+    ref, sw = a["Ref Finance / Rhea (DEX, lending)"], a["Sweat (move-to-earn app)"]
+    return Chart(
+        "clients", "Who sends the transactions",
+        f"In {lm}, {L['accounts_for_half_of_txs']} accounts sent half of NEAR's {L['transactions'] / 1e6:.1f}M transactions "
+        f"and the top 10 sent {L['top10_share'] * 100:.0f}% ({P['top10_share'] * 100:.0f}% in {pm}). Reward and wallet apps "
+        f"(Sweat, HOT, Meteor, KaiChing) are {cl['reward_apps_share']['latest'] * 100:.0f}% of transactions, down from "
+        f"{cl['reward_apps_share']['prior'] * 100:.0f}%; Sweat alone is {sw['latest_share'] * 100:.0f}%. Trading, Intents, token "
+        f"transfers and bridges are {cl['finance_share']['latest'] * 100:.0f}% (was {cl['finance_share']['prior'] * 100:.0f}%); "
+        f"transactions on the Ref/Rhea exchange changed {_pct(ref['pct_change'])}. intents.near received "
+        f"{i['latest']['transactions'] / 1e6:.2f}M transactions ({i['prior']['transactions'] / 1e6:.2f}M a year earlier), "
+        f"{i['latest']['top2_share'] * 100:.0f}% of them signed by two accounts.",
+        "sql/top_accounts.sql on the NEAR BigQuery public dataset (13.53 GB), result in data/bq/top_accounts_result.csv. "
+        "A direct transaction is assigned to the contract it calls, a relayed one to its relayer; contracts and relayers are "
+        "grouped into apps by the table in thesis/clients.py. Intents users sign off-chain, so its on-chain signers are "
+        "relayers, not users.",
     )
 
 
@@ -325,6 +370,9 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
     if pop is not None and "population" in summary:
         charts.append(_population_chart(pop, summary, out))
 
+    if "clients" in summary:
+        charts.append(_clients_chart(summary["clients"], out))
+
     # 5b. Signer census (only when data/raw/census_* exists)
     cs = summary.get("signer_census")
     if cs and {"prior", "recent"} <= set(cs["windows"]):
@@ -358,5 +406,6 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
             "corr(Δlog metric_t, Δlog price_{t+k}), k in weeks, positive k = metric moves first (green bars); "
             "dotted lines = ±2/√n noise band.",
         ))
-    charts.sort(key=lambda c: c.slug != "population")  # the full-chain census leads the dashboard
+    lead = ["population", "clients"]  # the full-chain counts lead the dashboard
+    charts.sort(key=lambda c: lead.index(c.slug) if c.slug in lead else len(lead))
     return charts

@@ -8,10 +8,12 @@ The owner writes Python and Rust.
 
 ## State (2026-11-12, late evening UTC)
 
-* `python -m pytest -q` passes (18 tests); `python -m thesis build` and `--offline` work on live data through 2026-11-11.
+* `python -m pytest -q` passes (20 tests); `python -m thesis build` and `--offline` work on live data through 2026-11-11.
 * The thesis was rewritten around a full-chain account census from BigQuery (`sql/account_age.sql`, result in
   `data/bq/account_age.csv`, code in `thesis/population.py`). It refuted the first draft's claim that returning
   accounts grew 37%: core accounts active two months running fell 73%. THESIS.md says so openly.
+* `sql/top_accounts.sql` (13.53 GB) gives the largest accounts, the apps behind them and concentration
+  (`thesis/clients.py`, THESIS.md section "Who is left: the customers").
 * The BigQuery query was run once in the owner's personal sandbox project through the browser console. It costs
   482.64 GB of the free 1 TB a month, so there is no second full run in November 2026. Never query the `accounts`
   table (1.03 TB). Always read the dry-run estimate first.
