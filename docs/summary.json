@@ -1,0 +1,242 @@
+{
+  "first_date": "2020-07-21",
+  "last_date": "2026-11-11",
+  "days": 2305,
+  "yoy_90d": {
+    "price_usd": {
+      "recent": 3.5810076891111104,
+      "prior": 2.5734899455555555,
+      "pct_change": 39.1498612728427,
+      "median_pct_change": 49.314169758928884
+    },
+    "active_accounts": {
+      "recent": 71692.54444444444,
+      "prior": 290216.4222222222,
+      "pct_change": -75.29686849025083,
+      "median_pct_change": -76.26689364529054
+    },
+    "new_accounts": {
+      "recent": 10946.211111111112,
+      "prior": 248770.66666666666,
+      "pct_change": -95.59987869237888,
+      "median_pct_change": -95.44032350298178
+    },
+    "returning_accounts": {
+      "recent": 60746.333333333336,
+      "prior": 44235.688888888886,
+      "pct_change": 37.32426205889063,
+      "median_pct_change": 10.569018479691849
+    },
+    "returning_share": {
+      "recent": 0.8322492725663384,
+      "prior": 0.15402149743616184,
+      "pct_change": 440.34617661816037,
+      "median_pct_change": 373.65246646985673
+    },
+    "txns": {
+      "recent": 744388.5222222222,
+      "prior": 4635569.544444445,
+      "pct_change": -83.9418109234421,
+      "median_pct_change": -84.54780329123905
+    },
+    "tx_per_active": {
+      "recent": 11.221772873004117,
+      "prior": 16.03699140302938,
+      "pct_change": -30.025697520269734,
+      "median_pct_change": -32.795363060572726
+    },
+    "fees_usd": {
+      "recent": 4122.070308892556,
+      "prior": 8651.517561379333,
+      "pct_change": -52.35436696917062,
+      "median_pct_change": -61.58450470642297
+    },
+    "fees_per_active_usd": {
+      "recent": 0.0658335274338487,
+      "prior": 0.029886200805869637,
+      "pct_change": 120.28068358865815,
+      "median_pct_change": 52.51034446126515
+    },
+    "fees_per_active_near": {
+      "recent": 0.016699451664010354,
+      "prior": 0.011645449118873885,
+      "pct_change": 43.39894918217797,
+      "median_pct_change": 19.852197087636235
+    },
+    "intents_volume_usd": {
+      "recent": 134939214.53333333,
+      "prior": 41742869.05555555,
+      "pct_change": 223.26291313072622,
+      "median_pct_change": 509.3689868326062
+    },
+    "intents_per_active_usd": {
+      "recent": 2096.5529001497875,
+      "prior": 155.2150559702408,
+      "pct_change": 1250.740678502063,
+      "median_pct_change": 2462.5131781027403
+    }
+  },
+  "qoq_90d": {
+    "price_usd": {
+      "recent": 3.5810076891111104,
+      "prior": 1.9679464997777782,
+      "pct_change": 81.96671959910901,
+      "median_pct_change": 99.37787988700104
+    },
+    "active_accounts": {
+      "recent": 71692.54444444444,
+      "prior": 102672.14444444445,
+      "pct_change": -30.17332516782384,
+      "median_pct_change": -35.464993202335194
+    },
+    "new_accounts": {
+      "recent": 10946.211111111112,
+      "prior": 15430.711111111112,
+      "pct_change": -29.062173270620494,
+      "median_pct_change": -29.74163703307423
+    },
+    "returning_accounts": {
+      "recent": 60746.333333333336,
+      "prior": 87241.43333333333,
+      "pct_change": -30.36985866425089,
+      "median_pct_change": -37.06503699509878
+    },
+    "returning_share": {
+      "recent": 0.8322492725663384,
+      "prior": 0.8497273558368043,
+      "pct_change": -2.056904859000752,
+      "median_pct_change": -0.6535720560857938
+    },
+    "txns": {
+      "recent": 744388.5222222222,
+      "prior": 772023.7222222222,
+      "pct_change": -3.5795791249074393,
+      "median_pct_change": -5.481850365070439
+    },
+    "tx_per_active": {
+      "recent": 11.221772873004117,
+      "prior": 7.572483389421237,
+      "pct_change": 48.191449170835284,
+      "median_pct_change": 42.41732761010706
+    },
+    "fees_usd": {
+      "recent": 4122.070308892556,
+      "prior": 1728.6965345138888,
+      "pct_change": 138.44961950199584,
+      "median_pct_change": 114.7929856364176
+    },
+    "fees_per_active_usd": {
+      "recent": 0.0658335274338487,
+      "prior": 0.016749034030318202,
+      "pct_change": 293.05865230603973,
+      "median_pct_change": 177.49545594673924
+    },
+    "fees_per_active_near": {
+      "recent": 0.016699451664010354,
+      "prior": 0.008518159709708427,
+      "pct_change": 96.04529890391042,
+      "median_pct_change": 64.94651719215605
+    },
+    "intents_volume_usd": {
+      "recent": 134939214.53333333,
+      "prior": 73138477.83333333,
+      "pct_change": 84.49825390245395,
+      "median_pct_change": 84.00750131927015
+    },
+    "intents_per_active_usd": {
+      "recent": 2096.5529001497875,
+      "prior": 716.2370434100386,
+      "pct_change": 192.71774190399307,
+      "median_pct_change": 161.72119418510385
+    }
+  },
+  "lead_vs_price": {
+    "returning_accounts": {
+      "lag_weeks": 8,
+      "corr": 0.08231188175297806,
+      "band": 0.11867816581938533,
+      "n_weeks": 284,
+      "significant": false,
+      "outside_band": []
+    },
+    "active_accounts": {
+      "lag_weeks": 0,
+      "corr": 0.14091180401497264,
+      "band": 0.11233119126034607,
+      "n_weeks": 317,
+      "significant": true,
+      "outside_band": [
+        {
+          "lag_weeks": -5,
+          "corr": 0.125
+        },
+        {
+          "lag_weeks": 0,
+          "corr": 0.141
+        }
+      ]
+    },
+    "intents_volume_usd": {
+      "lag_weeks": -3,
+      "corr": -0.1471815064972403,
+      "band": 0.2,
+      "n_weeks": 100,
+      "significant": false,
+      "outside_band": []
+    },
+    "fees_usd": {
+      "lag_weeks": 0,
+      "corr": 0.38021826586972607,
+      "band": 0.11233119126034607,
+      "n_weeks": 317,
+      "significant": true,
+      "outside_band": [
+        {
+          "lag_weeks": -1,
+          "corr": 0.18
+        },
+        {
+          "lag_weeks": 0,
+          "corr": 0.38
+        },
+        {
+          "lag_weeks": 1,
+          "corr": 0.185
+        }
+      ]
+    },
+    "txns": {
+      "lag_weeks": 6,
+      "corr": -0.14861456950233456,
+      "band": 0.11340959542474854,
+      "n_weeks": 311,
+      "significant": true,
+      "outside_band": [
+        {
+          "lag_weeks": -8,
+          "corr": 0.139
+        },
+        {
+          "lag_weeks": 2,
+          "corr": -0.127
+        },
+        {
+          "lag_weeks": 4,
+          "corr": 0.114
+        },
+        {
+          "lag_weeks": 6,
+          "corr": -0.149
+        }
+      ]
+    }
+  },
+  "checks": {
+    "new_exceeds_active_days": {
+      "recent": 0,
+      "prior": 7,
+      "all_history": 234
+    },
+    "returning_accounts_two_years_earlier": 525010.9444444445
+  }
+}

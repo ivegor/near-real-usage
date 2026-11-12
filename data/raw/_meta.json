@@ -1,0 +1,11 @@
+{
+  "nearblocks_charts": {
+    "url": "https://api.nearblocks.io/v1/charts",
+    "file": "data/raw/nearblocks_charts.json"
+  },
+  "defillama_intents": {
+    "url": "https://api.llama.fi/summary/dexs/near-intents?excludeTotalDataChart=false&excludeTotalDataChartBreakdown=true",
+    "file": "data/raw/defillama_intents.json"
+  },
+  "fetched_at_utc": "2026-11-12T20:19:00.181104+00:00"
+}
