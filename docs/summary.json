@@ -1566,6 +1566,29 @@
       }
     ]
   },
+  "value_capture": {
+    "window": [
+      "2026-08-14",
+      "2026-11-11"
+    ],
+    "intents_gross_fees_usd": 18923966.0,
+    "captured_revenue_usd": 5111113.0,
+    "captured_share_of_gross_fees": 0.27008677779277346,
+    "buyback_usd": 5111113.0,
+    "buyback_usd_annualized": 20728402.72222222,
+    "buyback_start": "2026-02-23",
+    "l1_fees_usd": 370986.32780033,
+    "net_new_supply_near_365d": 31766509.509585857,
+    "net_new_supply_pct_365d": 2.48232692636014,
+    "net_new_supply_near_annualized": 32250304.786978867,
+    "mean_price_usd": 3.5810076891111104,
+    "new_supply_value_usd_annualized": 115488589.41834818,
+    "buyback_coverage_of_new_supply": 0.17948442202489148,
+    "market_cap_usd": 4700127150.713468,
+    "intents_fees_vs_l1_fees": 51.00987443986114,
+    "growth_needed_to_cover_new_supply": 5.57151416662398,
+    "market_cap_to_annual_buyback": 226.7481587317203
+  },
   "cross_check": {
     "prior": {
       "sample_window": [

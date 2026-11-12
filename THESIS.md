@@ -18,7 +18,8 @@ after month fell 73%. What did grow is narrower than "users": **transactions tha
 the reward apps, are up 28%** (+35% on three-month means), while transactions sponsored through relayers fell 75%.
 Transactions to the exchange, NEAR Intents, token contracts and bridges are up 37%, and Intents volume in October was
 $129M a day against $56M a year earlier. All of it is run by very few accounts: **thirty accounts send half of all
-transactions**, and reward apps still send 43%. The long-term case is therefore a narrow one: a small amount of
+transactions**, and reward apps still send 43%. Value reaches the token only in part: buybacks funded by Intents
+revenue cover 18% of the new NEAR issued. The long-term case is therefore a narrow one: a small amount of
 self-paid, financial activity operated by a few dozen accounts, not a growing user base. Usage does not lead price.
 
 ## Two corrections to our own drafts
@@ -58,7 +59,8 @@ We kept the proxy on the dashboard, labelled as misleading, because every aggreg
 | 6 | Financial use of the chain is growing | **Supported** | Transactions to the exchange, Intents, token contracts and bridges 6.72M → 9.18M a month (+37%); Ref/Rhea exchange +96%, token contracts +47%, bridges and chain signatures +43% |
 | 7 | Cross-chain demand through NEAR is growing | **Supported** | NEAR Intents volume $55.6M → $128.6M a day (+131%, October to October, DefiLlama); +84% on the previous 90 days |
 | 8 | NEAR's activity is spread over many independent users | **Refuted** | 30 accounts send 50% of transactions; the top 10 send 37% (17% a year earlier); 486 accounts with 1,000+ transactions send 70% |
-| 9 | Usage changes lead price changes | **Not supported** | 6 of 85 lag tests outside the noise band, about 4 expected by chance |
+| 9 | Intents revenue offsets the dilution of NEAR holders | **Not yet** | Buybacks at $20.7M a year against $115M a year of net new NEAR: 18% of dilution covered; 5.6 times the captured revenue needed |
+| 10 | Usage changes lead price changes | **Not supported** | 6 of 85 lag tests outside the noise band, about 4 expected by chance |
 
 ## Who is left: the customers
 
@@ -83,6 +85,18 @@ transactions (86% a year ago). Second, the financial half is real and growing in
 by very few accounts. NEAR Intents is the extreme case: its volume more than doubled while the number of transactions
 it received fell 13% and the accounts sending them fell from 26,272 to 5,353. Intents users sign off-chain and a
 relayer submits, so its customers cannot be counted from the chain at all.
+
+## Does it reach the token?
+
+Partly, and not enough yet. Over the last 90 days NEAR Intents charged $18.9M in fees,
+51 times the network's own transaction fees. NEAR captured $5.1M of that
+(27%); the rest stays with solvers and the front ends that route the swaps. Since
+2026-02-23 the captured revenue is used to buy NEAR on the open market. At the last 90 days' pace that is
+$20.7M a year. Over the same period the supply of NEAR grew at 32.3M NEAR a
+year net of burned fees (2.48% over the last 365 days), worth $115M a year at the
+period's mean price of $3.58. **Buybacks cover 18% of dilution.** Covering all of it needs
+5.6 times the captured revenue at this price, and the market capitalisation is 227 times the
+annual buyback. The bought NEAR is held, not burned, so supply itself does not shrink. *(chart: value_capture)*
 
 ## An independent check: a keyless sample of the chain
 
@@ -132,7 +146,8 @@ tables above do not: a year ago 55% of sampled transactions were a single call, 
   would look the same.
 * **Old accounts did not take over the core.** Accounts older than a year send 43% of core transactions, down from 52%.
 * **Fees fell.** Network fees are down 52% in USD over the last 90 days ($8,652 → $4,122 a day) and 68% in NEAR.
-  Intents volume is not revenue for the token; we did not measure value capture.
+  Intents volume is not revenue for the token: NEAR keeps 27% of Intents fees and the buybacks they fund cover
+  18% of new supply (see "Does it reach the token?").
 * **Usage does not lead price.** On weekly log-changes over ~6 years (n = 292–317 weeks, noise band ≈ ±0.11–0.12):
   Intents volume (n = 100 weeks, band ±0.20) and fees in NEAR show nothing outside the band at any lag from −8 to +8
   weeks; active accounts r = 0.14 at lag 0; transactions show four isolated bars of mixed sign. In total 6 of 85 lag

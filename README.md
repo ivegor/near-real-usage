@@ -40,7 +40,7 @@ open docs/index.html            # or: python -m http.server -d docs 8000
 |---|---|
 | `python -m thesis build` | `data/raw/*.json` (exact API responses), `data/daily.csv`, `docs/*.png`, `docs/index.html`, `docs/summary.json`; summary printed to stdout. If an API is down, the build says so and uses the committed copy |
 | `python -m thesis build --offline` | Same outputs rebuilt from the committed `data/raw/` files, no network |
-| `python -m pytest -q` | 27 tests: parsing, metric formulas, a planted 3-week lead recovered by the lead-lag test, the account census on a hand-made table, block parsing with relayed transactions, the numbers quoted in THESIS.md against `docs/summary.json`, full offline build |
+| `python -m pytest -q` | 30 tests: parsing, metric formulas, a planted 3-week lead recovered by the lead-lag test, the account census on a hand-made table, block parsing with relayed transactions, the numbers quoted in THESIS.md against `docs/summary.json`, full offline build |
 | Paste [`sql/account_age.sql`](sql/account_age.sql) into the BigQuery console, save the result as CSV, then `python -m thesis bq-age result.csv` | `data/bq/account_age.csv` rebuilt from the chain: 25 months × family × age × returning. Scans 482.64 GB (free tier is 1 TB a month); check the dry-run estimate first |
 | Paste [`sql/top_accounts.sql`](sql/top_accounts.sql) into the BigQuery console (13.53 GB), save the result as `data/bq/top_accounts_result.csv` | The 40 largest accounts and the 40 largest contracts or relayers for October 2026 and October 2025, plus concentration: 30 accounts send half of all transactions |
 | Paste [`sql/one_day_actions.sql`](sql/one_day_actions.sql) into the BigQuery console (0.6 GB) | One day by action kind: 3,448,826 relayed transactions signed by 17 relayers for 2,694,016 users; 238,403 accounts created by 12 creators; total equal to NearBlocks' count for that day |
@@ -70,6 +70,8 @@ so the published charts are always the output of the code in this repository.
   Results are committed in `data/bq/`. Do not query the `accounts` table: one query on it scans 1.03 TB.
 * NearBlocks daily network charts: `https://api.nearblocks.io/v1/charts` (no key needed).
 * DefiLlama NEAR Intents volume: `https://api.llama.fi/summary/dexs/near-intents`.
+* DefiLlama NEAR Intents fees, captured revenue and buybacks: `https://api.llama.fi/summary/fees/near-intents`
+  (`python -m thesis fetch-value` refreshes the saved copies).
 
 No numbers are typed by hand: every figure in the dashboard and `THESIS.md` comes from `docs/summary.json`.
 
@@ -78,6 +80,7 @@ No numbers are typed by hand: every figure in the dashboard and `THESIS.md` come
 ```
 thesis/population.py account census from BigQuery: families, age, returning accounts (unit-tested)
 thesis/clients.py    largest accounts, the apps behind them, concentration (unit-tested)
+thesis/value.py      Intents fees, captured revenue and buybacks against net new NEAR supply (unit-tested)
 thesis/sources.py    fetch + cache raw API responses, parse into a daily table
 thesis/metrics.py    pure metric functions (unit-tested)
 thesis/charts.py     charts, each with a one-sentence, number-backed caption

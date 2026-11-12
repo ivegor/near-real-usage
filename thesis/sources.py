@@ -72,6 +72,7 @@ def fetch_all(offline: bool = False) -> dict[str, dict]:
 
 
 NUMERIC_FIELDS = {
+    "total_supply": "total_supply_yocto",
     "near_price": "price_usd",
     "market_cap": "market_cap_usd",
     "txns": "txns",

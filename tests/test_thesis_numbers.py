@@ -52,6 +52,9 @@ def test_thesis_quotes_the_committed_summary():
         f"${intents['prior'] / 1e6:.1f}M → ${intents['recent'] / 1e6:.1f}M a day ({pct(intents['pct_change'])}",
         f"${fees['prior']:,.0f} → ${fees['recent']:,.0f} a day",
         f"{n_out} of {17 * len(s['lead_vs_price'])} lag tests",
+        f"${s['value_capture']['buyback_usd_annualized'] / 1e6:.1f}M a year",
+        f"**Buybacks cover {s['value_capture']['buyback_coverage_of_new_supply'] * 100:.0f}% of dilution.**",
+        f"{s['value_capture']['growth_needed_to_cover_new_supply']:.1f} times the captured revenue",
         f"{sum(w['blocks_found'] for w in s['signer_census']['windows'].values())} random blocks",
         f"each of the {sum(w['accounts'] for w in s['signer_census']['windows'].values()):,} accounts",
     ]

@@ -5,7 +5,7 @@ import argparse
 import json
 from pathlib import Path
 
-from . import census, charts, clients, dashboard, metrics, population, sources
+from . import census, charts, clients, dashboard, metrics, population, sources, value
 
 ROOT = Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs"
@@ -27,6 +27,11 @@ def build(offline: bool) -> None:
     top = clients.load()
     if top:
         summary["clients"] = clients.summarize(top)
+    fees = value.load()
+    if fees is not None:
+        v = value.summarize(daily, fees)
+        if v:
+            summary["value_capture"] = v
     if cs and pop is not None:
         summary["cross_check"] = population.cross_check(summary["signer_census"], pop, summary.get("clients"))
     built = charts.build_all(daily, summary, DOCS)
@@ -50,7 +55,11 @@ def main() -> None:
     sub.add_parser("firstseen", help="look up the first transaction of every sampled account (network, resumable)")
     ba = sub.add_parser("bq-age", help="unpack a BigQuery result of sql/account_age.sql into data/bq/account_age.csv")
     ba.add_argument("result_csv", help="the result saved from the BigQuery console as CSV (columns m, cells)")
+    sub.add_parser("fetch-value", help="download the NEAR Intents fee and buyback series from DefiLlama into data/raw/")
     args = ap.parse_args()
+    if args.cmd == "fetch-value":
+        value.fetch()
+        return
     if args.cmd == "bq-age":
         df = population.unpack(Path(args.result_csv))
         print(f"{len(df)} rows, months {df['month'].min()} .. {df['month'].max()} -> {population.CSV}")

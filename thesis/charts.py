@@ -13,7 +13,7 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 from matplotlib.ticker import FuncFormatter, LogLocator, NullFormatter  # noqa: E402
 
-from . import clients, metrics, population  # noqa: E402
+from . import clients, metrics, population, value  # noqa: E402
 
 INK, ACCENT, MUTED, GRID = "#1f2328", "#00a27a", "#8c959f", "#e6e8eb"
 
@@ -150,6 +150,34 @@ def _population_chart(pop: pd.DataFrame, summary: dict, out: Path) -> Chart:
         f"the kaiching, .tg and .sweat namespaces. The scan ends on {ps['query_end']}, so the last month shown is {lm}. "
         "In February and March 2026 millions of existing implicit accounts sent one transaction each; those two months "
         "are off the scale in the middle panel.",
+    )
+
+
+def _value_chart(d: pd.DataFrame, fees: pd.DataFrame, vc: dict, out: Path) -> Chart:
+    """Buybacks funded by Intents revenue against the value of the NEAR created in the same month."""
+    m = value.monthly(d, fees)
+    x = np.arange(len(m))
+    fig, ax = plt.subplots(figsize=(8, 3.6))
+    ax.bar(x - 0.27, m["new_supply_value"] / 1e6, width=0.27, color=MUTED, label="value of net new NEAR supply")
+    ax.bar(x, m["fees"] / 1e6, width=0.27, color="#9bd8c6", label="Intents gross fees")
+    ax.bar(x + 0.27, m["holders_revenue"] / 1e6, width=0.27, color=ACCENT, label="captured and used for buybacks")
+    ax.set_xticks(x, [str(p) for p in m.index], fontsize=6.5)
+    _style(ax, "USD millions per month")
+    ax.legend(frameon=False, fontsize=8, loc="upper left")
+    _save(fig, out, "value_capture")
+    return Chart(
+        "value_capture", "Does it reach the token?",
+        f"Over the last 90 days NEAR Intents charged ${vc['intents_gross_fees_usd'] / 1e6:.1f}M in fees "
+        f"({vc['intents_fees_vs_l1_fees']:.0f}x the network's own transaction fees) and NEAR captured "
+        f"${vc['captured_revenue_usd'] / 1e6:.2f}M of it ({vc['captured_share_of_gross_fees'] * 100:.0f}%), all used to buy NEAR "
+        f"on the market since {vc['buyback_start']}. That is ${vc['buyback_usd_annualized'] / 1e6:.1f}M a year against "
+        f"${vc['new_supply_value_usd_annualized'] / 1e6:.0f}M a year of net new NEAR "
+        f"({vc['net_new_supply_near_annualized'] / 1e6:.1f}M NEAR at ${vc['mean_price_usd']:.2f}): buybacks cover "
+        f"{vc['buyback_coverage_of_new_supply'] * 100:.0f}% of dilution, and the market capitalisation is "
+        f"{vc['market_cap_to_annual_buyback']:.0f} times the annual buyback.",
+        "DefiLlama fee series for NEAR Intents (dailyFees, dailyRevenue, dailyHoldersRevenue); net new supply = change in "
+        "NearBlocks' daily total supply (already net of burned fees) valued at the mean price of the period. Bought NEAR is "
+        "held, not burned, so supply itself does not shrink.",
     )
 
 
@@ -391,6 +419,10 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
     if "clients" in summary:
         charts.append(_clients_chart(summary["clients"], out))
 
+    fees = value.load()
+    if fees is not None and "value_capture" in summary:
+        charts.append(_value_chart(d, fees, summary["value_capture"], out))
+
     # 5b. Signer census (only when data/raw/census_* exists)
     cs = summary.get("signer_census")
     if cs and {"prior", "recent"} <= set(cs["windows"]):
@@ -427,7 +459,7 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
             "corr(Δlog metric_t, Δlog price_{t+k}), k in weeks, positive k = metric moves first (green bars); "
             "dotted lines = ±2/√n noise band.",
         ))
-    lead = ["population", "clients"]  # the full-chain counts lead the dashboard
+    lead = ["population", "clients", "value_capture"]  # the full-chain counts lead the dashboard
     charts.sort(key=lambda c: lead.index(c.slug) if c.slug in lead else len(lead))
     for c in charts:
         c.source = SOURCE_OF.get(c.slug, "")

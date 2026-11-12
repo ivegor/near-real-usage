@@ -28,6 +28,12 @@ Code and data: <a href="https://github.com/ivegor/near-real-usage">github.com/iv
   <p class="method"><b>Method:</b> sql/top_accounts.sql on the NEAR BigQuery public dataset (13.53 GB), result in data/bq/top_accounts_result.csv. A direct transaction is assigned to the contract it calls, a relayed one to its relayer; contracts and relayers are grouped into apps by the table in thesis/clients.py. Intents users sign off-chain, so its on-chain signers are relayers, not users.<br><b>Query / code:</b> <a href="https://github.com/ivegor/near-real-usage/blob/main/sql/top_accounts.sql"><code>sql/top_accounts.sql</code></a></p>
 </section>
 <section class="card">
+  <h2>Does it reach the token?</h2>
+  <p class="lead">Over the last 90 days NEAR Intents charged $18.9M in fees (51x the network&#x27;s own transaction fees) and NEAR captured $5.11M of it (27%), all used to buy NEAR on the market since 2026-02-23. That is $20.7M a year against $115M a year of net new NEAR (32.3M NEAR at $3.58): buybacks cover 18% of dilution, and the market capitalisation is 227 times the annual buyback.</p>
+  <img src="value_capture.png" alt="Does it reach the token?">
+  <p class="method"><b>Method:</b> DefiLlama fee series for NEAR Intents (dailyFees, dailyRevenue, dailyHoldersRevenue); net new supply = change in NearBlocks&#x27; daily total supply (already net of burned fees) valued at the mean price of the period. Bought NEAR is held, not burned, so supply itself does not shrink.</p>
+</section>
+<section class="card">
   <h2>What the daily aggregates show, and why they mislead</h2>
   <p class="lead">Over the last 90 days the proxy active - new averaged 60,746/day (+37% vs a year earlier), new accounts 10,946/day (-96%). By medians it changed +11%. This proxy is wrong about the direction: counted directly on the full chain, core accounts active two months running changed -73% over the same year (see the first chart). The aggregator&#x27;s &quot;active accounts&quot; are transaction signers, so users acting through relayers are missing, and its &quot;new accounts&quot; include accounts created in bulk by a handful of creator accounts.</p>
   <img src="accounts.png" alt="What the daily aggregates show, and why they mislead">
