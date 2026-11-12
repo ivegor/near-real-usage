@@ -12,6 +12,8 @@ def add_derived(daily: pd.DataFrame) -> pd.DataFrame:
     d["returning_share"] = d["returning_accounts"] / d["active_accounts"]
     d["tx_per_active"] = d["txns"] / d["active_accounts"]
     d["fees_per_active_usd"] = d["fees_usd"] / d["active_accounts"]
+    # Fees in NEAR. Fees in USD are fees in NEAR times the price, so they move with the price by construction.
+    d["fees_near"] = d["fees_usd"] / d["price_usd"].where(d["price_usd"] > 0)
     # Same fees in NEAR terms: removes the mechanical effect of the token price on USD fees.
     d["fees_per_active_near"] = d["fees_usd"] / d["price_usd"].where(d["price_usd"] > 0) / d["active_accounts"]
     if "intents_volume_usd" in d:
@@ -100,6 +102,7 @@ def decoupling_table(d: pd.DataFrame, days: int = 90, lookback_days: int = 365) 
         "txns",
         "tx_per_active",
         "fees_usd",
+        "fees_near",
         "fees_per_active_usd",
         "fees_per_active_near",
         "intents_volume_usd",
@@ -137,11 +140,28 @@ def checks(daily: pd.DataFrame, days: int = 90) -> dict:
     }
 
 
+def month_change(series: pd.Series) -> dict:
+    """Mean of the last complete calendar month vs the same month a year earlier (a fixed, dated comparison)."""
+    s = series.dropna()
+    if s.empty:
+        return {"month": None, "recent": np.nan, "prior": np.nan, "pct_change": np.nan}
+    end = s.index.max()
+    month = end.to_period("M") if (end + pd.Timedelta(days=1)).day == 1 else end.to_period("M") - 1
+    r = s[s.index.to_period("M") == month].mean()
+    p = s[s.index.to_period("M") == month - 12].mean()
+    pct = (r / p - 1) * 100 if pd.notna(p) and p else np.nan
+    return {"month": str(month), "recent": float(r), "prior": float(p) if pd.notna(p) else np.nan,
+            "pct_change": float(pct) if pd.notna(pct) else np.nan}
+
+
+LEAD_METRICS = ["returning_accounts", "active_accounts", "intents_volume_usd", "fees_near", "txns"]
+
+
 def summarize(daily: pd.DataFrame) -> dict:
     d = add_derived(daily)
     table = decoupling_table(d)
     leads = {}
-    for c in ["returning_accounts", "active_accounts", "intents_volume_usd", "fees_usd", "txns"]:
+    for c in LEAD_METRICS:
         if c in d and d[c].notna().sum() > 120:
             leads[c] = best_lead(lead_lag(d[c], d["price_usd"]))
     return {
@@ -151,6 +171,10 @@ def summarize(daily: pd.DataFrame) -> dict:
         "yoy_90d": table.set_index("metric").to_dict(orient="index"),
         # last 90 days vs the 90 days just before them: is the YoY direction still the current direction?
         "qoq_90d": decoupling_table(d, lookback_days=90).set_index("metric").to_dict(orient="index"),
+        "month_yoy": {c: month_change(d[c]) for c in ("price_usd", "txns", "active_accounts", "fees_usd", "fees_near",
+                                                       "intents_volume_usd") if c in d},
         "lead_vs_price": leads,
+        # reported apart from the scan above: USD fees contain the price, so this correlation is mechanical
+        "lead_fees_usd_mechanical": best_lead(lead_lag(d["fees_usd"], d["price_usd"])),
         "checks": checks(daily),
     }

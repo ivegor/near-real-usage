@@ -58,3 +58,23 @@ def test_one_day_matches_the_aggregator_transaction_count():
     assert d["transactions"] == d["nearblocks"]["txns"]          # two independent sources agree exactly
     assert d["relayed_users"] > 9 * d["nearblocks"]["active_accounts"]   # relayed users are not in "active accounts"
     assert d["account_creators"] == 12
+
+
+def test_last_month_depends_on_the_query_not_on_todays_date():
+    """A dashboard rebuilt in December must not treat the half-scanned November as a full month."""
+    df = population.load()
+    assert df is not None
+    assert population.complete_months(df)[-1] == "2026-10"
+    s = population.summarize(df)
+    assert s["latest_month"] == "2026-10" and s["partial_month"]["month"] == "2026-11"
+
+
+def test_summary_reports_robust_and_decomposed_figures():
+    s = population.summarize(table(), "2026-03-11")
+    core = s["segments"]["core"]
+    assert core["direct_txs"]["latest"] == core["txs"]["latest"] - core["relayed_txs"]["latest"]
+    assert core["multi_tx_accounts"]["latest"] == core["accounts"]["latest"] - (1 + 8 + 40)
+    # the mix of account types is held at last year's shares: 30+10 named accounts out of 98, the rest implicit
+    near_rate, implicit_rate = (900 + 20) / 40, 80 / 34
+    assert abs(s["core_txs_per_account_at_prior_mix"] - (near_rate * 40 / 98 + implicit_rate * 58 / 98)) < 1e-9
+    assert s["segments"]["near"]["accounts_range_12m"] == {"min": 40.0, "max": 40.0}

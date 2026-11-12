@@ -6,18 +6,20 @@
 one-off accounts, so it is a weak basis for a long-term investment case. This project counts who actually acts on
 NEAR, account by account over the whole chain, and tests with re-runnable code whether usage leads the NEAR price.
 
-**Key findings (data through 2026-11-11; accounts: October 2026 vs October 2025):**
+**Key findings (snapshot 2026-11-11; accounts: October 2026 vs October 2025, three-month means in brackets):**
 
-* Accounts acting on NEAR fell **97%** (43.6M → 1.38M a month). **97% of the accounts that left belonged to two reward
-  and wallet apps**; one of them, KaiChing, had 40.4M accounts and stopped in April 2026.
-* Outside those apps the account base **also fell 66%** (1.81M → 0.62M) and accounts active two months running fell
-  **73%**. Our own first draft claimed they grew 37%; the full-chain count refuted it (see THESIS.md, "A correction").
-* The remaining base is busier: transactions per core account **10.7 → 23.9** a month. Named `.near` accounts grew
-  **+13%** to 71K and now send **48%** of all NEAR transactions (6% a year ago).
-* **30 accounts send half of all transactions.** 43% of transactions still belong to reward and wallet apps (Sweat
-  alone 26%); 41% to trading, Intents, token transfers and bridges, and that part grew **+37%** in a year.
-* NEAR Intents volume **+223%** (~$135M/day). Usage does **not** lead price: 9 of 85 weekly lead-lag tests fall outside
-  the noise band where about 4 are expected by chance, and the strongest is fees moving with price in the same week.
+* Accounts acting on NEAR fell **97%** (43.6M → 1.38M a month). **97% of the accounts that left belonged to reward and
+  wallet apps**; one of them, KaiChing, had 40.4M accounts and stopped in spring 2026.
+* Outside those apps the account base **also fell 66%** (−57%) and accounts active two months running fell **73%**.
+  Our first draft claimed they grew 37%; the full-chain count refuted it.
+* What grew is narrower than "users": **transactions senders pay for themselves, outside reward apps, are up 28%**
+  (+35%), while transactions sponsored through relayers fell 75%. Transactions to the exchange, Intents, token
+  contracts and bridges are up **37%**.
+* **30 accounts send half of all transactions.** Reward and wallet apps still send 43% (Sweat alone 26%).
+* NEAR Intents volume: **$56M → $129M a day**, October to October. Usage does **not** lead price: 6 of 85 weekly
+  lead-lag tests fall outside the noise band where about 4 are expected by chance.
+* Two claims of our own second draft ("remaining accounts are busier", "named accounts grew") did not survive a
+  robustness check and are listed as refuted in THESIS.md.
 
 Full argument, evidence against, and kill criteria: [`THESIS.md`](THESIS.md).
 
@@ -36,9 +38,9 @@ open docs/index.html            # or: python -m http.server -d docs 8000
 
 | Do this | See this |
 |---|---|
-| `python -m thesis build` | `data/raw/*.json` (exact API responses), `data/daily.csv`, `docs/*.png`, `docs/index.html`, `docs/summary.json`; summary printed to stdout |
+| `python -m thesis build` | `data/raw/*.json` (exact API responses), `data/daily.csv`, `docs/*.png`, `docs/index.html`, `docs/summary.json`; summary printed to stdout. If an API is down, the build says so and uses the committed copy |
 | `python -m thesis build --offline` | Same outputs rebuilt from the committed `data/raw/` files, no network |
-| `python -m pytest -q` | 20 tests: parsing, metric formulas, a planted 3-week lead recovered by the lead-lag test, the account census on a hand-made table, block parsing with relayed transactions, full offline build |
+| `python -m pytest -q` | 26 tests: parsing, metric formulas, a planted 3-week lead recovered by the lead-lag test, the account census on a hand-made table, block parsing with relayed transactions, the numbers quoted in THESIS.md against `docs/summary.json`, full offline build |
 | Paste [`sql/account_age.sql`](sql/account_age.sql) into the BigQuery console, save the result as CSV, then `python -m thesis bq-age result.csv` | `data/bq/account_age.csv` rebuilt from the chain: 25 months × family × age × returning. Scans 482.64 GB (free tier is 1 TB a month); check the dry-run estimate first |
 | Paste [`sql/top_accounts.sql`](sql/top_accounts.sql) into the BigQuery console (13.53 GB), save the result as `data/bq/top_accounts_result.csv` | The 40 largest accounts and the 40 largest contracts or relayers for October 2026 and October 2025, plus concentration: 30 accounts send half of all transactions |
 | Paste [`sql/one_day_actions.sql`](sql/one_day_actions.sql) into the BigQuery console (0.6 GB) | One day by action kind: 3,448,826 relayed transactions signed by 17 relayers for 2,694,016 users; 238,403 accounts created by 12 creators; total equal to NearBlocks' count for that day |
@@ -57,8 +59,9 @@ so the published charts are always the output of the code in this repository.
 | Active two months running | the actor was also active in the previous calendar month | A direct count of returning accounts |
 | `active − new` (NearBlocks) | daily active accounts minus new accounts | The only "returning" proxy the aggregates allow. Shown to be wrong in direction; kept on the dashboard, labelled |
 | NEAR Intents volume | DefiLlama daily volume | Cross-chain demand routed through NEAR |
-| YoY change | accounts: last complete month vs the same month a year earlier; prices, fees, volume: last 90-day mean vs the 90 days a year earlier | Removes daily noise and seasonality |
-| Lead-lag vs price | `corr(Δlog metric_t, Δlog price_{t+k})`, weekly, k = −8…+8 | Does usage move before price? ±2/√n noise band shown |
+| Self-paid vs sponsored | a transaction is sponsored when a relayer signs it for the user (meta transaction), self-paid otherwise | Separates activity someone pays for from activity an app subsidises |
+| YoY change | accounts: last complete month vs the same month a year earlier, and the same on three-month means; Intents: calendar month vs the same month a year earlier; prices and fees: last 90-day mean vs the 90 days a year earlier | One month can be an outlier; a 90-day window drifts as its base moves |
+| Lead-lag vs price | `corr(Δlog metric_t, Δlog price_{t+k})`, weekly, k = −8…+8; fees are taken in NEAR | Does usage move before price? ±2/√n noise band shown. Fees in USD contain the price, so their correlation with it is mechanical |
 
 ## Data sources
 
@@ -80,10 +83,10 @@ thesis/metrics.py    pure metric functions (unit-tested)
 thesis/charts.py     charts, each with a one-sentence, number-backed caption
 thesis/dashboard.py  static docs/index.html (GitHub Pages ready)
 thesis/census.py     optional keyless check: sample random blocks and look up account ages over public RPC
-thesis/bq.py         optional BigQuery API runner for the older queries in sql/
 sql/account_age.sql  the account census query (run once, result in data/bq/account_age.csv)
 sql/top_accounts.sql the largest accounts and contracts (result in data/bq/top_accounts_result.csv)
-sql/                 other BigQuery queries (one day by action kind, freshness, heavy signers, signer cohorts)
+sql/top_accounts.sql the largest accounts, contracts and relayers (result in data/bq/top_accounts_result.csv)
+sql/one_day_actions.sql  one day by action kind
 data/bq/             committed BigQuery results
 tests/               unit + offline end-to-end tests
 THESIS.md            claim, evidence, contrary evidence, what would change our mind
@@ -95,7 +98,7 @@ THESIS.md            claim, evidence, contrary evidence, what would change our m
   window (no pre-hackathon baseline).
 * **AI assistance.** Code and documentation were written with the help of an AI assistant (Claude) and reviewed and run
   by the author.
-* **Libraries:** pandas, numpy, matplotlib, requests; optional google-cloud-bigquery. No templates.
+* **Libraries:** pandas, numpy, matplotlib, requests. No templates.
 * **Data:** all data is public and fetched by the code in this repository or by the SQL in `sql/`. The BigQuery
   results in `data/bq/` were produced by running those queries in the BigQuery console (sandbox, no billing).
 * **Other chains / projects:** none.

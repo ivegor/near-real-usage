@@ -28,3 +28,5 @@ def test_full_build(tmp_path, monkeypatch):
         assert "nan" not in c.sentence.lower()
     html = page.read_text()
     assert "NEAR Real Usage" in html and "lead_lag.png" in html
+    # every chart links the query or code behind it, and the page links the thesis
+    assert html.count("Query / code:") == len(built) and "blob/main/THESIS.md" in html and "sql/account_age.sql" in html

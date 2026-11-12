@@ -43,6 +43,7 @@ def fetch_all(offline: bool = False) -> dict[str, dict]:
     """Return raw JSON for every source, downloading unless offline."""
     RAW_DIR.mkdir(parents=True, exist_ok=True)
     out: dict[str, dict] = {}
+    stale: list[str] = []
     for name, url in SOURCES.items():
         path = RAW_DIR / f"{name}.json"
         if offline:
@@ -50,12 +51,22 @@ def fetch_all(offline: bool = False) -> dict[str, dict]:
                 raise FileNotFoundError(f"{path} missing; run without --offline first")
             out[name] = json.loads(path.read_text())
         else:
-            data = _fetch_json(url)
-            path.write_text(json.dumps(data))
+            try:
+                data = _fetch_json(url)
+                path.write_text(json.dumps(data))
+            except RuntimeError as e:
+                # An API outage must not break the build or a judge's reproduction: fall back to the committed copy.
+                if not path.exists():
+                    raise
+                print(f"[sources] {name}: {e}; using the saved copy {path.name}")
+                data = json.loads(path.read_text())
+                stale.append(name)
             out[name] = data
     meta = {name: {"url": url, "file": f"data/raw/{name}.json"} for name, url in SOURCES.items()}
+    if stale:
+        meta["not_refreshed"] = stale
     if not offline:
-        meta["fetched_at_utc"] = pd.Timestamp.utcnow().isoformat()
+        meta["fetched_at_utc"] = pd.Timestamp.now(tz="UTC").isoformat()
         (RAW_DIR / "_meta.json").write_text(json.dumps(meta, indent=2))
     return out
 

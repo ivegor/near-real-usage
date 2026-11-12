@@ -1,29 +1,26 @@
-"""CLI: `python -m thesis build [--offline] [--bq]` rebuilds every chart from raw data."""
+"""CLI: `python -m thesis build [--offline]` rebuilds every chart from raw data."""
 from __future__ import annotations
 
 import argparse
 import json
 from pathlib import Path
 
-from . import bq, census, charts, clients, dashboard, metrics, population, sources
+from . import census, charts, clients, dashboard, metrics, population, sources
 
 ROOT = Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs"
 
 
-def build(offline: bool, use_bq: bool) -> None:
+def build(offline: bool) -> None:
     daily = sources.load_daily(offline=offline)
     daily.to_csv(ROOT / "data" / "daily.csv")
     summary = metrics.summarize(daily)
-    bq_note = bq.run() if use_bq else None
-    if bq_note:
-        summary["bigquery"] = bq_note
     cs = census.load()
     if cs:
         summary["signer_census"] = census.summarize(*cs)
     pop = population.load()
     if pop is not None:
-        summary["population"] = population.summarize(pop, summary["last_date"])
+        summary["population"] = population.summarize(pop)
         day = population.one_day(daily)
         if day:
             summary["population"]["one_day"] = day
@@ -31,7 +28,7 @@ def build(offline: bool, use_bq: bool) -> None:
     if top:
         summary["clients"] = clients.summarize(top)
     built = charts.build_all(daily, summary, DOCS)
-    page = dashboard.render(built, summary, DOCS, bq_note)
+    page = dashboard.render(built, summary, DOCS)
     print(json.dumps(summary, indent=2, default=str))
     print(f"\nDashboard: {page}")
     for c in built:
@@ -43,7 +40,6 @@ def main() -> None:
     sub = ap.add_subparsers(dest="cmd", required=True)
     b = sub.add_parser("build", help="fetch data, compute metrics, render charts + dashboard")
     b.add_argument("--offline", action="store_true", help="use cached data/raw/*.json")
-    b.add_argument("--bq", action="store_true", help="also run the optional BigQuery cross-check")
     c = sub.add_parser("census", help="sample blocks from the chain and measure account ages (network, ~1.5 h, resumable)")
     c.add_argument("--seed", type=int, default=census.SEED, help="another seed draws an independent sample")
     pn = sub.add_parser("panel", help="the same census for every month (network, hours, resumable)")
@@ -65,7 +61,7 @@ def main() -> None:
         census.fetch_panel(args.first_month, last_date, seed=args.seed)
         return
     if args.cmd == "build":
-        build(args.offline, args.bq)
+        build(args.offline)
     elif args.cmd == "census":
         last_date = str(sources.load_daily(offline=True).index.max().date())
         census.fetch(last_date, seed=args.seed)

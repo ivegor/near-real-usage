@@ -83,3 +83,36 @@ def test_summarize_runs():
     s = metrics.summarize(daily())
     assert s["days"] == 800
     assert "returning_accounts" in s["lead_vs_price"]
+
+
+def test_month_change_uses_the_last_complete_calendar_month():
+    idx = pd.date_range("2025-01-01", "2026-11-11", freq="D")
+    s = pd.Series(np.where(idx >= "2026-01-01", 200.0, 100.0), index=idx)
+    out = metrics.month_change(s)
+    assert out["month"] == "2026-10" and out["pct_change"] == 100
+
+
+def test_fees_are_tested_in_near_not_usd():
+    s = metrics.summarize(daily())
+    assert "fees_near" in s["lead_vs_price"] and "fees_usd" not in s["lead_vs_price"]
+    assert "corr" in s["lead_fees_usd_mechanical"]
+
+
+def test_build_survives_an_api_outage(tmp_path, monkeypatch):
+    import json
+
+    import pytest
+    nb, ll = synthetic_raw(days=60)
+    monkeypatch.setattr(sources, "RAW_DIR", tmp_path)
+
+    def down(url, retries=3):
+        raise RuntimeError("API down")
+
+    monkeypatch.setattr(sources, "_fetch_json", down)
+    with pytest.raises(RuntimeError):          # nothing saved yet: the failure is reported
+        sources.fetch_all()
+    (tmp_path / "nearblocks_charts.json").write_text(json.dumps(nb))
+    (tmp_path / "defillama_intents.json").write_text(json.dumps(ll))
+    raw = sources.fetch_all()                  # saved copies exist: they are used instead
+    assert len(raw["nearblocks_charts"]["charts"]) == 60
+    assert json.loads((tmp_path / "_meta.json").read_text())["not_refreshed"] == ["nearblocks_charts", "defillama_intents"]
