@@ -22,7 +22,7 @@ The owner writes Python and Rust. Answer in Russian.
 
 ## Next steps
 
-1. Owner decisions: name for LICENSE (still "NEAR Real Usage authors"), GitHub repo name, framing of claim 1.
+1. Owner decisions: GitHub repo name, framing of claim 1 (LICENSE holder is set to "ivegor").
 2. Create the public GitHub repo (ask the owner first), push, enable GitHub Pages (source: GitHub Actions),
    check the first workflow run and the live dashboard.
 3. X post: draft is in `POST_DRAFT.md`; put the real dashboard + repo links in, show it to the owner before posting.
