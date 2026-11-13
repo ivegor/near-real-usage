@@ -225,6 +225,36 @@ def summarize(df: pd.DataFrame, query_end: str | None = None) -> dict:
     return out
 
 
+def totals_check(df: pd.DataFrame, daily: pd.DataFrame, query_end: str | None = None) -> dict | None:
+    """BigQuery's transaction count for every month of the census next to the aggregator's count for the same days.
+
+    The two are independent: a scan of the public dataset against NearBlocks' own indexer. The months fall into two
+    groups with nothing in between, differences of a few transactions and differences of hundreds of thousands. The
+    line between the groups is put at the largest jump in the sorted differences, so no tolerance is chosen; the size
+    of that jump is published too, and a small one would mean there are no two groups.
+    """
+    end = pd.Timestamp(query_end or QUERY_END)
+    bq = df.groupby("month")["txs"].sum()
+    d = daily.loc[:end, "txns"].dropna()
+    nb = d.groupby(d.index.strftime("%Y-%m")).sum().reindex(bq.index).dropna()
+    if len(nb) < 2:
+        return None
+    diff = (bq.reindex(nb.index) - nb).astype(int)
+    size = diff.abs().sort_values(kind="stable")
+    jumps = (size.iloc[1:].to_numpy() + 1) / (size.iloc[:-1].to_numpy() + 1)
+    cut = int(jumps.argmax()) + 1
+    close, apart = list(size.index[:cut]), sorted(size.index[cut:])
+    return {
+        "months": int(len(nb)), "first_month": str(nb.index.min()), "last_month": str(nb.index.max()),
+        "last_month_through": str(min(end, d.index.max()).date()),
+        "agree": {"months": len(close), "largest_difference_txs": int(size[close].max()),
+                  "largest_difference_share": float((size[close] / nb[close]).max())},
+        "differ": {m: {"bigquery_minus_nearblocks": int(diff[m]), "share": float(diff[m] / nb[m])} for m in apart},
+        "jump_between_the_groups": float(jumps.max()),
+        "difference_by_month": {m: int(v) for m, v in diff.items()},
+    }
+
+
 def cross_check(sample: dict, df: pd.DataFrame, top: dict | None = None) -> dict:
     """Put the keyless block sample (thesis/census.py) next to the full BigQuery count for the same period.
 

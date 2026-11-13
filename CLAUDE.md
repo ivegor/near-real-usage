@@ -7,7 +7,7 @@ Start with `README.md` (what it is, how to run it) and `THESIS.md` (the argument
 
 ```bash
 python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
-python -m pytest -q                  # 53 tests, no network
+python -m pytest -q                  # 63 tests, no network
 python -m thesis build --offline     # rebuilds docs/ from the committed data, no network
 python -m thesis build               # same, after refreshing data/raw/ from the public APIs
 ```
@@ -23,8 +23,12 @@ reproduces the numbers exactly; the PNG files are byte-identical only with the l
   The build does not need BigQuery: results are committed in `data/bq/`.
 * **The account census ends on 2026-11-11** (`QUERY_END` in `thesis/population.py`). If the query is re-run, update
   that constant together with `data/bq/account_age.csv`.
-* **THESIS.md is a snapshot.** `tests/test_thesis_numbers.py` checks its key numbers against the committed
-  `docs/summary.json`. Change them together, and do not type numbers by hand: take them from `summary.json`.
+* **THESIS.md is a snapshot.** `tests/test_thesis_numbers.py` checks its key numbers, and the README's, against the
+  frozen copy of the summary in `data/snapshot/` (`python -m thesis snapshot` refreshes it after an offline build).
+  Change them together, and do not type numbers by hand: take them from `summary.json`.
+* **A group defined by exclusion is not "own users".** "Outside the reward namespaces" and "independent" both turned
+  out to hold other apps' users (Sweat and Ember; Meteor's game). Before reading such a group as a trend, list its
+  largest contracts in both periods from `data/bq/top_accounts_result.csv`.
 * **Public FastNEAR endpoints are rate-limited without a key.** `thesis/census.py` paces its requests on purpose;
   do not make it faster. Its committed results (`data/raw/census_*`) are the independent check quoted in THESIS.md;
   the build compares them with BigQuery in `cross_check` of `docs/summary.json`.

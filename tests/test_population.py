@@ -96,6 +96,25 @@ def test_a_burst_of_dormant_accounts_is_split_out_of_the_self_paid_series():
     assert real["peak"]["month"] == "2026-02" and real["peak"]["share_of_month"] > 0.3 > 0.05 > real["largest_share_in_any_other_month"]
 
 
+def test_totals_check_separates_the_months_that_agree_from_those_that_do_not():
+    """BigQuery against the aggregator, month by month: a few transactions apart is agreement, hundreds are not."""
+    df = table()                                              # 15 months, 2025-01 .. 2026-03
+    per_month = df.groupby("month")["txs"].sum()
+    daily = pd.DataFrame({"txns": 0.0}, index=pd.date_range("2025-01-01", "2026-03-20", freq="D"))
+    for month, total in per_month.items():
+        daily.loc[f"{month}-01", "txns"] = total              # the aggregator's month, all on its first day
+    daily.loc["2025-05-01", "txns"] += 3                      # three transactions apart
+    daily.loc["2025-09-01", "txns"] += 400                    # BigQuery is short by 400
+    daily.loc["2026-03-15", "txns"] = 777                     # after the query stopped: not compared
+    c = population.totals_check(df, daily, "2026-03-11")
+    assert (c["months"], c["first_month"], c["last_month"], c["last_month_through"]) == (15, "2025-01", "2026-03", "2026-03-11")
+    assert c["agree"] == {"months": 14, "largest_difference_txs": 3, "largest_difference_share": 3 / (per_month["2025-05"] + 3)}
+    assert c["differ"] == {"2025-09": {"bigquery_minus_nearblocks": -400, "share": -400 / (per_month["2025-09"] + 400)}}
+    assert c["difference_by_month"]["2025-05"] == -3 and c["difference_by_month"]["2026-03"] == 0
+    assert c["jump_between_the_groups"] > 100                 # the two groups are far apart, so the line is not a choice
+    assert population.totals_check(df, daily.loc[:"2025-01-31"], "2026-03-11") is None      # one month is nothing to compare
+
+
 def test_cross_check_compares_the_same_months():
     df = table()
     sample = {"windows": {"recent": {"start": "2025-12-14", "end": "2026-03-11", "transactions": 100, "relayed_tx_share": 0.2,

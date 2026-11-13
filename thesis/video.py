@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import tempfile
 import textwrap
+from datetime import datetime
 from pathlib import Path
 
 import matplotlib
@@ -36,9 +37,12 @@ def slides(s: dict) -> list[dict]:
          "line": f"Accounts whose fees an app paid: {sg['sponsored_accounts']['prior'] / 1e6:.1f}M a year ago, "
                  f"{sg['sponsored_accounts']['latest'] / 1e6:.2f}M now.",
          "chart": "population", "sec": 10},
-        {"head": f"Regular self-paying accounts outside reward apps: {sg['regular_accounts']['prior']:,.0f} to {sg['regular_accounts']['latest']:,.0f}.",
-         "line": f"{sg['heavy_accounts']['latest']:,.0f} heavy accounts (1,000+ transactions a month) send "
-                 f"{s['segments']['heavy_share_of_independent_self_paid_txs']['latest'] * 100:.0f}% of self-paid transactions.",
+        # the count of regular accounts is not the headline: part of its fall is one game moving its players to a relayer
+        {"head": f"{sg['heavy_accounts']['latest']:,.0f} heavy accounts send "
+                 f"{s['segments']['heavy_share_of_independent_self_paid_txs']['latest'] * 100:.0f}% of the self-paid transactions.",
+         "line": f"Outside reward apps. Regular accounts (10 to 999 a month) number {sg['regular_accounts']['latest']:,.0f}; "
+                 f"their low was {s['segments']['regular_accounts_low']['value']:,.0f} in "
+                 f"{datetime.strptime(s['segments']['regular_accounts_low']['month'], '%Y-%m'):%B %Y}.",
          "chart": "segments", "sec": 11},
         {"head": f"{latest['accounts_for_half_of_txs']} accounts send half of all transactions.",
          "line": f"Reward and wallet apps are still {c['reward_apps_share']['latest'] * 100:.0f}% of them; trading, Intents, tokens and "

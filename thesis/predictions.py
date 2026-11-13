@@ -62,6 +62,46 @@ def baselines(daily: pd.DataFrame, fees: pd.DataFrame | None, census: pd.DataFra
     return out
 
 
+def step(daily: pd.DataFrame, fees: pd.DataFrame | None = None, census: pd.DataFrame | None = None,
+         seg: pd.DataFrame | None = None) -> dict:
+    """The month after the reference range (September 2026): what stepped up, and what the NEAR price did meanwhile.
+
+    Rule 1 of PREDICTIONS.md calls that month "the step". The price rose in the same month, so the step may be the
+    rally itself. The figures are published side by side so that a reader sees both; nothing here is a threshold.
+    """
+    before = pd.Period(PLATEAU[1], "M")
+    month = before + 1
+    price = daily["price_usd"].dropna() if "price_usd" in daily else pd.Series(dtype=float)
+    by_month = price.index.to_period("M") if len(price) else None
+    if by_month is None or not (by_month == month).any() or price.index.max() < month.end_time.normalize():
+        return {}  # the month is not in the data, or not complete yet
+    in_month, since = price[by_month == month], price[by_month >= month]
+    out = {"month": str(month), "month_before": str(before),
+           "price_usd": {"first_day": float(in_month.iloc[0]), "last_day": float(in_month.iloc[-1]),
+                         "mean_before": float(price[by_month == before].mean()), "mean": float(in_month.mean()),
+                         "peak_since": {"date": str(since.idxmax().date()), "value": float(since.max())},
+                         "latest": {"date": str(price.index.max().date()), "value": float(price.iloc[-1])}}}
+
+    def pair(s: pd.Series) -> dict | None:
+        s = s.copy()
+        s.index = pd.PeriodIndex(s.index, freq="M")
+        return {"before": float(s[before]), "month": float(s[month])} if before in s.index and month in s.index else None
+
+    if "intents_volume_usd" in daily:
+        out["intents_volume_usd_a_day"] = pair(daily["intents_volume_usd"].resample("ME").mean())
+    if fees is not None and not fees.empty:
+        out["buyback_usd"] = pair(fees["holders_revenue"].resample("ME").sum())
+    if census is not None:
+        core = census[~census["family"].isin(["kaiching", "tg", "sweat"])].groupby("month")[["txs", "relayed_txs"]].sum()
+        out["core_self_paid_txs"] = pair(core["txs"] - core["relayed_txs"])
+    if seg is not None:
+        from . import segments
+        s = segments.series(seg)
+        out["regular_self_paying_accounts"] = pair(s["regular_accounts"])
+        out["heavy_self_paying_accounts"] = pair(s["heavy_accounts"])
+    return {k: v for k, v in out.items() if v is not None}
+
+
 def _window(s: pd.Series, start: pd.Timestamp, end: pd.Timestamp) -> pd.Series | None:
     """The values of every day from start to end, or None while a day is missing.
 

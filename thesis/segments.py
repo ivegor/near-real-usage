@@ -90,3 +90,27 @@ def summarize(df: pd.DataFrame) -> dict:
     out["regular_accounts_low"] = {"month": low, "value": float(s.loc[low, "regular_accounts"])}
     out["independent_accounts_range"] = {"min": float(s["independent_accounts"].min()), "max": float(s["independent_accounts"].max())}
     return out
+
+
+def add_reward_game_bound(sg: dict, game: dict) -> None:
+    """How much of the fall in regular accounts can be one game changing who pays the fee (clients.GAME_CONTRACT).
+
+    A year ago the players of Meteor's reward game called its contract themselves, so each of them counted as
+    self-paying; now a relayer submits those calls and the same players count as sponsored. The committed tables say
+    how many accounts called the game directly, not which frequency class they were in. That count is therefore an
+    upper bound on the game's players among last year's regular accounts, and it gives the two ends between which the
+    change without them lies: the counted one (none of them were regular) and the one with all of them taken out.
+    """
+    direct = (game.get("direct") or {}).get("prior")
+    if not direct:
+        return
+    reg = sg["metrics"]["regular_accounts"]
+    at_most = min(float(direct["accounts"]), reg["prior"])
+    rest = reg["prior"] - at_most
+    sg["regular_accounts_reward_game_bound"] = {
+        "game_players_prior": int(direct["accounts"]),
+        "share_of_prior_regular_at_most": at_most / reg["prior"] if reg["prior"] else float("nan"),
+        "fall": reg["prior"] - reg["latest"],
+        "pct_change_as_counted": reg["pct_change"],
+        "pct_change_if_all_of_them_were_regular": (reg["latest"] / rest - 1) * 100 if rest else float("nan"),
+    }

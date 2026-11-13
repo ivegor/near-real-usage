@@ -10,21 +10,23 @@ NEAR, account by account over the whole chain, and tests with re-runnable code w
 
 * Accounts acting on NEAR fell **97%** (43.6M → 1.38M a month). **The whole fall is accounts whose fees an app was
   paying**: 43.05M a year ago, 0.55M now. One app, KaiChing, had 40.4M of them and stopped in spring 2026.
-* Among accounts that pay their own fees and are not in a reward app's namespace, the regular ones (10 to 999
-  transactions a month) fell from **27,078 to 17,105** (−37%; −50%), while 475 heavy accounts (1,000 or more a
-  month) send 91% of the self-paid transactions. Our first draft claimed returning accounts grew 37%; the full-chain
-  count refuted it.
+* Among accounts that pay their own fees and are not in a reward app's namespace, **475 heavy accounts (1,000 or more
+  transactions a month) send 91% of the self-paid transactions**. The regular ones (10 to 999 a month) number 17,105
+  against 27,078 a year earlier, but up to 15,162 of last year's were players of one wallet's reward game who paid
+  their own fees then and are sponsored now, so how many really left is not established. Our first draft claimed
+  returning accounts grew 37%; the full-chain count refuted it.
 * **Self-paid transactions outside reward apps are up 28%** October to October, but flat over the year as a whole
-  (−5% on eleven-month means): they jumped in September and October 2026. Transactions sponsored through relayers
-  fell 75%. Transactions to the exchange, Intents, token contracts and bridges are up **37%**.
+  (−5% on eleven-month means): they jumped in September and October 2026, when the NEAR price went from $1.92 to
+  $4.89 in one month. Transactions sponsored through relayers fell 75%. Transactions to the exchange, Intents, token
+  contracts and bridges are up **37%**; what is neither that group nor the reward apps is level (+3%).
 * **30 accounts send half of all transactions.** Seven of the ten largest are relays or service accounts (Intents,
   Sweat, the bridges), so this counts who submits transactions, not how many people stand behind them. Reward and
   wallet apps still send 43% (Sweat alone 26%), or 45% counting a one-off sweep by old KaiChing accounts.
 * NEAR Intents volume: **$56M → $129M a day**, October to October. Usage does **not** lead price: 6 of 85 weekly
   lead-lag tests fall outside the noise band where about 4 are expected by chance.
 * Three readings from our own drafts ("returning accounts grew", "remaining accounts are busier", "the base outside
-  reward apps fell by two thirds") did not survive closer measurement; THESIS.md lists each with what replaced it.
-
+  reward apps fell by two thirds") did not survive closer measurement, and a fourth ("regular self-paying accounts
+  fell by a third") turned out to be partly one game changing who pays; THESIS.md lists each with what replaced it.
 * Value reaches the token only in part: buybacks funded by Intents revenue run at **$20.7M a year** and cover **18%**
   of the net new NEAR issued.
 
@@ -39,7 +41,8 @@ query on NEAR's public BigQuery dataset; its result is committed, so the build n
 
 ## Run it (2 minutes)
 
-Needs Python 3.12 or newer: the pinned versions of pandas and numpy do not install on older ones.
+Needs Python 3.11 or newer: the pinned pandas and matplotlib do not install on older ones. Checked on 3.11, 3.12,
+3.13 and 3.14.
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
@@ -48,11 +51,15 @@ python -m thesis build          # downloads data, rebuilds everything
 open docs/index.html            # or: python -m http.server -d docs 8000
 ```
 
+If your default `python` is older and you have [uv](https://docs.astral.sh/uv/), one line does the same with no
+virtual environment to set up:
+`uv run --no-project --python 3.12 --with-requirements requirements.txt python -m thesis build`.
+
 | Do this | See this |
 |---|---|
 | `python -m thesis build` | `data/raw/*.json` (exact API responses), `data/daily.csv`, `docs/*.png`, `docs/index.html`, `docs/summary.json`; summary printed to stdout. If an API is down, the build says so and uses the committed copy |
 | `python -m thesis build --offline` | Same outputs rebuilt from the committed `data/raw/` files, no network |
-| `python -m pytest -q` | 53 tests: parsing, metric formulas, a planted 3-week lead recovered by the lead-lag test, the account census on a hand-made table, block parsing with relayed transactions, the numbers quoted in THESIS.md against `docs/summary.json`, full offline build |
+| `python -m pytest -q` | 63 tests: parsing, metric formulas, a planted 3-week lead recovered by the lead-lag test, the account census on a hand-made table, block parsing with relayed transactions, the numbers quoted in THESIS.md, PREDICTIONS.md and this README against the frozen copy of the summary, full offline build |
 | `python -m thesis video` (needs ffmpeg) | `demo/near-real-usage.mp4`, a 73-second slideshow rendered from the build outputs, so the numbers on screen are the ones in `docs/summary.json` |
 | Paste [`sql/account_age.sql`](sql/account_age.sql) into the BigQuery console, save the result as CSV, then `python -m thesis bq-age result.csv` | `data/bq/account_age.csv` rebuilt from the chain: 25 months × family × age × returning. Scans 482.64 GB (free tier is 1 TB a month); check the dry-run estimate first |
 | Paste [`sql/payer_frequency.sql`](sql/payer_frequency.sql) into the BigQuery console (91.28 GB), save the result as CSV, then `python -m thesis bq-freq result.csv` | `data/bq/payer_frequency.csv` rebuilt from the chain: accounts by who pays the fee (an app's relayer or the account itself), by namespace and by transactions per month, August 2025 to October 2026 |
@@ -91,7 +98,8 @@ Pages), so the published charts are always the output of the code in this reposi
   (`python -m thesis fetch-value` refreshes the saved copies).
 
 No headline number is typed by hand: the figures in the dashboard and the key figures of `THESIS.md` come from
-`docs/summary.json` (a test checks the ones THESIS.md quotes against the frozen copy in `data/snapshot/`). A few
+`docs/summary.json` (tests check the ones THESIS.md and this README quote against the frozen copy in
+`data/snapshot/`). A few
 supporting details in the text (the number of accounts in two one-off bursts, the range of sample sizes in the
 lead-lag test) are read from the committed data files and are not in that JSON.
 

@@ -27,6 +27,9 @@ def build(offline: bool) -> None:
         day = population.one_day(daily)
         if day:
             summary["population"]["one_day"] = day
+        totals = population.totals_check(pop, daily)  # BigQuery month by month against the aggregator
+        if totals:
+            summary["population"]["totals_check"] = totals
     seg = segments.load()
     if seg is not None:
         summary["segments"] = segments.summarize(seg)
@@ -37,7 +40,16 @@ def build(offline: bool) -> None:
     if top:
         summary["clients"] = clients.summarize(top)
         if pop is not None:
-            clients.add_namespace_view(summary["clients"], summary["population"]["segments"]["kaiching"]["txs"]["latest"])
+            kaiching = summary["population"]["segments"]["kaiching"]["txs"]
+            clients.add_namespace_view(summary["clients"], kaiching["latest"])
+            clients.add_three_parts(summary["clients"], kaiching["prior"])
+        if cs:  # the same groups and the reward game on the keyless sample
+            summary["clients"]["reward_game"]["sample_calls"] = census.calls_to(cs[0], clients.GAME_CONTRACT)
+            view = clients.sample_view(cs[0], cs[2].get("windows", {}), daily, seed=cs[2].get("seed", census.SEED))
+            if view:
+                summary["clients"]["sample_view"] = view
+        if seg is not None:
+            segments.add_reward_game_bound(summary["segments"], summary["clients"]["reward_game"])
     if not offline:
         try:
             value.fetch()  # keep the fee and buyback series current; fall back to the saved copies on an outage
@@ -47,6 +59,7 @@ def build(offline: bool) -> None:
     pred = predictions.evaluate(daily, fees)
     if pred:
         pred["baselines"] = predictions.baselines(daily, fees, pop, seg)
+        pred["step"] = predictions.step(daily, fees, pop, seg)  # what moved in the step month, the price included
         summary["predictions"] = pred
     if fees is not None:
         v = value.summarize(daily, fees)

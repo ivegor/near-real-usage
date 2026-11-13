@@ -265,6 +265,15 @@ def classify(sample: pd.DataFrame, exist: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def calls_to(sample: pd.DataFrame, target: str) -> dict:
+    """Per window: the sampled transactions that end up calling `target`, and how many of them a relayer submitted."""
+    out = {}
+    for label, w in sample.groupby("window"):
+        hit = w[w["target"] == target]
+        out[label] = {"calls": int(len(hit)), "relayed": int(hit["relayed"].astype(bool).sum())}
+    return out
+
+
 def _block_bootstrap(per_block: pd.DataFrame, col: str, seed: int, n_boot: int = 2000) -> tuple[float, float]:
     """95% interval for sum(col)/sum(n), resampling whole blocks (transactions in a block are not independent)."""
     rng = np.random.default_rng(seed)

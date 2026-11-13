@@ -1420,6 +1420,59 @@
         "active_accounts": 288151,
         "new_accounts": 267015
       }
+    },
+    "totals_check": {
+      "months": 25,
+      "first_month": "2024-11",
+      "last_month": "2026-11",
+      "last_month_through": "2026-11-11",
+      "agree": {
+        "months": 22,
+        "largest_difference_txs": 484,
+        "largest_difference_share": 2.138949046830831e-05
+      },
+      "differ": {
+        "2024-11": {
+          "bigquery_minus_nearblocks": -650527,
+          "share": -0.003010688973984927
+        },
+        "2024-12": {
+          "bigquery_minus_nearblocks": -3010892,
+          "share": -0.0117666833960698
+        },
+        "2025-03": {
+          "bigquery_minus_nearblocks": -5082754,
+          "share": -0.024859519067347388
+        }
+      },
+      "jump_between_the_groups": 1341.2948453608246,
+      "difference_by_month": {
+        "2024-11": -650527,
+        "2024-12": -3010892,
+        "2025-01": -21,
+        "2025-02": -24,
+        "2025-03": -5082754,
+        "2025-04": -33,
+        "2025-05": -39,
+        "2025-06": -93,
+        "2025-07": -22,
+        "2025-08": -17,
+        "2025-09": -17,
+        "2025-10": -82,
+        "2025-11": -45,
+        "2025-12": -19,
+        "2026-01": -2,
+        "2026-02": -7,
+        "2026-03": -17,
+        "2026-04": -17,
+        "2026-05": -7,
+        "2026-06": -7,
+        "2026-07": -22,
+        "2026-08": -1,
+        "2026-09": -15,
+        "2026-10": -484,
+        "2026-11": 0
+      }
     }
   },
   "segments": {
@@ -1574,6 +1627,13 @@
     "independent_accounts_range": {
       "min": 49954.0,
       "max": 3497840.0
+    },
+    "regular_accounts_reward_game_bound": {
+      "game_players_prior": 15162,
+      "share_of_prior_regular_at_most": 0.5599379570130734,
+      "fall": 9973.0,
+      "pct_change_as_counted": -36.83063741782997,
+      "pct_change_if_all_of_them_were_regular": 43.54649211144679
     }
   },
   "sponsors": {
@@ -1816,6 +1876,68 @@
       "2026-08": 13625.0,
       "2026-09": 16685.0,
       "2026-10": 31452.0
+    },
+    "sponsored_by_month": {
+      "kaiching": {
+        "2025-07": 44037241.0,
+        "2025-08": 48944690.0,
+        "2025-09": 48601270.0,
+        "2025-10": 40388019.0,
+        "2026-07": 0.0,
+        "2026-08": 0.0,
+        "2026-09": 0.0,
+        "2026-10": 0.0
+      },
+      "hot": {
+        "2025-07": 1231823.0,
+        "2025-08": 1532092.0,
+        "2025-09": 1198215.0,
+        "2025-10": 1006146.0,
+        "2026-07": 108444.0,
+        "2026-08": 95299.0,
+        "2026-09": 27652.0,
+        "2026-10": 70432.0
+      },
+      "sweat": {
+        "2025-07": 1171416.0,
+        "2025-08": 1140784.0,
+        "2025-09": 1081069.0,
+        "2025-10": 1246366.0,
+        "2026-07": 808128.0,
+        "2026-08": 758210.0,
+        "2026-09": 577260.0,
+        "2026-10": 410890.0
+      },
+      "ember": {
+        "2025-07": 387685.0,
+        "2025-08": 387781.0,
+        "2025-09": 387784.0,
+        "2025-10": 387762.0,
+        "2026-07": 0.0,
+        "2026-08": 0.0,
+        "2026-09": 0.0,
+        "2026-10": 0.0
+      },
+      "meteor": {
+        "2025-07": 8170.0,
+        "2025-08": 7748.0,
+        "2025-09": 8011.0,
+        "2025-10": 8677.0,
+        "2026-07": 15039.0,
+        "2026-08": 14667.0,
+        "2026-09": 14673.0,
+        "2026-10": 15409.0
+      },
+      "other": {
+        "2025-07": 4263.0,
+        "2025-08": 13248.0,
+        "2025-09": 40627.0,
+        "2025-10": 12990.0,
+        "2026-07": 73999.0,
+        "2026-08": 42791.0,
+        "2026-09": 72832.0,
+        "2026-10": 56095.0
+      }
     }
   },
   "clients": {
@@ -1922,7 +2044,7 @@
     },
     "finance_share": {
       "latest": 0.40581981593949756,
-      "prior": 0.04765896785514025
+      "prior": 0.047658967855140254
     },
     "finance_txs": {
       "latest": 9182668,
@@ -2045,9 +2167,139 @@
         "prior": 0.8832473415833842
       }
     },
+    "reward_game": {
+      "contract": "aa-harvest-moon.near",
+      "relayer": "meteor-relayer.near",
+      "direct": {
+        "latest": null,
+        "prior": {
+          "transactions": 532727,
+          "accounts": 15162,
+          "transactions_per_account": 35.135668117662576
+        }
+      },
+      "relayed": {
+        "latest": {
+          "transactions": 698531,
+          "accounts": 19722
+        },
+        "prior": {
+          "transactions": 451596,
+          "accounts": 17787
+        }
+      },
+      "smallest_of_the_40_latest": 26690,
+      "sample_calls": {
+        "prior": {
+          "calls": 4,
+          "relayed": 1
+        },
+        "recent": {
+          "calls": 41,
+          "relayed": 41
+        }
+      }
+    },
     "kaiching_txs_outside_its_contracts": 560106.0,
     "kaiching_share_by_namespace": 0.028407397722350607,
-    "reward_apps_share_incl_kaiching_namespace": 0.4504417223133087
+    "reward_apps_share_incl_kaiching_namespace": 0.4504417223133087,
+    "kaiching_txs_outside_its_contracts_prior": 6741885.0,
+    "reward_apps_share_incl_kaiching_namespace_prior": 0.911200214795723,
+    "three_parts": {
+      "reward_side": {
+        "latest": 10357304.0,
+        "prior": 131264147.0,
+        "pct_change": -92.10957124491884
+      },
+      "finance": {
+        "latest": 9182668.0,
+        "prior": 6719072.0,
+        "pct_change": 36.665718122978895
+      },
+      "rest": {
+        "latest": 3087479.0,
+        "prior": 2999104.0,
+        "pct_change": 2.9467134184076205
+      },
+      "other_top_40_without_ember": {
+        "latest": 1440906.0,
+        "prior": 1416942.0,
+        "pct_change": 1.6912477716095609
+      },
+      "outside_top_40_without_kaiching": {
+        "latest": 1646573.0,
+        "prior": 1582162.0,
+        "pct_change": 4.07107489624956
+      }
+    },
+    "sample_view": {
+      "windows": {
+        "prior": {
+          "window": [
+            "2025-08-14",
+            "2025-11-11"
+          ],
+          "sample_transactions": 1200,
+          "all_transactions": 417201259
+        },
+        "recent": {
+          "window": [
+            "2026-08-14",
+            "2026-11-11"
+          ],
+          "sample_transactions": 1200,
+          "all_transactions": 66994967
+        }
+      },
+      "groups": {
+        "finance": {
+          "prior": {
+            "share": 0.03166666666666667,
+            "share_ci95": [
+              0.0203,
+              0.0475
+            ],
+            "transactions_per_30_days": 4403791.067222223
+          },
+          "recent": {
+            "share": 0.41083333333333333,
+            "share_ci95": [
+              0.3729,
+              0.4474
+            ],
+            "transactions_per_30_days": 9174588.536388889
+          },
+          "pct_change": 108.33387407218527,
+          "pct_change_ci95": [
+            35.758798436341706,
+            229.3821213467836
+          ]
+        },
+        "reward_apps": {
+          "prior": {
+            "share": 0.8958333333333334,
+            "share_ci95": [
+              0.8483,
+              0.9296
+            ],
+            "transactions_per_30_days": 124580931.50694445
+          },
+          "recent": {
+            "share": 0.48,
+            "share_ci95": [
+              0.4422,
+              0.5197
+            ],
+            "transactions_per_30_days": 10719194.719999999
+          },
+          "pct_change": -91.39579822502573,
+          "pct_change_ci95": [
+            -92.14664389526965,
+            -90.54446800272855
+          ]
+        }
+      }
+    }
   },
   "predictions": {
     "sha256": "7ff48f00d7131ae4cf1e5b11ff817242844e6b8dd3a0681d98e1fcbaac65d15a",
@@ -2179,6 +2431,44 @@
       "core_self_paid_txs_plateau_top_without_dormant_implicit": 8654344.0,
       "core_self_paid_txs_plateau_top_without_dormant_implicit_month": "2026-06",
       "regular_self_paying_accounts_low": 7201.0
+    },
+    "step": {
+      "month": "2026-09",
+      "month_before": "2026-08",
+      "price_usd": {
+        "first_day": 1.91972951,
+        "last_day": 4.88659264,
+        "mean_before": 1.7340923677419353,
+        "mean": 3.1932199973333337,
+        "peak_since": {
+          "date": "2026-10-12",
+          "value": 5.8875771
+        },
+        "latest": {
+          "date": "2026-11-11",
+          "value": 3.58413601
+        }
+      },
+      "intents_volume_usd_a_day": {
+        "before": 89591201.70967741,
+        "month": 160103145.9
+      },
+      "buyback_usd": {
+        "before": 723262.0,
+        "month": 1839513.0
+      },
+      "core_self_paid_txs": {
+        "before": 7842036.0,
+        "month": 13104300.0
+      },
+      "regular_self_paying_accounts": {
+        "before": 7201.0,
+        "month": 18379.0
+      },
+      "heavy_self_paying_accounts": {
+        "before": 177.0,
+        "month": 266.0
+      }
     }
   },
   "value_capture": {

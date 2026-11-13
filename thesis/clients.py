@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 CSV = Path(__file__).resolve().parent.parent / "data" / "bq" / "top_accounts_result.csv"
@@ -36,6 +37,10 @@ _APP_OF = {via: app for app, vias in APPS.items() for via in vias}
 # (predictions.csv) was frozen with that group as it is, so the group stays and Ember's share is published next to it.
 EMBER = ("relayer:mytestapi.embr.playember_reserve.near", "embr.playember_reserve.near")
 EXCHANGE = "Ref Finance / Rhea (DEX, lending)"
+# Meteor's reward game, Harvest Moon. A year ago its players called the game contract themselves and paid the fee; now
+# Meteor's relayer submits those calls. The players moved from "self-paying" to "sponsored" without leaving, so the fall
+# of regular self-paying accounts cannot be read as users leaving (see segments.add_reward_game_bound).
+GAME_CONTRACT, GAME_RELAYER = "aa-harvest-moon.near", "relayer:meteor-relayer.near"
 
 
 def load(path: Path | None = None) -> dict | None:
@@ -88,16 +93,24 @@ def summarize(data: dict) -> dict:
     }
     for v in out["apps"].values():
         v["pct_change"] = (v["latest"] / v["prior"] - 1) * 100 if v["prior"] else float("nan")
-    out["reward_apps_share"] = {k: sum(out["apps"][a][f"{k}_share"] for a in REWARD_APPS) for k in ("latest", "prior")}
-    out["finance_share"] = {k: sum(out["apps"][a][f"{k}_share"] for a in FINANCE_APPS) for k in ("latest", "prior")}
-    for name, group in (("finance_txs", FINANCE_APPS), ("reward_apps_txs", REWARD_APPS)):
-        now, then = (sum(out["apps"][a][k] for a in group) for k in ("latest", "prior"))
-        out[name] = {"latest": now, "prior": then, "pct_change": (now / then - 1) * 100 if then else float("nan")}
-    # users behind each relayer / contract: distinct actors of selected counterparties
-    def actors_of(month: str, via: str) -> int:
+    both = (("latest", latest), ("prior", prior))
+    groups = {name: {k: sum(out["apps"][a][k] for a in group) for k, _ in both}
+              for name, group in (("finance_txs", FINANCE_APPS), ("reward_apps_txs", REWARD_APPS))}
+    # shares are taken from the integer counts, so they do not depend on how a Python version adds floats
+    out["reward_apps_share"] = {k: groups["reward_apps_txs"][k] / data[m]["conc"]["txs"] for k, m in both}
+    out["finance_share"] = {k: groups["finance_txs"][k] / data[m]["conc"]["txs"] for k, m in both}
+    for name, t in groups.items():
+        out[name] = {**t, "pct_change": (t["latest"] / t["prior"] - 1) * 100 if t["prior"] else float("nan")}
+
+    # one row of the "via" table: the transactions a contract or relayer received and the distinct accounts behind them
+    def via_row(month: str, via: str) -> dict | None:
         v = data[month]["via"]
-        hit = v.loc[v["via"] == via, "actors"]
-        return int(hit.iloc[0]) if len(hit) else 0
+        hit = v[v["via"] == via]
+        return {"transactions": int(hit["txs"].iloc[0]), "accounts": int(hit["actors"].iloc[0])} if len(hit) else None
+
+    def actors_of(month: str, via: str) -> int:
+        row = via_row(month, via)
+        return row["accounts"] if row else 0
 
     out["sweat_users"] = {k: actors_of(m, "relayer:sweat-relayer.near") for k, m in (("latest", latest), ("prior", prior))}
     out["intents"] = {}
@@ -119,6 +132,16 @@ def summarize(data: dict) -> dict:
     share = {k: ember[k] / data[m]["conc"]["txs"] for k, m in (("latest", latest), ("prior", prior))}
     out["ember"] = {**ember, "latest_share": float(share["latest"]), "prior_share": float(share["prior"]),
                     "reward_apps_share_with_ember": {k: float(out["reward_apps_share"][k] + share[k]) for k in ("latest", "prior")}}
+    # Meteor's reward game: called directly by its players (who then pay the fee) or through Meteor's relayer
+    game = {"contract": GAME_CONTRACT, "relayer": GAME_RELAYER.split(":", 1)[1],
+            "direct": {k: via_row(m, GAME_CONTRACT) for k, m in both},
+            "relayed": {k: via_row(m, GAME_RELAYER) for k, m in both},
+            # a contract that is not in the table received fewer transactions than the smallest one that is
+            "smallest_of_the_40_latest": int(data[latest]["via"]["txs"].min())}
+    for row in game["direct"].values():
+        if row:
+            row["transactions_per_account"] = row["transactions"] / row["accounts"]
+    out["reward_game"] = game
     return out
 
 
@@ -134,3 +157,79 @@ def add_namespace_view(cl: dict, kaiching_namespace_txs: float) -> None:
     cl["kaiching_txs_outside_its_contracts"] = extra
     cl["kaiching_share_by_namespace"] = float(kaiching_namespace_txs) / total
     cl["reward_apps_share_incl_kaiching_namespace"] = cl["reward_apps_share"]["latest"] + extra / total
+
+
+def add_three_parts(cl: dict, kaiching_namespace_txs_prior: float) -> None:
+    """Every transaction in one of three parts: the reward side, the finance group, and the rest of the chain.
+
+    The two bottom rows of the app table ("Other contracts in the top 40", "Everything outside the top 40") are what is
+    left after the named apps, and two reward-side flows sit inside them: the game Ember, which sponsored its users as
+    the reward apps do, and transactions that KaiChing's own accounts sent to contracts outside the table (a year ago
+    those of its account `users.kaiching`, in October 2026 the one-off sweep). Read without them, the two rows show
+    what the rest of the chain did. REWARD_APPS and FINANCE_APPS are not changed by this: the split
+    is published next to them. Call after add_namespace_view.
+    """
+    keys = ("latest", "prior")
+    extra = {"latest": float(cl["kaiching_txs_outside_its_contracts"]),
+             "prior": max(0.0, float(kaiching_namespace_txs_prior) - cl["apps"]["KaiChing (reward app)"]["prior"])}
+
+    def change(v: dict) -> dict:
+        return {"latest": float(v["latest"]), "prior": float(v["prior"]),
+                "pct_change": (v["latest"] / v["prior"] - 1) * 100 if v["prior"] else float("nan")}
+
+    other = {k: cl["apps"][OTHER_TOP][k] - cl["ember"][k] for k in keys}
+    tail = {k: cl["apps"][TAIL][k] - extra[k] for k in keys}
+    cl["kaiching_txs_outside_its_contracts_prior"] = extra["prior"]
+    cl["reward_apps_share_incl_kaiching_namespace_prior"] = (
+        cl["reward_apps_share"]["prior"] + extra["prior"] / cl["months"][cl["prior_month"]]["transactions"])
+    cl["three_parts"] = {
+        "reward_side": change({k: cl["reward_apps_txs"][k] + cl["ember"][k] + extra[k] for k in keys}),
+        "finance": change(cl["finance_txs"]),
+        "rest": change({k: other[k] + tail[k] for k in keys}),
+        "other_top_40_without_ember": change(other),
+        "outside_top_40_without_kaiching": change(tail),
+    }
+
+
+def sample_view(sample: pd.DataFrame, windows: dict, daily: pd.DataFrame, seed: int = 0, n_boot: int = 4000) -> dict | None:
+    """The reward and finance groups measured a second way, on the keyless block sample (thesis/census.py).
+
+    The app table is two calendar months. The sample covers two 90-day windows, so it shows whether the same change
+    appears over a longer period. A sampled transaction is filed as a row of the table is: by the contract it calls,
+    or by its relayer when it was relayed. The group's share of the sample times the aggregator's transaction count
+    for the window estimates its transactions; the 95% interval resamples whole blocks (transactions in a block are
+    not independent).
+    """
+    labels = ("prior", "recent")
+    if not set(labels) <= set(windows) or not set(labels) <= set(sample["window"]):
+        return None
+    via = pd.Series(np.where(sample["relayed"], "relayer:" + sample["signer"], sample["target"]), index=sample.index)
+    out: dict = {"windows": {}, "groups": {}}
+    per_day, draws = {}, {}
+    for i, label in enumerate(labels):
+        w = sample[sample["window"] == label]
+        span = daily.loc[windows[label]["start"]:windows[label]["end"], "txns"].dropna()
+        if span.empty:
+            return None
+        per_day[label] = float(span.sum() / len(span))
+        out["windows"][label] = {"window": [windows[label]["start"], windows[label]["end"]], "sample_transactions": int(len(w)),
+                                 "all_transactions": int(span.sum())}
+        blocks = w.groupby("height").size()
+        pick = np.random.default_rng([seed, i]).integers(0, len(blocks), size=(n_boot, len(blocks)))
+        draws[label] = (w, blocks, pick)
+    for name, group in (("finance", FINANCE_APPS), ("reward_apps", REWARD_APPS)):
+        vias = {v for app in group for v in APPS[app]}
+        row, boot = {}, {}
+        for label in labels:
+            w, blocks, pick = draws[label]
+            hit = via[w.index].isin(vias)
+            in_block = hit.groupby(w["height"]).sum().reindex(blocks.index).to_numpy(float)
+            boot[label] = in_block[pick].sum(axis=1) / blocks.to_numpy(float)[pick].sum(axis=1) * per_day[label] * 30
+            lo, hi = np.percentile(boot[label], [2.5, 97.5]) / (per_day[label] * 30)
+            row[label] = {"share": float(hit.mean()), "share_ci95": [round(float(lo), 4), round(float(hi), 4)],
+                          "transactions_per_30_days": float(hit.mean() * per_day[label] * 30)}
+        then = row["prior"]["transactions_per_30_days"]
+        lo, hi = np.nanpercentile(boot["recent"] / np.where(boot["prior"] > 0, boot["prior"], np.nan), [2.5, 97.5])
+        out["groups"][name] = {**row, "pct_change": (row["recent"]["transactions_per_30_days"] / then - 1) * 100 if then else float("nan"),
+                               "pct_change_ci95": [float((lo - 1) * 100), float((hi - 1) * 100)]}
+    return out

@@ -41,6 +41,26 @@ def test_summary_and_chart(tmp_path):
     assert (tmp_path / "segments.png").stat().st_size > 5_000 and "nan" not in c.sentence.lower()
 
 
+def test_reward_game_bound_gives_both_ends_of_the_range(tmp_path):
+    """Players of a game who paid their own fees a year ago and are relayed now: at most that many of last year's regular accounts."""
+    df = table()
+    sg = segments.summarize(df)                    # regular accounts: 102 a year ago, 54 now
+    segments.add_reward_game_bound(sg, {"direct": {"latest": None, "prior": {"transactions": 900, "accounts": 30}}})
+    b = sg["regular_accounts_reward_game_bound"]
+    assert b["game_players_prior"] == 30 and b["fall"] == 48 and abs(b["share_of_prior_regular_at_most"] - 30 / 102) < 1e-12
+    assert abs(b["pct_change_as_counted"] - (54 / 102 - 1) * 100) < 1e-9
+    assert abs(b["pct_change_if_all_of_them_were_regular"] - (54 / 72 - 1) * 100) < 1e-9
+    c = charts._segments_chart(df, sg, tmp_path)   # the caption says the fall is not a clean count
+    assert "up to 30 of last year's accounts" in c.sentence and "nan" not in c.sentence.lower()
+    # more players than regular accounts: the bound is the whole class
+    segments.add_reward_game_bound(sg, {"direct": {"prior": {"transactions": 9000, "accounts": 500}}})
+    assert sg["regular_accounts_reward_game_bound"]["share_of_prior_regular_at_most"] == 1
+    # nobody called the game directly a year ago: nothing to bound
+    plain = segments.summarize(df)
+    segments.add_reward_game_bound(plain, {"direct": {"latest": None, "prior": None}})
+    assert "regular_accounts_reward_game_bound" not in plain
+
+
 def test_unpack_reads_what_the_query_returns(tmp_path):
     """sql/payer_frequency.sql returns one row per month: m, and cells of namespace|payer|frequency|accounts|txs|self-paid."""
     result = tmp_path / "result.csv"

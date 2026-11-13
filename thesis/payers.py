@@ -88,4 +88,6 @@ def summarize(df: pd.DataFrame) -> dict:
     out["reward_apps_share_of_lost_accounts"] = float((lost_all - lost_independent - lost_other_sponsor) / lost_all)
     out["independent_accounts_by_month"] = {k: float(v) for k, v in g["independent_accounts"].items()}
     out["independent_returning_accounts_by_month"] = {k: float(v) for k, v in g["independent_returning_accounts"].items()}
+    # accounts each app fully sponsors, month by month: a step here is an app changing who pays, not users arriving
+    out["sponsored_by_month"] = {s: {k: float(v) for k, v in g[f"sponsored_by_{s}"].items()} for s in SPONSORS}
     return out

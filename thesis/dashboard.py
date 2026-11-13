@@ -104,7 +104,8 @@ Code and data: <a href="{REPO_URL}">{REPO_URL.split('//')[1]}</a>.</p>
 {pred_card}
 <section class="card"><h2>Sources</h2><ul>{src}
 <li><code>bigquery</code>: NEAR public dataset <code>bigquery-public-data.crypto_near_mainnet_us</code>, queries: {", ".join(_repo_link(f"sql/{q.name}") for q in sorted((ROOT / "sql").glob("*.sql")))}; results in <code>data/bq/</code></li></ul>
-<p class="method">Raw API responses are committed in <code>data/raw/</code>; every number on this page is in {_repo_link('docs/summary.json')}.</p></section>
+<p class="method">Raw API responses are committed in <code>data/raw/</code>; every number on this page is in
+<a href="summary.json"><code>summary.json</code></a>, written by the same build as the page.</p></section>
 </body></html>"""
     out.mkdir(parents=True, exist_ok=True)
     p = out / "index.html"

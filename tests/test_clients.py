@@ -1,4 +1,8 @@
 """Top accounts and apps: parsing of the BigQuery result and the grouping, on a tiny hand-made result."""
+import math
+
+import pandas as pd
+
 from thesis import charts, clients
 
 
@@ -32,6 +36,74 @@ def test_ember_and_the_exchange_contracts_are_published_separately(tmp_path):
     ex = {c["contract"]: c for c in s["exchange_contracts_latest"]}
     assert ex["v2.ref-finance.near"]["accounts"] == 4 and ex["dclv2.ref-labs.near"]["accounts"] == 7
     assert abs(ex["v2.ref-finance.near"]["share_of_app_txs"] - 200 / 210) < 1e-9
+
+
+def test_group_shares_come_from_the_integer_counts(tmp_path):
+    """A share is one division of two integers, so every Python version writes the same digits."""
+    s = clients.summarize(clients.load(write(tmp_path)))
+    assert s["reward_apps_share"] == {"latest": 200 / 800, "prior": 500 / 1000}
+    assert s["finance_share"] == {"latest": 500 / 800, "prior": 400 / 1000}
+    assert s["finance_txs"] == {"latest": 500, "prior": 400, "pct_change": 25.0}
+
+
+def test_reward_game_is_read_in_both_months(tmp_path):
+    """A year ago the players call the game themselves; now the same calls come through the wallet's relayer."""
+    p = write(tmp_path)
+    text = p.read_text().replace("intents.near|100|9\n", "intents.near|100|9;aa-harvest-moon.near|70|20;relayer:meteor-relayer.near|30|5\n")
+    p.write_text(text.replace("mystery.near|40|1", "mystery.near|40|1;relayer:meteor-relayer.near|50|25"))
+    game = clients.summarize(clients.load(p))["reward_game"]
+    assert game["direct"] == {"latest": None, "prior": {"transactions": 70, "accounts": 20, "transactions_per_account": 3.5}}
+    assert game["relayed"] == {"latest": {"transactions": 50, "accounts": 25}, "prior": {"transactions": 30, "accounts": 5}}
+    assert game["smallest_of_the_40_latest"] == 40          # a contract outside the table received fewer than this
+
+
+def test_three_parts_cover_every_transaction(tmp_path):
+    """Ember and the transactions of KaiChing's own accounts leave the two bottom rows; what is left is the rest of the chain."""
+    p = write(tmp_path)
+    p.write_text(p.read_text().replace("intents.near|100|9\n", "intents.near|100|9;relayer:mytestapi.embr.playember_reserve.near|40|30\n"))
+    s = clients.summarize(clients.load(p))
+    clients.add_namespace_view(s, 15)     # KaiChing accounts sent 15 transactions this month, none to the app's own contracts
+    clients.add_three_parts(s, 530)       # and 530 a year ago, 500 of them through its relayer
+    t = s["three_parts"]
+    for k, total in (("latest", 800), ("prior", 1000)):
+        assert t["reward_side"][k] + t["finance"][k] + t["rest"][k] == total
+    assert (t["reward_side"]["latest"], t["reward_side"]["prior"]) == (200 + 0 + 15, 500 + 40 + 30)
+    assert t["rest"] == {"latest": 85.0, "prior": 30.0, "pct_change": (85 / 30 - 1) * 100}
+    assert t["outside_top_40_without_kaiching"]["latest"] == 45 and t["outside_top_40_without_kaiching"]["prior"] == 30
+    assert t["other_top_40_without_ember"]["prior"] == 0 and math.isnan(t["other_top_40_without_ember"]["pct_change"])
+    assert s["kaiching_txs_outside_its_contracts_prior"] == 30
+    assert abs(s["reward_apps_share_incl_kaiching_namespace_prior"] - 0.53) < 1e-12
+    assert s["reward_apps_share"]["prior"] == 0.5 and s["apps"][clients.OTHER_TOP]["prior"] == 40    # the frozen groups are untouched
+
+
+def block_sample():
+    """Two windows of 40 identical blocks: 1 finance transaction in 10 a year ago, 5 in 10 now."""
+    rows = []
+    for label, finance in (("prior", 1), ("recent", 5)):
+        for block in range(40):
+            for i in range(10):
+                if i < finance:
+                    rows.append((label, block, "bot.near", "bot.near", "intents.near", False))
+                elif i == 9:      # relayed to a token contract: filed under its relayer, as in the table, so not finance
+                    rows.append((label, block, "user.near", "relay.near", "wrap.near", True))
+                else:
+                    rows.append((label, block, "walker.near", "sweat-relayer.near", "token.sweat", True))
+    return pd.DataFrame(rows, columns=["window", "height", "actor", "signer", "target", "relayed"])
+
+
+def test_sample_view_files_transactions_like_the_table_and_scales_by_the_window():
+    windows = {"prior": {"start": "2025-01-01", "end": "2025-03-31"}, "recent": {"start": "2026-01-01", "end": "2026-03-31"}}
+    daily = pd.DataFrame({"txns": 1000.0}, index=pd.date_range("2025-01-01", "2026-03-31", freq="D"))
+    daily.loc["2026-01-01":, "txns"] = 400.0
+    v = clients.sample_view(block_sample(), windows, daily, seed=1, n_boot=200)
+    assert v["windows"]["prior"] == {"window": ["2025-01-01", "2025-03-31"], "sample_transactions": 400, "all_transactions": 90_000}
+    fin, reward = v["groups"]["finance"], v["groups"]["reward_apps"]
+    assert abs(fin["prior"]["share"] - 0.1) < 1e-12 and abs(fin["recent"]["share"] - 0.5) < 1e-12
+    assert abs(fin["prior"]["transactions_per_30_days"] - 3_000) < 1e-6 and abs(fin["recent"]["transactions_per_30_days"] - 6_000) < 1e-6
+    assert abs(fin["pct_change"] - 100) < 1e-9 and abs(reward["pct_change"] + 80) < 1e-9
+    # every block is the same, so resampling blocks cannot move the estimate
+    assert all(abs(x - 100) < 1e-6 for x in fin["pct_change_ci95"]) and fin["recent"]["share_ci95"] == [0.5, 0.5]
+    assert clients.sample_view(block_sample().query("window == 'recent'"), windows, daily) is None    # one window is not a comparison
 
 
 def test_summary_and_chart(tmp_path):

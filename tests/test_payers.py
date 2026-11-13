@@ -1,6 +1,4 @@
 """Who pays: the grouping on a tiny hand-made result, and agreement of the committed result with the other counts."""
-import pandas as pd
-
 from thesis import clients, payers, population
 
 

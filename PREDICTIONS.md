@@ -9,7 +9,8 @@ No threshold is a number we picked. Each one is a reference level taken from the
 each prediction answers a question someone running or funding the product would ask.
 
 1. **New level or spike?** In September 2026 three things stepped up together: Intents volume, the buybacks it funds,
-   and self-paid transactions outside reward apps. A year earlier Intents volume had a one-month spike (November 2025)
+   and self-paid transactions outside reward apps. The NEAR price rose in the same month, from $1.92 to $4.89, so
+   the step may be the rally itself. A year earlier Intents volume had a one-month spike (November 2025)
    and fell straight back. So the test is the same for all three: does the metric stay **above the highest month of
    its range before the step** (December 2025 to August 2026)? Above it, the step is a new level; back inside the old
    range, it was a spike. (A1, A2, A3, B2)
@@ -21,8 +22,9 @@ each prediction answers a question someone running or funding the product would 
    hundreds** of accounts sending half of the transactions (B3), and the point where reward apps and financial use are
    **equal** (B4).
 
-`tests/test_predictions.py` recomputes the reference levels of rules 1 and 2 from the committed data and fails if a
-threshold in the file differs from them.
+The build recomputes the reference levels of rules 1 and 2 from the data and publishes them in `docs/summary.json`
+under `predictions.baselines`; `tests/test_predictions.py` fails if a threshold in the file differs from the levels
+in the frozen copy of that summary (`data/snapshot/thesis_summary.json`).
 
 ## The predictions
 
@@ -48,6 +50,13 @@ Without them the top of the range is 8.65M (June 2026). The file is frozen, so t
 is the harder of the two for the prediction to stay above; `docs/summary.json` publishes both levels under
 `predictions.baselines`.
 
+A second note, on B1. The accounts it counts turned out to include players of a reward game who paid their own fees:
+up to 15,162 of the 27,078 a year ago, moved to a relayer since (see "Who pays, and how often" in THESIS.md). That
+changes how the year before is read, not the threshold. The move was over before the low: Meteor fully sponsored
+14,667 accounts in August 2026 and 15,409 in October, against 7,748 and 8,677 a year earlier, and in the keyless
+sample, which starts on 14 August 2026, all 41 calls to the game come through the relayer. The August low and the
+January value are both counted after it.
+
 ## Scoring
 
 "automatic" predictions are scored by `python -m thesis build` from the daily NearBlocks and DefiLlama series as soon
@@ -55,3 +64,5 @@ as the data reaches the check date and covers every day of the window the predic
 status is on the dashboard and in `docs/summary.json` under `predictions`.
 "bigquery" predictions need `sql/account_age.sql`, `sql/payer_frequency.sql` and `sql/top_accounts.sql` to be run for the named month (the free
 BigQuery tier allows it once a month) and are shown as open until then.
+GitHub switches a scheduled workflow off after 60 days without activity in a public repository. If that happens
+before a check date, the prediction is scored when the workflow is switched on again or the build is run by hand.

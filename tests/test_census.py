@@ -26,6 +26,14 @@ def test_parse_block_reads_the_user_behind_a_relayer():
     assert census.parse_block(None) == []
 
 
+def test_calls_to_says_how_many_calls_a_relayer_submitted():
+    rows = [("prior", "game.near", False), ("prior", "game.near", False), ("prior", "game.near", True), ("prior", "dex.near", False),
+            ("recent", "game.near", True), ("recent", "game.near", True)]
+    sample = pd.DataFrame(rows, columns=["window", "target", "relayed"])
+    assert census.calls_to(sample, "game.near") == {"prior": {"calls": 3, "relayed": 1}, "recent": {"calls": 2, "relayed": 2}}
+    assert census.calls_to(sample, "dex.near")["recent"] == {"calls": 0, "relayed": 0}
+
+
 def synthetic(old_share_recent=0.8, old_share_prior=0.2, seed=1):
     rng = np.random.default_rng(seed)
     rows, exist = [], []

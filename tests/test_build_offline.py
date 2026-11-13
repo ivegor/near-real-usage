@@ -60,3 +60,5 @@ def test_dashboard_card_shows_one_sentence_and_prints_the_query(tmp_path):
     assert "FROM `bigquery-public-data.crypto_near_mainnet_us.transactions`" in page      # the SQL itself is on the page
     assert "GET https://api.llama.fi/summary/dexs/near-intents" in page                   # and the API request
     assert '<p class="lead">One.</p>' in page and "<summary>More numbers</summary><p>Two.</p>" in page
+    # the page links the summary built with it, not the snapshot committed in the repository
+    assert '<a href="summary.json">' in page and "blob/main/docs/summary.json" not in page

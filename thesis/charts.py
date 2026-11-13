@@ -13,7 +13,7 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 from matplotlib.ticker import FuncFormatter, LogLocator, NullFormatter  # noqa: E402
 
-from . import clients, metrics, population, segments, value  # noqa: E402
+from . import metrics, population, segments, value  # noqa: E402
 
 INK, ACCENT, MUTED, GRID = "#1f2328", "#00a27a", "#8c959f", "#e6e8eb"
 
@@ -70,8 +70,6 @@ LEAD_LABELS = {"returning_accounts": "active - new (proxy)", "active_accounts": 
                "txns": "transactions"}
 FAMILY_STYLE = {"kaiching": ("KaiChing reward app", MUTED, "--"), "tg": ("HOT wallet (.tg)", "#c9a227", "--"),
                 "core": ("everyone else (core)", ACCENT, "-"), "near": ("named .near accounts", INK, "-")}
-POP_AGE = {"ge2y": ("older than 2 years", ACCENT), "lt2y": ("1 to 2 years", "#9bd8c6"), "lt1y": ("30 days to 1 year", "#d9dde1"),
-           "lt30": ("under 30 days", "#b9c0c7"), "m0": ("first seen that month", MUTED)}
 
 
 def _population_chart(pop: pd.DataFrame, summary: dict, out: Path) -> Chart:
@@ -125,6 +123,15 @@ def _population_chart(pop: pd.DataFrame, summary: dict, out: Path) -> Chart:
         return f"{v / 1e6:.2f}M" if v >= 1e6 else f"{v / 1e3:.0f}K"
 
     c3, one, ex = c["three_month_mean"], ps["kaiching_one_off"], seg["all_ex_kaiching"]
+    check, checked = ps.get("totals_check"), ""
+    if check:  # the same transactions counted by a second, independent source
+        short = [abs(v["share"]) * 100 for v in check["differ"].values()]
+        checked = (f" Checked against NearBlocks month by month: in {check['agree']['months']} of {check['months']} months the two "
+                   f"transaction counts differ by at most {check['agree']['largest_difference_txs']:,} transactions")
+        if short:
+            checked += (f"; in the other {len(short)} ({', '.join(check['differ'])}) BigQuery is lower by "
+                        f"{min(short):.1f}% to {max(short):.1f}%")
+        checked += "."
     return Chart(
         "population", "Every active account, counted (full chain, not a sample)",
         f"In {lm}, {M(al['accounts']['latest'])} accounts acted on NEAR against {M(al['accounts']['prior'])} in {pm} "
@@ -146,7 +153,7 @@ def _population_chart(pop: pd.DataFrame, summary: dict, out: Path) -> Chart:
         "data/bq/account_age.csv). The actor of a relayed transaction is the user, not the relayer. Core = accounts outside "
         f"the kaiching, .tg and .sweat namespaces. The scan ends on {ps['query_end']}, so the last month shown is {lm}. "
         "In February and March 2026 millions of existing implicit accounts sent one transaction each; those two months "
-        "are off the scale in the middle panel.",
+        "are off the scale in the middle panel." + checked,
     )
 
 
@@ -212,13 +219,18 @@ def _segments_chart(seg: pd.DataFrame, sg: dict, out: Path) -> Chart:
     def both(k: str) -> str:
         return f"{_pct(m[k]['pct_change'])} ({_pct(m[k]['three_month_mean']['pct_change'])} on three-month means)"
 
+    game, game_note = sg.get("regular_accounts_reward_game_bound"), ""
+    if game:  # part of that fall is one game changing who pays, not accounts leaving
+        game_note = (f" That fall is not a clean count of users leaving: up to {game['game_players_prior']:,} of last year's accounts "
+                     f"were players of the Meteor wallet's reward game, who paid their own fees then and go through its relayer "
+                     f"now; with all of them taken out the change would be {_pct(game['pct_change_if_all_of_them_were_regular'])}.")
     return Chart(
         "segments", "Who pays, and how often",
         f"Accounts whose fees an app paid: {m['sponsored_accounts']['prior'] / 1e6:.1f}M in {sg['prior_month']}, "
         f"{m['sponsored_accounts']['latest'] / 1e6:.2f}M in {sg['latest_month']}. Accounts that pay for themselves and are not in a "
         f"reward app's namespace, acting 10 to 999 times a month: {m['regular_accounts']['prior']:,.0f} to "
         f"{m['regular_accounts']['latest']:,.0f}, {both('regular_accounts')}; their low was {sg['regular_accounts_low']['value']:,.0f} in "
-        f"{sg['regular_accounts_low']['month']}. Accounts sending 1,000 or more a month: {m['heavy_accounts']['prior']:,.0f} to "
+        f"{sg['regular_accounts_low']['month']}.{game_note} Accounts sending 1,000 or more a month: {m['heavy_accounts']['prior']:,.0f} to "
         f"{m['heavy_accounts']['latest']:,.0f}, and they send {sg['heavy_share_of_independent_self_paid_txs']['latest'] * 100:.0f}% of "
         f"those self-paid transactions, which changed {both('independent_self_paid_txs')}.",
         "sql/payer_frequency.sql on the NEAR BigQuery public dataset (91.28 GB), result in data/bq/payer_frequency.csv. "
@@ -256,6 +268,16 @@ def _clients_chart(cl: dict, out: Path) -> Chart:
     _save(fig, out, "clients")
     a, L, P, i = cl["apps"], cl["months"][lm], cl["months"][pm], cl["intents"]
     ref, sw = a["Ref Finance / Rhea (DEX, lending)"], a["Sweat (move-to-earn app)"]
+    parts, view, more = cl.get("three_parts"), (cl.get("sample_view") or {}).get("groups", {}).get("finance"), ""
+    if parts:  # the two bottom bars hold Ember and KaiChing's own accounts; without them the rest of the chain did not shrink
+        more += (f" Counted in three parts, with the game Ember and KaiChing's own accounts on the reward side: the reward side changed "
+                 f"{_pct(parts['reward_side']['pct_change'])}, the finance group {_pct(parts['finance']['pct_change'])}, and everything "
+                 f"else is {parts['rest']['latest'] / 1e6:.2f}M transactions against {parts['rest']['prior'] / 1e6:.2f}M "
+                 f"({_pct(parts['rest']['pct_change'])}).")
+    if view:  # two calendar months against two 90-day windows of the keyless sample
+        lo, hi = view["pct_change_ci95"]
+        more += (f" On the keyless 90-day block sample the finance group changed {_pct(view['pct_change'])} "
+                 f"(95% interval {_pct(lo)} to {_pct(hi)}).")
     return Chart(
         "clients", "Who sends the transactions",
         f"In {lm}, {L['accounts_for_half_of_txs']} accounts sent half of NEAR's {L['transactions'] / 1e6:.1f}M transactions "
@@ -265,7 +287,7 @@ def _clients_chart(cl: dict, out: Path) -> Chart:
         f"transfers and bridges are {cl['finance_share']['latest'] * 100:.0f}% (was {cl['finance_share']['prior'] * 100:.0f}%); "
         f"transactions on the Ref/Rhea exchange changed {_pct(ref['pct_change'])}. intents.near received "
         f"{i['latest']['transactions'] / 1e6:.2f}M transactions ({i['prior']['transactions'] / 1e6:.2f}M a year earlier), "
-        f"{i['latest']['top2_share'] * 100:.0f}% of them signed by two accounts.",
+        f"{i['latest']['top2_share'] * 100:.0f}% of them signed by two accounts." + more,
         "sql/top_accounts.sql on the NEAR BigQuery public dataset (13.53 GB), result in data/bq/top_accounts_result.csv. "
         "A direct transaction is assigned to the contract it calls, a relayed one to its relayer; contracts and relayers are "
         "grouped into apps by the table in thesis/clients.py. Intents users sign off-chain, so its on-chain signers are "
@@ -288,9 +310,10 @@ def _takeaway(slug: str, s: dict) -> str:
         if slug == "population":
             return f"NEAR lost {abs(s['population']['segments']['all']['accounts']['pct_change']):.0f}% of its active accounts in a year."
         if slug == "segments":
-            m = s["segments"]["metrics"]
-            return (f"Almost all of the lost accounts were users an app was paying for; outside the reward apps, regular "
-                    f"accounts that pay their own fees fell {abs(m['regular_accounts']['pct_change']):.0f}%.")
+            sg = s["segments"]
+            return (f"Almost all of the lost accounts were users an app was paying for; outside the reward apps, "
+                    f"{sg['metrics']['heavy_accounts']['latest']:,.0f} heavy accounts send "
+                    f"{sg['heavy_share_of_independent_self_paid_txs']['latest'] * 100:.0f}% of the transactions people pay for themselves.")
         if slug == "clients":
             c = s["clients"]
             return f"{c['months'][c['latest_month']]['accounts_for_half_of_txs']} accounts send half of all NEAR transactions."
@@ -498,12 +521,17 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
         yi = yoy.get("intents_volume_usd", {})
         mi = summary.get("month_yoy", {}).get("intents_volume_usd", {})
         qi = summary.get("qoq_90d", {}).get("intents_volume_usd", {})
+        st, rally = (summary.get("predictions") or {}).get("step") or {}, ""
+        if st.get("intents_volume_usd_a_day"):  # the step up and the price rally are the same month: say so next to the chart
+            v, pr = st["intents_volume_usd_a_day"], st["price_usd"]
+            rally = (f" The step up in {st['month']} (${v['before'] / 1e6:,.1f}M to ${v['month'] / 1e6:,.1f}M a day) came in the "
+                     f"month the NEAR price went from ${pr['first_day']:.2f} to ${pr['last_day']:.2f}.")
         charts.append(Chart(
             "intents", "NEAR Intents volume",
             f"In {mi.get('month')} Intents volume averaged ${mi.get('recent', float('nan')) / 1e6:,.1f}M a day against "
             f"${mi.get('prior', float('nan')) / 1e6:,.1f}M in the same month a year earlier ({_pct(mi.get('pct_change'))}); "
             f"the last 90 days averaged ${yi.get('recent', float('nan')) / 1e6:,.1f}M a day, {_pct(qi.get('pct_change'))} on the "
-            f"90 days before and {_pct(yi.get('pct_change'))} on the same 90 days a year earlier.",
+            f"90 days before and {_pct(yi.get('pct_change'))} on the same 90 days a year earlier." + rally,
             "DefiLlama dexs/near-intents totalDataChart, 7-day rolling mean. The 90-day year-on-year figure shrinks every "
             "day as its base moves through the ramp-up of autumn 2025; the calendar-month comparison does not.",
         ))
