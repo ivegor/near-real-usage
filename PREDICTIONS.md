@@ -3,26 +3,46 @@
 Written on 2026-11-13, before any of the check dates. Each line is what THESIS.md expects if it is right; a miss
 counts against it. The machine-readable list is [`predictions.csv`](predictions.csv).
 
-SHA-256 of `predictions.csv`: `5fea0635893e0d78d1689e7b42b0f04ea1884c0dd8bb21bead5e281a33a3416b`
+## How the thresholds were chosen
+
+No threshold is a number we picked. Each one is a reference level taken from the data by one of three rules, and
+each prediction answers a question someone running or funding the product would ask.
+
+1. **New level or spike?** In September 2026 three things stepped up together: Intents volume, the buybacks it funds,
+   and self-paid transactions outside reward apps. A year earlier Intents volume had a one-month spike (November 2025)
+   and fell straight back. So the test is the same for all three: does the metric stay **above the highest month of
+   its range before the step** (December 2025 to August 2026)? Above it, the step is a new level; back inside the old
+   range, it was a spike. (A1, A2, A3, B2)
+2. **Has the decline stopped?** For the account base outside reward apps the reference is simply **its latest value**:
+   below it, there is no floor yet. (B1)
+3. **Which side of a natural line?** Where a product line exists, it is the threshold: buybacks offsetting **half** of
+   dilution on the way to break-even (A4), **no** usable timing signal for the price (A5), **dozens rather than
+   hundreds** of accounts sending half of the transactions (B3), and the point where reward apps and financial use are
+   **equal** (B4).
+
+`tests/test_predictions.py` recomputes the reference levels of rules 1 and 2 from the committed data and fails if a
+threshold in the file differs from them.
+
+## The predictions
+
+SHA-256 of `predictions.csv`: `592db44ad9f2012fd17641339c223a40464608629ed6b093d39a48d255d4ca49`
 (a test fails if the file no longer matches; the commit that introduced it is tagged `predictions-2026-11-13`).
 
-| Id | Check on | Prediction | Scoring |
-|---|---|---|---|
-| A1 | 2026-11-17 | NEAR Intents volume averages at least $100M a day over the 7 days ending 2026-11-17 | automatic |
-| A2 | 2026-11-30 | Buybacks funded by Intents revenue reach at least $1.2M in November 2026 | automatic |
-| A3 | 2027-02-11 | Buybacks still cover less than 30% of net new NEAR supply over the 90 days ending 2027-02-11 | automatic |
-| A4 | 2027-02-11 | No more than 8 of the 85 weekly lead-lag tests fall outside the noise band: usage still does not lead price | automatic |
-| B1 | 2027-02-01 | Accounts outside the reward apps in January 2027 are below the October 2026 count of 621166 | bigquery |
-| B2 | 2027-02-01 | Self-paid transactions outside the reward apps average at least 10M a month over November 2026 to January 2027 | bigquery |
-| B3 | 2027-02-01 | In January 2027 at most 50 accounts still send half of all transactions | bigquery |
-| B4 | 2027-02-01 | In January 2027 reward and wallet apps still send at least 35% of all transactions | bigquery |
+| Id | Question | Prediction | Threshold | Where the threshold comes from | Check on | Scoring |
+|---|---|---|---|---|---|---|
+| A1 | Is the autumn 2026 level of cross-chain demand holding? | NEAR Intents volume over the 7 days ending 2026-11-17 stays above the top of its range before the September step | > $89.6M a day | highest monthly mean of Dec 2025 to Aug 2026 (August 2026) | 2026-11-17 | automatic |
+| A2 | Was the September step in cross-chain demand a new level or a spike? | NEAR Intents volume in December 2026 stays above the top of its range before the September step; in December 2025 it fell back after a one-month spike | > $89.6M a day | highest monthly mean of Dec 2025 to Aug 2026 (August 2026) | 2026-12-31 | automatic |
+| A3 | Does the money reaching the token hold its new level? | Buybacks funded by Intents revenue in December 2026 stay above their highest month before the September step | > $0.72M | highest monthly buyback of Mar to Aug 2026 (August 2026) | 2026-12-31 | automatic |
+| A4 | Do buybacks offset the dilution of holders? | Over the 90 days ending 2027-02-11 buybacks still offset less than half of the net new NEAR supply | < 50% | half of net new supply; break-even is 1.0 | 2027-02-11 | automatic |
+| A5 | Can usage be used as a timing signal for the price? | No usage metric shows two neighbouring positive leads outside the noise band: usage still does not lead price | <= 0 | none today | 2027-02-11 | automatic |
+| B1 | Has the account base outside reward apps found a floor? | Accounts outside the reward apps in January 2027 are below their October 2026 count: no floor yet | < 621,166 | October 2026 | 2027-02-01 | bigquery |
+| B2 | Is self-paid activity at a new level or was it a spike? | Self-paid transactions outside the reward apps average above the top of their range before the September step over November 2026 to January 2027 | > 10.38M a month | highest month of Dec 2025 to Aug 2026 (February 2026) | 2027-02-01 | bigquery |
+| B3 | Does the chain still depend on a few dozen accounts? | In January 2027 fewer than a hundred accounts still send half of all transactions | < 100 | dozens rather than hundreds; 30 in October 2026 | 2027-02-01 | bigquery |
+| B4 | Which is the larger half of the chain: reward apps or financial use? | In January 2027 reward and wallet apps still send more transactions than the exchange, Intents, token contracts and bridges together | > 0 | the point where the two are equal; 43% vs 41% in October 2026 | 2027-02-01 | bigquery |
 
-**Scoring.** "automatic" predictions are scored by `python -m thesis build` from the daily NearBlocks and DefiLlama
-series as soon as the data reaches the check date; the status is shown on the dashboard and in `docs/summary.json`
-under `predictions`. "bigquery" predictions need `sql/account_age.sql` and `sql/top_accounts.sql` to be run for the
-named month (the free BigQuery tier allows it once a month) and are shown as open until then.
+## Scoring
 
-**How they follow from the thesis.** A1 and A2: cross-chain demand and the buybacks it funds keep their level. A3: value
-capture stays far from covering dilution. A4: usage does not lead price. B1: the account base outside reward apps has
-not found a floor. B2: self-paid activity is the part that holds. B3: the chain stays concentrated. B4: reward apps
-are still a large part of what the chain does.
+"automatic" predictions are scored by `python -m thesis build` from the daily NearBlocks and DefiLlama series as soon
+as the data reaches the check date; the status is on the dashboard and in `docs/summary.json` under `predictions`.
+"bigquery" predictions need `sql/account_age.sql` and `sql/top_accounts.sql` to be run for the named month (the free
+BigQuery tier allows it once a month) and are shown as open until then.

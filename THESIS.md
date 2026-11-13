@@ -156,17 +156,21 @@ tables above do not: a year ago 55% of sampled transactions were a single call, 
 
 ## What would change our mind
 
-Eight of these are written down as dated predictions with thresholds in [`PREDICTIONS.md`](PREDICTIONS.md); the build
-scores the ones that need only daily data as soon as it reaches their check date.
+These are written down as nine dated predictions in [`PREDICTIONS.md`](PREDICTIONS.md). Their thresholds are reference
+levels taken from the data (the top of a metric's range before the September 2026 step, its latest value, or a natural
+line such as break-even), not numbers we picked; the build scores the ones that need only daily data.
 
 * **Core accounts stop falling.** Two consecutive quarters with core accounts flat or up would mean the base has found
   a floor. Today it has not.
-* **Self-paid core transactions fall back below 10M a month** for a quarter: then September and October 2026 were a
-  spike, and nothing outside the reward apps is growing.
+* **Self-paid core transactions fall back into their old range.** Before September 2026 their highest month was
+  10.38M (February 2026). A quarter averaging below that means September and October were a spike, and nothing outside
+  the reward apps is growing.
 * **A reward app re-inflates the headline.** Active accounts jumping by millions with under 2 transactions per account
   is KaiChing again, not growth. It may already be starting: in the first 11 days of November 2026 HOT (`.tg`)
   accounts number 297,843, more than in all of October (198,246).
-* **Intents volume falls back towards 2025 levels while the price holds.** Then the price is not tracking this flow.
+* **Intents volume falls back into its old range.** From December 2025 to August 2026 no month averaged above $89.6M
+  a day; November 2025 had spiked to $122M and fell straight back. A month below $89.6M means autumn 2026 was a second
+  spike, not a new level, and the buybacks it funds fall with it.
 * **A re-run shows a consistent lead**: several adjacent positive lags outside the band for more than one metric.
 
 ## Limits

@@ -56,7 +56,8 @@ def slides(s: dict) -> list[dict]:
          "line": f"{n_out} of {17 * len(s['lead_vs_price'])} weekly lead-lag tests fall outside the noise band; about 4 are expected by chance.",
          "chart": "lead_lag", "sec": 8},
         {"head": "Every number is rebuilt by one command.",
-         "line": "python -m thesis build    |    github.com/ivegor/near-real-usage    |    8 dated predictions, scored by the build",
+         "line": f"python -m thesis build    |    github.com/ivegor/near-real-usage    |    "
+                 f"{len(s.get('predictions', {}).get('items', []))} dated predictions, scored by the build",
          "chart": None, "sec": 7},
     ]
     return out

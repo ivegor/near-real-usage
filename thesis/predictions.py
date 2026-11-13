@@ -22,12 +22,40 @@ def sha256(path: Path | None = None) -> str:
     return hashlib.sha256((path or CSV).read_bytes()).hexdigest()
 
 
+PLATEAU = ("2025-12", "2026-08")      # the nine complete months between the November 2025 spike and the September 2026 step
+BUYBACK_PLATEAU = ("2026-03", "2026-08")  # complete months of the buyback programme before the step (it began 2026-02-23)
+
+
+def adjacent_positive_leads(lead_vs_price: dict) -> int:
+    """Metrics with two neighbouring positive lags (metric moves first) outside the noise band, both with r > 0."""
+    n = 0
+    for v in lead_vs_price.values():
+        lags = sorted(o["lag_weeks"] for o in v["outside_band"] if o["lag_weeks"] > 0 and o["corr"] > 0)
+        n += any(b - a == 1 for a, b in zip(lags, lags[1:]))
+    return n
+
+
+def baselines(daily: pd.DataFrame, fees: pd.DataFrame | None, census: pd.DataFrame | None) -> dict:
+    """The reference levels the thresholds in predictions.csv are taken from. Nothing here is a chosen number."""
+    out = {"intents_volume_plateau_top_usd": float(daily["intents_volume_usd"].resample("ME").mean().loc[PLATEAU[0]:PLATEAU[1]].max())}
+    if fees is not None:
+        out["buyback_plateau_top_usd"] = float(fees["holders_revenue"].resample("ME").sum().loc[BUYBACK_PLATEAU[0]:BUYBACK_PLATEAU[1]].max())
+    if census is not None:
+        core = census[~census["family"].isin(["kaiching", "tg", "sweat"])]
+        g = core.groupby("month")[["txs", "relayed_txs", "accounts"]].sum()
+        out["core_self_paid_txs_plateau_top"] = float((g["txs"] - g["relayed_txs"]).loc[PLATEAU[0]:PLATEAU[1]].max())
+        out["core_accounts_2026_10"] = float(g["accounts"].loc["2026-10"])
+    return out
+
+
 def _measure(metric: str, on: pd.Timestamp, daily: pd.DataFrame, fees: pd.DataFrame | None) -> float | None:
     d = daily.loc[:on]
     if metric == "intents_volume_7d_mean_usd":
         return float(d["intents_volume_usd"].loc[on - pd.Timedelta(days=6):on].mean())
-    if metric == "lags_outside_band":
-        return float(sum(len(v["outside_band"]) for v in metrics.summarize(d)["lead_vs_price"].values()))
+    if metric == "intents_volume_month_mean_usd":
+        return float(d["intents_volume_usd"].loc[on.strftime("%Y-%m")].mean())
+    if metric == "metrics_with_adjacent_positive_leads":
+        return float(adjacent_positive_leads(metrics.summarize(d)["lead_vs_price"]))
     if fees is None:
         return None
     f = fees.loc[:on]

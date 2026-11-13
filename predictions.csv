@@ -1,9 +1,10 @@
-id,check_on,metric,operator,threshold,scoring,statement
-A1,2026-11-17,intents_volume_7d_mean_usd,>=,100000000,automatic,NEAR Intents volume averages at least $100M a day over the 7 days ending 2026-11-17
-A2,2026-11-30,buyback_month_usd,>=,1200000,automatic,Buybacks funded by Intents revenue reach at least $1.2M in November 2026
-A3,2027-02-11,buyback_coverage_90d,<,0.30,automatic,Buybacks still cover less than 30% of net new NEAR supply over the 90 days ending 2027-02-11
-A4,2027-02-11,lags_outside_band,<=,8,automatic,No more than 8 of the 85 weekly lead-lag tests fall outside the noise band: usage still does not lead price
-B1,2027-02-01,core_accounts_2027_01,<,621166,bigquery,Accounts outside the reward apps in January 2027 are below the October 2026 count of 621166
-B2,2027-02-01,core_self_paid_txs_mean_2026_11_to_2027_01,>=,10000000,bigquery,Self-paid transactions outside the reward apps average at least 10M a month over November 2026 to January 2027
-B3,2027-02-01,accounts_for_half_of_txs_2027_01,<=,50,bigquery,In January 2027 at most 50 accounts still send half of all transactions
-B4,2027-02-01,reward_apps_tx_share_2027_01,>=,0.35,bigquery,In January 2027 reward and wallet apps still send at least 35% of all transactions
+id,question,check_on,metric,operator,threshold,baseline,scoring,statement
+A1,Is the autumn 2026 level of cross-chain demand holding?,2026-11-17,intents_volume_7d_mean_usd,>,89591201.70967741,highest monthly mean of Dec 2025 to Aug 2026 (August 2026),automatic,NEAR Intents volume over the 7 days ending 2026-11-17 stays above the top of its range before the September step
+A2,Was the September step in cross-chain demand a new level or a spike?,2026-12-31,intents_volume_month_mean_usd,>,89591201.70967741,highest monthly mean of Dec 2025 to Aug 2026 (August 2026),automatic,NEAR Intents volume in December 2026 stays above the top of its range before the September step; in December 2025 it fell back after a one-month spike
+A3,Does the money reaching the token hold its new level?,2026-12-31,buyback_month_usd,>,723262.0,highest monthly buyback of Mar to Aug 2026 (August 2026),automatic,Buybacks funded by Intents revenue in December 2026 stay above their highest month before the September step
+A4,Do buybacks offset the dilution of holders?,2027-02-11,buyback_coverage_90d,<,0.5,half of net new supply; break-even is 1.0,automatic,Over the 90 days ending 2027-02-11 buybacks still offset less than half of the net new NEAR supply
+A5,Can usage be used as a timing signal for the price?,2027-02-11,metrics_with_adjacent_positive_leads,<=,0.0,none today,automatic,No usage metric shows two neighbouring positive leads outside the noise band: usage still does not lead price
+B1,Has the account base outside reward apps found a floor?,2027-02-01,core_accounts_2027_01,<,621166.0,October 2026,bigquery,Accounts outside the reward apps in January 2027 are below their October 2026 count: no floor yet
+B2,Is self-paid activity at a new level or was it a spike?,2027-02-01,core_self_paid_txs_mean_2026_11_to_2027_01,>,10380688.0,highest month of Dec 2025 to Aug 2026 (February 2026),bigquery,Self-paid transactions outside the reward apps average above the top of their range before the September step over November 2026 to January 2027
+B3,Does the chain still depend on a few dozen accounts?,2027-02-01,accounts_for_half_of_txs_2027_01,<,100.0,dozens rather than hundreds; 30 in October 2026,bigquery,In January 2027 fewer than a hundred accounts still send half of all transactions
+B4,Which is the larger half of the chain: reward apps or financial use?,2027-02-01,reward_minus_finance_tx_share_2027_01,>,0.0,the point where the two are equal; 43% vs 41% in October 2026,bigquery,"In January 2027 reward and wallet apps still send more transactions than the exchange, Intents, token contracts and bridges together"
