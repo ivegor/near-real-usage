@@ -187,3 +187,20 @@ def test_require_fresh_refuses_to_build_from_saved_copies(tmp_path, monkeypatch)
         cli.build(offline=False, require_fresh=True)
     cli.build(offline=False)                                                      # without the flag the saved copies are used
     assert (tmp_path / "docs" / "index.html").exists()
+
+
+def test_holm_asks_more_of_the_smallest_p_value_the_more_tests_there_are():
+    # one strong result among 85 stands; a p-value that would pass alone (0.01) does not
+    strong = metrics.holm([0.0001] + [0.5] * 84)
+    assert (strong["tests"], strong["significant"]) == (85, 1)
+    weak = metrics.holm([0.01] + [0.5] * 84)
+    assert weak["significant"] == 0 and weak["threshold_for_the_smallest_p"] == 0.05 / 85
+    assert metrics.holm([0.01])["significant"] == 1
+    assert metrics.holm([])["tests"] == 0
+
+
+def test_p_value_of_a_correlation():
+    assert metrics._p_value(0.0, 100) == 1.0
+    assert 0.04 < metrics._p_value(0.2, 100) < 0.05      # just inside 2/sqrt(n) = 0.2
+    assert metrics._p_value(0.5, 100) < 1e-6
+    assert metrics._p_value(0.3, 3) != metrics._p_value(0.3, 3)  # too few points: not a number

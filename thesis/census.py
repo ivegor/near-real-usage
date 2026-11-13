@@ -42,7 +42,8 @@ MAX_TX_PER_WINDOW = 1200  # transactions whose accounts get an age check (random
 AGE_DAYS = (30, 365)
 # Seconds between requests per host. Without an API key both hosts answer HTTP 429 after short bursts and then
 # keep refusing for minutes, so the pace is slow on purpose and slows down further after every refusal.
-MIN_INTERVAL = {BLOCK_URL.split("/v0")[0]: 7.0, RPC_URL: 2.5}
+TX_URL = "https://tx.main.fastnear.com"  # transaction index: a block's transactions with their final outcome
+MIN_INTERVAL = {BLOCK_URL.split("/v0")[0]: 7.0, RPC_URL: 2.5, TX_URL: 2.0}
 COOL_DOWN = 240  # seconds to wait after an HTTP 429
 BOUND_TOLERANCE_NS = 5 * 60 * 10**9  # window edges are located to within 5 minutes
 
@@ -249,6 +250,50 @@ def fetch(last_date: str, seed: int = SEED, blocks: dict[str, int] | None = None
 
 
 # ---------------------------------------------------------------- pure metrics
+
+OUTCOMES = RAW_DIR / "census_outcomes.csv"
+
+
+def fetch_outcomes(target: str, window: str = "recent") -> None:
+    """Network part: did the sampled transactions to `target` succeed? Writes data/raw/census_outcomes.csv.
+
+    The block sample records who sent what, not how it ended. For every sampled block of the window with a
+    transaction to `target`, this asks the transaction index for the block's transactions and keeps the ones to
+    `target` with their final outcome. Resumable; one paced request per block.
+    """
+    loaded = load()
+    if loaded is None:
+        raise RuntimeError("no block sample: run `python -m thesis census` first")
+    sample = loaded[0]
+    heights = sorted(sample[(sample["window"] == window) & (sample["target"] == target)]["height"].unique())
+    rows = []
+    for h in heights:
+        got = _cached(f"outcomes/{int(h)}.json", lambda h=h: _get_json(
+            f"{TX_URL}/v0/block", method="POST", json={"block_id": int(h), "with_transactions": True}))
+        for tx in got.get("block_txs") or []:
+            if tx.get("real_receiver_id") == target:
+                rows.append({"window": window, "height": int(h), "target": target, "signer": tx["real_signer_id"],
+                             "relayed": bool(tx.get("is_relayed")), "success": bool(tx["is_success"])})
+    pd.DataFrame(rows).to_csv(OUTCOMES, index=False)
+
+
+def load_outcomes() -> pd.DataFrame | None:
+    return pd.read_csv(OUTCOMES) if OUTCOMES.exists() else None
+
+
+def outcomes(df: pd.DataFrame, top: int = 2) -> dict:
+    """How the sampled transactions to one contract ended, for its busiest senders and for everybody else."""
+    by = df.groupby("signer")["success"].agg(["size", "sum"]).sort_values("size", ascending=False)
+    named = by.head(top)
+    rest = by.iloc[top:]
+    cell = lambda n, ok: {"transactions": int(n), "failed": int(n - ok)}
+    return {
+        "target": str(df["target"].iloc[0]), "window": str(df["window"].iloc[0]), "blocks": int(df["height"].nunique()),
+        "transactions": int(len(df)), "failed": int((~df["success"]).sum()),
+        "senders": {s: cell(r["size"], r["sum"]) for s, r in named.iterrows()},
+        "other_senders": {**cell(rest["size"].sum(), rest["sum"].sum()), "accounts": int(len(rest))},
+    }
+
 
 def load() -> tuple[pd.DataFrame, pd.DataFrame, dict] | None:
     paths = [RAW_DIR / f for f in (SAMPLE_FILE, EXIST_FILE, META_FILE)]

@@ -21,7 +21,8 @@ NEARBLOCKS, DEFILLAMA = SOURCES["nearblocks_charts"], SOURCES["defillama_intents
 REQUESTS = {
     "accounts": [NEARBLOCKS], "usage_vs_price": [NEARBLOCKS], "tx_per_active": [NEARBLOCKS], "fees_per_active": [NEARBLOCKS],
     "intents": [DEFILLAMA, NEARBLOCKS], "lead_lag": [NEARBLOCKS, DEFILLAMA],
-    "value_capture": [*value.URLS.values(), NEARBLOCKS],
+    "value_capture": [*value.URLS.values(), NEARBLOCKS,
+                      f"{census.RPC_URL}  (JSON-RPC query view_account and wrap.near ft_balance_of at a past block)"],
     "signer_census": [census.BLOCK_URL, f"{census.RPC_URL}  (JSON-RPC query view_account at a past block)"],
 }
 

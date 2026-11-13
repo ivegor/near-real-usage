@@ -115,3 +115,13 @@ def test_height_at_finds_the_block_in_a_few_requests(monkeypatch):
     h = census.height_at(target, lo, hi)
     assert abs(header(h)[1] - target) <= census.BOUND_TOLERANCE_NS
     assert len(calls) <= 12
+
+
+def test_outcomes_by_sender():
+    df = pd.DataFrame({"window": "recent", "height": [1, 1, 2, 3, 3, 4], "target": "intents.near",
+                       "signer": ["a.near", "bot.near", "bot.near", "a.near", "c.near", "bot.near"],
+                       "relayed": False, "success": [True, False, False, True, True, False]})
+    s = census.outcomes(df, top=2)
+    assert (s["transactions"], s["failed"], s["blocks"]) == (6, 3, 4)
+    assert s["senders"] == {"bot.near": {"transactions": 3, "failed": 3}, "a.near": {"transactions": 2, "failed": 0}}
+    assert s["other_senders"] == {"transactions": 1, "failed": 0, "accounts": 1}

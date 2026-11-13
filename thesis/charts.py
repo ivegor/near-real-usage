@@ -321,6 +321,14 @@ CHART_SOURCE = {
 }
 
 
+def _holm_words(s: dict) -> str:
+    h = s.get("lead_vs_price_holm") or {}
+    n = h.get("significant")
+    if n is None:
+        return "no correction for multiple tests computed"
+    return f"{'none' if n == 0 else n} of them {'stands' if n <= 1 else 'stand'} after Holm's correction for testing them together"
+
+
 def _takeaway(slug: str, s: dict) -> str:
     """One plain sentence per chart, built from the same summary as the detailed caption. Empty if the data is absent."""
     try:
@@ -335,8 +343,15 @@ def _takeaway(slug: str, s: dict) -> str:
             c = s["clients"]
             return f"{c['months'][c['latest_month']]['accounts_for_half_of_txs']} accounts send half of all NEAR transactions."
         if slug == "value_capture":
-            return (f"Buybacks funded by NEAR Intents cover {s['value_capture']['buyback_coverage_of_new_supply'] * 100:.0f}% "
-                    "of the new NEAR issued.")
+            v = s["value_capture"]
+            first = f"Buybacks funded by NEAR Intents cover {v['buyback_coverage_of_new_supply'] * 100:.0f}% of the new NEAR issued."
+            w = v.get("wallets")
+            if not w:
+                return first
+            return (f"{first} Read from the chain, the three revenue wallets grew by {w['change_near_all_wallets'] / 1e6:.2f}M NEAR "
+                    f"from {w['window'][0]} to {w['window'][1]}, {w['coverage_of_new_supply'] * 100:.1f}% of the new supply "
+                    f"of those days ({w['last_days']['coverage_of_new_supply'] * 100:.1f}% over the last {w['last_days']['days']} of them)."
+                    if "last_days" in w else first)
         if slug == "accounts":
             if "population" not in s:
                 return "Returning accounts are estimated as active minus new accounts."
@@ -630,7 +645,7 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
         charts.append(Chart(
             "lead_lag", "Does usage lead price?",
             f"Weekly-change correlation with price, lags outside the noise band ({n_out} of {n_tests} tested; "
-            f"about {0.05 * n_tests:.0f} expected by chance): " + "; ".join(parts) + ". Fees are tested in NEAR: in USD they "
+            f"about {0.05 * n_tests:.0f} expected by chance; {_holm_words(summary)}): " + "; ".join(parts) + ". Fees are tested in NEAR: in USD they "
             f"correlate with price in the same week (r={usd.get('corr', float('nan')):.2f}) only because USD fees are NEAR "
             "fees multiplied by the price.",
             "corr(Δlog metric_t, Δlog price_{t+k}), k in weeks, positive k = metric moves first (green bars); "

@@ -161,3 +161,19 @@ def test_cross_check_compares_the_same_months():
     assert abs(c["older_than_1y_tx_share"]["bigquery"] - 980 / 1000) < 1e-9
     assert abs(c["relayed_tx_share"]["bigquery"] - 175 / 1000) < 1e-9
     assert c["top10_tx_share"] == {"sample": 0.5, "bigquery_month": "2026-02", "bigquery": 0.4}
+
+
+def test_largest_daily_fall_is_found_by_rule_and_set_next_to_kaiching():
+    df = table()  # KaiChing sends 1,500 transactions a month through 2025-12 and nothing from 2026-01
+    idx = pd.date_range("2025-01-01", "2026-03-31", freq="D")
+    txns = pd.Series(1000.0, index=idx)
+    txns[idx >= "2026-01-02"] = 250.0      # one step of -75%
+    txns["2025-06-10"] = 600.0             # a one-day dip of -40% and back
+    daily = pd.DataFrame({"txns": txns, "active_accounts": 100.0}, index=idx)
+    s = population.largest_daily_fall(df, daily)
+    assert (s["date"], s["day_before"]) == ("2026-01-02", "2026-01-01")
+    assert s["txns"] == {"before": 1000, "after": 250} and s["pct_change"] == -75.0
+    assert s["active_accounts"]["pct_change"] == 0.0
+    k = s["kaiching"]
+    assert (k["month_before"]["month"], k["month_before"]["txs"]) == ("2025-12", 1500)
+    assert k["month_of"]["txs"] == 0 and k["month_before"]["txs_per_day"] == 1500 / 31

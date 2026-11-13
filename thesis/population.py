@@ -251,6 +251,40 @@ def summarize(df: pd.DataFrame, query_end: str | None = None) -> dict:
     return out
 
 
+def largest_daily_fall(df: pd.DataFrame, daily: pd.DataFrame) -> dict | None:
+    """The largest one-day fall in the aggregator's daily transactions, and KaiChing's months on either side of it.
+
+    Analyses built on daily aggregates see a step in the transaction count on one day and a flat count of active
+    accounts across it, and cannot name the cause. The day is found by a rule (the largest relative one-day fall
+    inside the months of the census), and the census says what stopped in that month.
+    """
+    if "txns" not in daily:
+        return None
+    months = sorted(df["month"].unique())
+    x = daily["txns"].dropna()
+    x = x[(x.index >= pd.Timestamp(months[0] + "-01")) & (x.index.to_period("M") <= pd.Period(months[-1], "M"))]
+    rel = (x / x.shift(1) - 1).dropna()
+    if rel.empty:
+        return None
+    day = rel.idxmin()
+    before = day - pd.Timedelta(days=1)
+    k = df[df["family"] == "kaiching"].groupby("month")[["accounts", "txs", "relayed_txs"]].sum()
+
+    def month(m: pd.Period) -> dict:
+        row = k.loc[str(m)] if str(m) in k.index else pd.Series({"accounts": 0, "txs": 0, "relayed_txs": 0})
+        return {"month": str(m), "accounts": int(row["accounts"]), "txs": int(row["txs"]), "relayed_txs": int(row["relayed_txs"]),
+                "txs_per_day": float(row["txs"] / m.days_in_month)}
+
+    out = {"date": str(day.date()), "day_before": str(before.date()),
+           "txns": {"before": int(x[before]), "after": int(x[day])}, "pct_change": float(rel[day] * 100),
+           "kaiching": {"month_before": month(day.to_period("M") - 1), "month_of": month(day.to_period("M")),
+                        "month_after": month(day.to_period("M") + 1)}}
+    if "active_accounts" in daily:
+        a = daily["active_accounts"]
+        out["active_accounts"] = {"before": int(a[before]), "after": int(a[day]), "pct_change": float((a[day] / a[before] - 1) * 100)}
+    return out
+
+
 def totals_check(df: pd.DataFrame, daily: pd.DataFrame, query_end: str | None = None) -> dict | None:
     """BigQuery's transaction count for every month of the census next to the aggregator's count for the same days.
 

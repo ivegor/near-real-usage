@@ -33,7 +33,8 @@ with no month before the rally in it. Intents volume in October was $129M a day 
 that base was the middle of a ramp-up: against November 2025 ($122M) October is +5%, and against the nine months
 in between ($74.5M a day) it is +73%. Most of it is submitted by very few accounts: **thirty accounts send half of
 all transactions**, and reward apps still send 43% (45% counting the one-off deletion of old KaiChing accounts). Value
-reaches the token only in part: buybacks funded by Intents revenue cover 18% of the new NEAR issued. The long-term
+reaches the token only in part: buybacks funded by Intents revenue cover 18% of the new NEAR issued, by the
+aggregator's series and by the balances of the revenue wallets read from the chain. The long-term
 case is therefore a narrow one: a small amount of self-paid, financial activity submitted by a few dozen accounts.
 On the chain itself we cannot show a growing base of users who pay their own way; how many people stand behind the
 relays of Intents and the bridges cannot be read from it. Usage does not lead price.
@@ -82,9 +83,9 @@ We kept the proxy on the dashboard, labelled as misleading, because every aggreg
 | 6 | Self-paid activity outside reward apps is growing | **Below the year before for nine months, up in autumn 2026** | Core transactions paid by the sender 9.75M → 12.49M (+28%; +35%); on longer windows +24% (six months), +6% (nine) and −5% (eleven). In the nine months before the step (December to August) they averaged 7.61M against 9.16M a year earlier (−17%; −21% without the February burst), below the year before in 7 of the 9 months; sponsored through relayers 9.61M → 2.39M (−75%; −66%). The jump came in the months of a price rally and the series is volatile: see "Evidence against". Last year's figure also holds the reward game of claim 3, whose 532,727 direct calls were self-paid: without them the October change is at most +35% |
 | 7 | Financial use of the chain is growing | **Up in October 2026; not measured before the rally** | Transactions to the exchange, Intents, token contracts and bridges 6.72M → 9.18M a month (+37%); Ref/Rhea exchange +96%, token contracts +47%, bridges and chain signatures +43%. On the keyless sample, which compares two 90-day windows and not two months, the same group is +108% (95% interval +36% to +229%). Both comparisons sit inside the autumn rally, and the committed tables hold no month before it for these contracts. The figure also depends on the grouping and on what a month's 40 largest contracts show (see "Limits") |
 | 8 | Cross-chain demand through NEAR is growing | **Up since September 2026; level with November 2025** | NEAR Intents volume $55.6M → $128.6M a day (+131%, October to October, DefiLlama); +84% on the previous 90 days. But October 2025 was the middle of a ramp-up: November 2025 already averaged $122.0M (October 2026 is +5% on it), and the first 11 days of November 2026 average $129.7M against $125.4M a year earlier (+3%). In the nine months in between volume averaged $74.5M; against that level October 2026 is +73% |
-| 9 | NEAR's transactions come from many independent accounts | **Refuted** | 30 accounts send 50% of transactions; the top 10 send 37% (17% a year earlier); 486 accounts with 1,000+ transactions send 70%. Seven of the ten largest are relays or service accounts (Intents, Sweat, the bridges), so this counts who submits transactions; the people behind a relay are not visible on the chain |
-| 10 | Intents revenue offsets the dilution of NEAR holders | **Not yet** | Buybacks at $20.7M a year against $115M a year of net new NEAR: 18% of dilution covered; 5.6 times the captured revenue needed |
-| 11 | Usage changes lead price changes | **Not supported** | 6 of 85 lag tests outside the noise band, about 4 expected by chance |
+| 9 | NEAR's transactions come from many independent accounts | **Refuted** | 30 accounts send 50% of transactions; the top 10 send 37% (17% a year earlier); 486 accounts with 1,000+ transactions send 70%. A relayed transaction is counted for the account the relayer acted for, not for the relayer. Counted by signer the year looks different: one relayer, KaiChing's, signed 44% of all transactions in October 2025, and the largest one now, Sweat's, signs 25%. Both counts describe the same event, an app with tens of millions of accounts leaving. Seven of the ten largest are relays or service accounts (Intents, Sweat, the bridges), so this counts who submits transactions; the people behind a relay are not visible on the chain |
+| 10 | Intents revenue offsets the dilution of NEAR holders | **Not yet** | Buybacks at $20.7M a year against $115M a year of net new NEAR: 18% of dilution covered; 5.6 times the captured revenue needed. Read from the chain, the three revenue wallets grew by 18.3% of the new supply of the same 90 days, and by 15.4% over the last 30 |
+| 11 | Usage changes lead price changes | **Not supported** | 6 of 85 lag tests outside the noise band, about 4 expected by chance; none stands after Holm's correction for testing 85 lags together |
 
 ## Who pays, and how often
 
@@ -146,7 +147,7 @@ October 2026, every transaction assigned to the contract it calls or, if relayed
 | HOT wallet | 13.3% | 28.5% | −93% | Telegram wallet, reward claims |
 | Token contracts (wNEAR, USDC, USDT) | 9.3% | 1.0% | +47% | Transfers and deposits into the exchange and Intents |
 | Bridges, Aurora, chain signatures | 9.0% | 1.0% | +43% | Omni bridge, BTC and Zcash connectors, the MPC signer |
-| NEAR Intents | 8.9% | 1.6% | −13% | 2.01M transactions, up to 97% of them signed by two accounts (`intents.near`, `escrow.ai.near`) |
+| NEAR Intents | 8.9% | 1.6% | −13% | 2.01M transactions, up to 97% of them signed by two accounts (`intents.near`, `escrow.ai.near`). The second one's calls do not go through (all 26 in the keyless sample failed) |
 | Meteor wallet | 3.1% | 0.7% | −29% | Wallet with a reward game |
 | KaiChing | 0.4% (2.8% by namespace) | 49.6% | −100% | Reward app, gone since spring. In October its old accounts were deleted: 560,106 transactions that are not calls to any of the 40 largest contracts, and 560,092 accounts sent exactly one. All 13 of them that fall in the keyless sample are `DeleteAccount` on the account itself, between 2 and 7 October |
 | Other contracts in the top 40 | 7.1% | 3.0% | −62% | The fall is the game Ember (2.80M → 0.16M transactions); the other contracts are 1.42M → 1.44M (+2%) |
@@ -179,7 +180,19 @@ period's mean price of $3.58. **Buybacks cover 18% of dilution.** Covering all o
 5.6 times the captured revenue at this price, and the market capitalisation is 227 times the
 annual buyback. The bought NEAR is not burned, so supply itself does not shrink. (Who keeps the rest of the
 fees and what happens to the bought NEAR is DefiLlama's description of its own series, saved with the data under
-`methodology` in `data/raw/defillama_intents_fees.json`; we did not check it on the chain.) *(chart: value_capture)*
+`methodology` in `data/raw/defillama_intents_fees.json`.) *(chart: value_capture)*
+
+**The same money, read from the chain.** DefiLlama's revenue series counts the NEAR arriving at three wallets that
+its adapter names: the buyback wallet, the front-end fund and the 1Click fund. We asked an archival RPC node, with no
+key, what the three hold at the start and at the end of the same 90 days (`python -m thesis wallets`). Together they
+held 1,456,744 NEAR more at the end. That is 0.98 of the revenue DefiLlama reports for those days, so the wallets
+are keeping what arrives, and it is 18.3% of the 7.95M NEAR of net new supply: the 18% again, this time in NEAR and
+with no price in it. The balances add three things the series does not show. The figure moves with the window: over
+the last 30 days it is 15.4%. Of the 4.25M NEAR the three wallets hold, 53% is in the buyback wallet; almost all of
+the rest, 2.00M NEAR, sits in the front-end fund. And the wallets cannot be read one by one: the 1Click fund was
+emptied during the window (−502,528 NEAR) while the buyback wallet grew by 1,511,073, so the buyback wallet alone
+gives 19.0% over the 90 days and 10.9% over the last 30. Whether the NEAR was bought on the market or arrived as
+NEAR, the balances do not say.
 
 ## An independent check: a keyless sample of the chain
 
@@ -207,7 +220,11 @@ tables above do not: a year ago 55% of sampled transactions were a single call, 
   2025) and averaged under 2 transactions per account a month; it was 93% of all active accounts in October 2025 and
   stopped between March and April 2026. Its relayer worked to a quota: 2,000,000 transactions a day, to within a
   thousandth, in 8 of its 17 months in the census (62,000,031 in October 2025, which has 31 days; 60,000,042 in
-  November, which has 30). HOT wallet accounts (`.tg`) fell 86% over the year. *(chart: population)*
+  November, which has 30). The step that analyses of the daily aggregates see and cannot name is this app stopping:
+  NearBlocks' daily transactions went from 3,758,663 on 2026-04-01 to 1,063,375 on 2026-04-02 (−72%, the largest
+  one-day fall in percent in the months of the census) while its active accounts, which count signers, barely moved (139,048 →
+  137,183). KaiChing sent 70.55M transactions in March 2026, 2.28M a day, and 1.37M in the whole of April.
+  HOT wallet accounts (`.tg`) fell 86% over the year. *(chart: population)*
 * **Self-paid transactions rose in autumn 2026.** Outside the reward apps, transactions paid by the sender rose from 9.75M
   to 12.49M a month; September and October 2026 are two of the three highest months in the 23-month series (the
   third, December 2024, is one of the months where BigQuery counts fewer transactions than NearBlocks, see "Limits"). The whole
@@ -240,6 +257,11 @@ tables above do not: a year ago 55% of sampled transactions were a single call, 
   Sweat service accounts (1.0M to 1.4M each), two exchange bots (0.77M and 0.46M), a bridge relayer (0.66M) and
   `escrow.ai.near` (0.51M). Seven of the ten largest are relays or service accounts, so the count says who submits
   transactions, not how many people stand behind them; either way the chain depends on a handful of operators.
+  And a large count is not always use. We asked a transaction index how the transactions to NEAR Intents in the
+  sampled blocks ended (`python -m thesis outcomes`, 149 transactions in 99 blocks): all 26 sent by `escrow.ai.near`
+  in the sample of autumn 2026 failed, against 2 failed of the 116 that `intents.near` signed itself and none of the
+  7 from other accounts. About a quarter of the transactions NEAR Intents received in October is one account's call
+  failing over and over.
 * **Reward apps are still 43% to 45% of transactions.** KaiChing left, but Sweat, HOT and Meteor remain. Sweat's 11 service
   accounts in the `.sweat` namespace alone send 17.7% of all transactions while its user count fell 67%. The next exit
   would look the same.
@@ -253,7 +275,8 @@ tables above do not: a year ago 55% of sampled transactions were a single call, 
   the lag, noise band ≈ ±0.11–0.12):
   Intents volume (n = 92–100 weeks, band ≈ ±0.20–0.21) and fees in NEAR show nothing outside the band at any lag from −8 to +8
   weeks; active accounts r = 0.14 at lag 0; transactions show four isolated bars of mixed sign. In total 6 of 85 lag
-  tests fall outside the band where about 4 are expected by chance. Fees in USD do correlate with price in the same
+  tests fall outside the band where about 4 are expected by chance, and none of the 85 stands after Holm's correction
+  for testing them together (the smallest p-value is 0.009; the first step of the correction asks for 0.0006). Fees in USD do correlate with price in the same
   week (r = 0.38), but only because USD fees are NEAR fees multiplied by the price. *(chart: lead_lag)*
 
 ## What would change our mind
@@ -321,8 +344,10 @@ pass, four once the account queries have been run again for the month they name.
   `.sweat` service accounts that paid for at least one of their own transactions (13 in October 2025, 7 in October
   2026) therefore count among the table's independent accounts, at most 13 of its 370 heavy accounts a year ago and
   7 of the 475 now, and their self-paid transactions are why the table has 9.77M where the census has 9.75M.
-* **Intents volume, prices and fees are aggregator data** (DefiLlama, NearBlocks) and were not checked against a
-  second source. The track brief names the NEAR Intents Explorer API for swap volume; it needs a partner key, so the
+* **Intents volume, prices and gross fees are aggregator data** (DefiLlama, NearBlocks) and were not checked against a
+  second source; captured revenue was, against the balances of the wallets it arrives at (see "Does it reach the
+  token?"). That check reads three balances at three block heights. It does not trace where the NEAR came from, and
+  a payment out of the wallets would show only as a smaller growth. The track brief names the NEAR Intents Explorer API for swap volume; it needs a partner key, so the
   volume here is DefiLlama's series for the same protocol, which needs none. Every year-on-year figure for Intents
   volume shrinks as its base moves through the ramp-up of autumn 2025: the 90-day one (+223% on 2026-11-11) every
   day, the calendar-month one at each month's end (+131% for October, about +3% for November so far). The steadier
@@ -336,7 +361,8 @@ pass, four once the account queries have been run again for the month they name.
 * **Net new supply is not dilution for every holder.** New NEAR is issued mostly as staking rewards, so a holder who
   stakes receives part of it. The 18% compares buybacks with all of the net new supply, which is the most a holder
   could be diluted by.
-* **Lead-lag scans 17 lags × 5 metrics = 85 tests**; about 4 bars outside ±2/√n are expected by chance. One of the
+* **Lead-lag scans 17 lags × 5 metrics = 85 tests**; about 4 bars outside ±2/√n are expected by chance. The p-values
+  behind Holm's correction use Fisher's z, a normal approximation, on weekly changes. One of the
   five metrics is the `active − new` proxy shown above to be unreliable; it is reported for completeness.
 * **The app table is a manual grouping** of the 40 largest contracts and relayers, which cover 90% of October 2026
   transactions. A relayed transaction is assigned to its relayer, not to the contract it finally calls. A month counts

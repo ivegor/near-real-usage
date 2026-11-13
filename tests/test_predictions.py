@@ -301,3 +301,14 @@ def test_scored_only_after_the_check_date(tmp_path):
     assert out["X3"]["status"] == "open" and out["X3"]["measured"] is None
     assert out["X4"]["status"].startswith("open (needs")
     assert out["X5"]["status"] == "held"
+
+
+def test_the_timestamp_proof_is_for_this_predictions_file():
+    """predictions.csv.ots is an OpenTimestamps proof; a detached proof starts with the digest of the file it is for."""
+    import hashlib
+    from pathlib import Path
+    root = Path(__file__).resolve().parent.parent
+    digest = hashlib.sha256((root / "predictions.csv").read_bytes()).digest()
+    proof = (root / "predictions.csv.ots").read_bytes()
+    assert proof.startswith(b"\x00OpenTimestamps\x00\x00Proof\x00\xbf\x89\xe2\xe8\x84\xe8\x92\x94")
+    assert digest in proof[:80]

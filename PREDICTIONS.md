@@ -32,6 +32,13 @@ SHA-256 of `predictions.csv`: `7ff48f00d7131ae4cf1e5b11ff817242844e6b8dd3a0681d9
 (a test fails if the file no longer matches; the commit that holds this version of the file is tagged
 `predictions-2026-11-13`).
 
+A hash in a repository proves nothing about dates: history can be rewritten. So the file also has a timestamp that
+does not depend on this repository. [`predictions.csv.ots`](predictions.csv.ots) is an
+[OpenTimestamps](https://opentimestamps.org) proof made on 2026-11-13 at 15:47 UTC: the digest above was sent to
+public calendar servers, which commit it to a Bitcoin block. `ots verify predictions.csv.ots` (from
+`pip install opentimestamps-client`) or the form on opentimestamps.org checks it against the file; a test checks
+that the proof is for the file's current digest. The first prediction is scored four days after that timestamp.
+
 | Id | Question | Prediction | Threshold | Where the threshold comes from | Check on | Scoring |
 |---|---|---|---|---|---|---|
 | A1 | Is the autumn 2026 level of cross-chain demand holding? | NEAR Intents volume over the 7 days ending 2026-11-17 stays above the top of its range before the September step | > $89.6M a day | highest monthly mean of Dec 2025 to Aug 2026 (August 2026) | 2026-11-17 | automatic |

@@ -48,6 +48,7 @@ EXCHANGE_BOT_TARGETS = ("pyth-oracle.near", "acc.toalice.near")
 # them are still there the tables do not say.
 GAME_CONTRACT, GAME_RELAYER = "aa-harvest-moon.near", "relayer:meteor-relayer.near"
 GAME_CLAIM = "claim_meteor_staking_reward"  # the game's reward claim; in the block sample it arrives in alphabetical batches
+INTENTS_CONTRACT = "intents.near"  # the keyless sample is asked how the transactions sent to it ended
 
 
 def load(path: Path | None = None) -> dict | None:
@@ -166,6 +167,15 @@ def summarize(data: dict) -> dict:
                              "top2_signers": list(signed["actor"]),
                              "top2_share": float(signed["txs"].sum() / total) if total else float("nan")}
     out["top_actors_latest"] = data[latest]["actors"].head(10).to_dict("records")
+    # Concentration above counts a relayed transaction for the account the relayer acted for. Counted by signer the
+    # starting point is another one: the largest relayer of each month and its share of all transactions.
+    out["largest_relayer"] = {}
+    for k, m in (("latest", latest), ("prior", prior)):
+        via = data[m]["via"]
+        r = via[via["via"].str.startswith("relayer:")].nlargest(1, "txs")
+        if len(r):
+            out["largest_relayer"][k] = {"relayer": r["via"].iloc[0].split(":", 1)[1], "transactions": int(r["txs"].iloc[0]),
+                                         "share_of_all_transactions": float(r["txs"].iloc[0] / data[m]["conc"]["txs"])}
     # the exchange contract by contract: the same account may call several, so their account counts cannot be added
     v = data[latest]["via"]
     app_txs = out["apps"][EXCHANGE]["latest"]

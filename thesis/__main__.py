@@ -5,7 +5,7 @@ import argparse
 import json
 from pathlib import Path
 
-from . import census, charts, clients, dashboard, metrics, payers, population, predictions, segments, sources, value
+from . import census, charts, clients, dashboard, metrics, payers, population, predictions, segments, sources, value, wallets
 
 ROOT = Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs"
@@ -31,6 +31,9 @@ def build(offline: bool, require_fresh: bool = False) -> None:
         totals = population.totals_check(pop, daily)  # BigQuery month by month against the aggregator
         if totals:
             summary["population"]["totals_check"] = totals
+        fall = population.largest_daily_fall(pop, daily)  # the step other analyses see in the daily series, named
+        if fall:
+            summary["population"]["largest_daily_fall"] = fall
     seg = segments.load()
     if seg is not None:
         summary["segments"] = segments.summarize(seg)
@@ -51,6 +54,9 @@ def build(offline: bool, require_fresh: bool = False) -> None:
                 cs[0], clients.GAME_RELAYER.split(":", 1)[1], clients.GAME_CLAIM)
             # the one-off of October 2026: what the old KaiChing user accounts in the sample actually sent
             summary["clients"]["kaiching_accounts_sample"] = census.self_deletions(cs[0], ".users.kaiching")
+            ended = census.load_outcomes()  # how the sampled transactions to NEAR Intents ended, by sender
+            if ended is not None and len(ended):
+                summary["clients"]["intents_outcomes"] = census.outcomes(ended)
             view = clients.sample_view(cs[0], cs[2].get("windows", {}), daily, seed=cs[2].get("seed", census.SEED))
             if view:
                 summary["clients"]["sample_view"] = view
@@ -76,6 +82,10 @@ def build(offline: bool, require_fresh: bool = False) -> None:
         v = value.summarize(daily, fees)
         if v:
             summary["value_capture"] = v
+            held = wallets.load()  # the same revenue measured from the wallets' balances on the chain
+            w = wallets.summarize(held, daily, fees) if held else None
+            if w:
+                summary["value_capture"]["wallets"] = w
     if cs and pop is not None:
         summary["cross_check"] = population.cross_check(summary["signer_census"], pop, summary.get("clients"))
     built = charts.build_all(daily, summary, DOCS)
@@ -102,6 +112,8 @@ def main() -> None:
     sub.add_parser("snapshot", help="freeze docs/summary.json as the copy THESIS.md is checked against")
     sub.add_parser("video", help="render demo/near-real-usage.mp4 from the build outputs (needs ffmpeg)")
     sub.add_parser("fetch-value", help="download the NEAR Intents fee and buyback series from DefiLlama into data/raw/")
+    sub.add_parser("wallets", help="read the balances of NEAR's three revenue wallets from an archival RPC node (network, ~2 min)")
+    sub.add_parser("outcomes", help="ask a transaction index how the sampled transactions to NEAR Intents ended (network, ~5 min)")
     args = ap.parse_args()
     if args.cmd == "snapshot":
         SNAPSHOT.parent.mkdir(parents=True, exist_ok=True)
@@ -114,6 +126,14 @@ def main() -> None:
         return
     if args.cmd == "fetch-value":
         value.fetch()
+        return
+    if args.cmd == "wallets":
+        wallets.fetch(str(sources.load_daily(offline=True).index.max().date()))
+        print(wallets.PATH)
+        return
+    if args.cmd == "outcomes":
+        census.fetch_outcomes(clients.INTENTS_CONTRACT)
+        print(json.dumps(census.outcomes(census.load_outcomes()), indent=2))
         return
     if args.cmd == "bq-age":
         df = population.unpack(Path(args.result_csv))

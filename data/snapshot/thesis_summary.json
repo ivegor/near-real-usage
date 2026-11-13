@@ -233,7 +233,26 @@
         0.11867816581938533
       ],
       "significant": false,
-      "outside_band": []
+      "outside_band": [],
+      "p_values": [
+        0.2874879513092316,
+        0.4049016154432618,
+        0.2866084931210046,
+        0.5872105006954631,
+        0.4168513504464086,
+        0.7532548437856693,
+        0.3635324332608992,
+        0.756173009813471,
+        0.47792588913914874,
+        0.6381847526267019,
+        0.37444946959430075,
+        0.6911550095405987,
+        0.720114993238826,
+        0.37309914926785875,
+        0.9329506146242617,
+        0.7461721747057437,
+        0.16668711046635598
+      ]
     },
     "active_accounts": {
       "lag_weeks": 0,
@@ -258,6 +277,25 @@
           "lag_weeks": 0,
           "corr": 0.141
         }
+      ],
+      "p_values": [
+        0.35692617552037265,
+        0.5837336184227836,
+        0.5522793141660902,
+        0.027297525198007145,
+        0.5282288094406726,
+        0.24958632613366283,
+        0.3227763499192613,
+        0.7397769165812234,
+        0.011947542185023849,
+        0.37632569123720355,
+        0.5515292613479325,
+        0.7091319038553608,
+        0.5398809274400211,
+        0.8267304967010867,
+        0.23390888019354308,
+        0.3894533840412605,
+        0.934223617956414
       ]
     },
     "intents_volume_usd": {
@@ -274,7 +312,26 @@
         0.20851441405707477
       ],
       "significant": false,
-      "outside_band": []
+      "outside_band": [],
+      "p_values": [
+        0.4870181761531547,
+        0.671060415984599,
+        0.7951787821262255,
+        0.9268953620539757,
+        0.34886696688561186,
+        0.14424199373087015,
+        0.8302502103954703,
+        0.43682883713365606,
+        0.9913467446014477,
+        0.5016911476751721,
+        0.2259064826508248,
+        0.6972712018712391,
+        0.41089051917332975,
+        0.512380604408917,
+        0.7690823707122317,
+        0.444225729736879,
+        0.8198998935081425
+      ]
     },
     "fees_near": {
       "lag_weeks": -8,
@@ -290,7 +347,26 @@
         0.11377602479771486
       ],
       "significant": false,
-      "outside_band": []
+      "outside_band": [],
+      "p_values": [
+        0.049252615671569,
+        0.6002572418368879,
+        0.9568469146632318,
+        0.7686172419509845,
+        0.868306908613003,
+        0.3792759802320768,
+        0.4240901180903098,
+        0.08590796030293117,
+        0.08164300121892543,
+        0.07377279806260362,
+        0.11206893854269935,
+        0.5027071525440249,
+        0.4126978302846629,
+        0.5572004523589706,
+        0.08295380817360688,
+        0.14115725647486463,
+        0.6085815466127211
+      ]
     },
     "txns": {
       "lag_weeks": 6,
@@ -323,8 +399,34 @@
           "lag_weeks": 6,
           "corr": -0.149
         }
+      ],
+      "p_values": [
+        0.014149846552357587,
+        0.796054698723469,
+        0.8912215398671399,
+        0.7942657226344024,
+        0.8977214917890554,
+        0.44059796990006145,
+        0.17726005314031595,
+        0.07973006351127264,
+        0.06251578487369464,
+        0.1794931659146384,
+        0.023970756046278144,
+        0.8056200587593567,
+        0.04338616164731702,
+        0.34279199737144944,
+        0.008598064478462938,
+        0.13470719812858234,
+        0.42131324082238214
       ]
     }
+  },
+  "lead_vs_price_holm": {
+    "tests": 85,
+    "alpha": 0.05,
+    "significant": 0,
+    "smallest_p": 0.008598064478462938,
+    "threshold_for_the_smallest_p": 0.0005882352941176471
   },
   "lead_fees_usd_mechanical": {
     "lag_weeks": 0,
@@ -353,6 +455,25 @@
         "lag_weeks": 1,
         "corr": 0.185
       }
+    ],
+    "p_values": [
+      0.0651312625832733,
+      0.5049436963977104,
+      0.6755340211493295,
+      0.6658841754618608,
+      0.74576716238684,
+      0.7170583645296815,
+      0.19842342193745666,
+      0.001268409007954574,
+      1.3067130114621409e-12,
+      0.0009583160069016219,
+      0.35044678819589287,
+      0.8296704222822466,
+      0.1950546456439583,
+      0.4388805202429138,
+      0.04634088851044359,
+      0.24417004067915105,
+      0.6287658591060699
     ]
   },
   "checks": {
@@ -1643,6 +1764,43 @@
         "2026-10": -484,
         "2026-11": 0
       }
+    },
+    "largest_daily_fall": {
+      "date": "2026-04-02",
+      "day_before": "2026-04-01",
+      "txns": {
+        "before": 3758663,
+        "after": 1063375
+      },
+      "pct_change": -71.70869003153516,
+      "kaiching": {
+        "month_before": {
+          "month": "2026-03",
+          "accounts": 36455594,
+          "txs": 70548093,
+          "relayed_txs": 61998254,
+          "txs_per_day": 2275744.935483871
+        },
+        "month_of": {
+          "month": "2026-04",
+          "accounts": 1195767,
+          "txs": 1373070,
+          "relayed_txs": 1195765,
+          "txs_per_day": 45769.0
+        },
+        "month_after": {
+          "month": "2026-05",
+          "accounts": 6,
+          "txs": 7,
+          "relayed_txs": 0,
+          "txs_per_day": 0.22580645161290322
+        }
+      },
+      "active_accounts": {
+        "before": 139048,
+        "after": 137183,
+        "pct_change": -1.3412634485932884
+      }
     }
   },
   "segments": {
@@ -2525,6 +2683,18 @@
         "top_via": "omft.near"
       }
     ],
+    "largest_relayer": {
+      "latest": {
+        "relayer": "sweat-relayer.near",
+        "transactions": 5699577,
+        "share_of_all_transactions": 0.2518877181526103
+      },
+      "prior": {
+        "relayer": "hotwallet.kaiching",
+        "transactions": 62000031,
+        "share_of_all_transactions": 0.43977166555838354
+      }
+    },
     "exchange_contracts_latest": [
       {
         "contract": "v2.ref-finance.near",
@@ -2665,6 +2835,28 @@
         "delete_account": 13,
         "first_day": "2026-10-02",
         "last_day": "2026-10-07"
+      }
+    },
+    "intents_outcomes": {
+      "target": "intents.near",
+      "window": "recent",
+      "blocks": 99,
+      "transactions": 149,
+      "failed": 28,
+      "senders": {
+        "intents.near": {
+          "transactions": 116,
+          "failed": 2
+        },
+        "escrow.ai.near": {
+          "transactions": 26,
+          "failed": 26
+        }
+      },
+      "other_senders": {
+        "transactions": 7,
+        "failed": 0,
+        "accounts": 7
       }
     },
     "sample_view": {
@@ -2946,7 +3138,63 @@
     "market_cap_usd": 4700127150.713468,
     "intents_fees_vs_l1_fees": 51.00987443986114,
     "growth_needed_to_cover_new_supply": 5.57151416662398,
-    "market_cap_to_annual_buyback": 226.7481587317203
+    "market_cap_to_annual_buyback": 226.7481587317203,
+    "wallets": {
+      "source": "https://archival-rpc.mainnet.fastnear.com",
+      "wallets": {
+        "buybacks.multisignature.near": "buyback wallet",
+        "fefundsadmin.sputnik-dao.near": "front-end fund",
+        "1csfundsadmin.sputnik-dao.near": "1Click fund"
+      },
+      "heights": {
+        "2026-08-14T00:00Z": 211226016,
+        "2026-10-13T00:00Z": 219740494,
+        "2026-11-12T00:00Z": 224135645
+      },
+      "window": [
+        "2026-08-14",
+        "2026-11-11"
+      ],
+      "days": 90,
+      "change_near": {
+        "buybacks.multisignature.near": 1511073.3444429738,
+        "fefundsadmin.sputnik-dao.near": 448199.04097574693,
+        "1csfundsadmin.sputnik-dao.near": -502528.0626345877
+      },
+      "change_near_all_wallets": 1456744.322784133,
+      "change_near_all_wallets_annualized": 5907907.531291206,
+      "net_new_supply_near": 7952129.947474241,
+      "coverage_of_new_supply": 0.18318919992584184,
+      "buyback_wallet_coverage_of_new_supply": 0.19002120871061992,
+      "defillama_revenue_near": 1490035.721989306,
+      "balance_growth_over_defillama_revenue": 0.977657314711404,
+      "held_near_at_end": {
+        "buybacks.multisignature.near": 2249868.7149093663,
+        "fefundsadmin.sputnik-dao.near": 2003856.0322079526,
+        "1csfundsadmin.sputnik-dao.near": 270.87589141242086
+      },
+      "held_near_at_end_all_wallets": 4253995.623008732,
+      "buyback_wallet_share_of_held": 0.528883645939931,
+      "last_days": {
+        "window": [
+          "2026-10-13",
+          "2026-11-11"
+        ],
+        "days": 30,
+        "change_near": {
+          "buybacks.multisignature.near": 289750.3935946557,
+          "fefundsadmin.sputnik-dao.near": 120146.96984719881,
+          "1csfundsadmin.sputnik-dao.near": 0.0
+        },
+        "change_near_all_wallets": 409897.3634418545,
+        "change_near_all_wallets_annualized": 4987084.588542563,
+        "net_new_supply_near": 2663856.9618678093,
+        "coverage_of_new_supply": 0.15387363860349615,
+        "buyback_wallet_coverage_of_new_supply": 0.10877100300141197,
+        "defillama_revenue_near": 406426.2090325641,
+        "balance_growth_over_defillama_revenue": 1.0085406756064108
+      }
+    }
   },
   "cross_check": {
     "prior": {

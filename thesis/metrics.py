@@ -1,6 +1,8 @@
 """Pure metric functions. No I/O here, so everything is unit-testable."""
 from __future__ import annotations
 
+import math
+
 import numpy as np
 import pandas as pd
 
@@ -69,8 +71,33 @@ def lead_lag(x: pd.Series, price: pd.Series, max_lag: int = 8) -> pd.DataFrame:
         pair = pd.concat([dx, dp.shift(-k)], axis=1, keys=["x", "p"], sort=True).dropna()
         n = len(pair)
         corr = pair["x"].corr(pair["p"]) if n > 5 else np.nan
-        rows.append({"lag_weeks": k, "corr": corr, "n": n, "band": 2 / np.sqrt(n) if n else np.nan})
+        rows.append({"lag_weeks": k, "corr": corr, "n": n, "band": 2 / np.sqrt(n) if n else np.nan,
+                     "p": _p_value(corr, n)})
     return pd.DataFrame(rows)
+
+
+def _p_value(corr: float, n: int) -> float:
+    """Two-sided p-value of a correlation under a zero true correlation, by Fisher's z (normal approximation)."""
+    if n <= 3 or pd.isna(corr) or abs(corr) >= 1:
+        return float("nan")
+    return float(math.erfc(abs(math.atanh(corr)) * math.sqrt(n - 3) / math.sqrt(2)))
+
+
+def holm(p_values: list[float], alpha: float = 0.05) -> dict:
+    """Holm's step-down correction for testing many lags at once: how many tests still stand at level alpha.
+
+    The noise band flags about one test in twenty by chance. Holm's rule asks more of the smallest p-value the more
+    tests there are (alpha / m for the first, alpha / (m - 1) for the next, ...) and stops at the first that fails.
+    """
+    ps = sorted(p for p in p_values if not pd.isna(p))
+    m = len(ps)
+    passed = 0
+    for i, p in enumerate(ps):
+        if p > alpha / (m - i):
+            break
+        passed += 1
+    return {"tests": m, "alpha": alpha, "significant": passed, "smallest_p": ps[0] if ps else float("nan"),
+            "threshold_for_the_smallest_p": alpha / m if m else float("nan")}
 
 
 def best_lead(ll: pd.DataFrame) -> dict:
@@ -92,6 +119,7 @@ def best_lead(ll: pd.DataFrame) -> dict:
         "outside_band": [
             {"lag_weeks": int(k), "corr": round(float(c), 3)} for k, c in zip(outside["lag_weeks"], outside["corr"])
         ],
+        "p_values": [float(v) for v in ll["p"]] if "p" in ll else [],
     }
 
 
@@ -200,6 +228,8 @@ def summarize(daily: pd.DataFrame) -> dict:
                                                        "intents_volume_usd") if c in d},
         "month_to_date_yoy": {c: month_to_date_change(d[c]) for c in ("price_usd", "intents_volume_usd") if c in d},
         "lead_vs_price": leads,
+        # all lags of all metrics as one family of tests
+        "lead_vs_price_holm": holm([p for v in leads.values() for p in v.get("p_values", [])]),
         # reported apart from the scan above: USD fees contain the price, so this correlation is mechanical
         "lead_fees_usd_mechanical": best_lead(lead_lag(d["fees_usd"], d["price_usd"])),
         "checks": checks(daily),

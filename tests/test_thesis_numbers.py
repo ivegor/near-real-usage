@@ -257,6 +257,66 @@ def test_thesis_quotes_the_committed_summary():
     assert not missing, f"THESIS.md does not quote these summary.json values: {missing}"
 
 
+def test_thesis_quotes_the_checks_read_from_the_chain():
+    """The wallet balances, the outcomes of sampled transactions, the named step and the correction for many tests."""
+    s = json.loads((ROOT / "data" / "snapshot" / "thesis_summary.json").read_text(encoding="utf-8"))
+    text, readme = prose("THESIS.md"), prose("README.md")
+    w, c, p = s["value_capture"]["wallets"], s["clients"], s["population"]
+    tail, buyback, front, one_click = w["last_days"], *w["wallets"]
+    assert (w["wallets"][buyback], w["wallets"][front], w["wallets"][one_click]) == ("buyback wallet", "front-end fund", "1Click fund")
+    # the wallet check covers the same 90 days as the DefiLlama figure it is set against
+    assert w["window"] == s["value_capture"]["window"] and (w["days"], tail["days"]) == (90, 30)
+    cover, cover_tail = f"{w['coverage_of_new_supply'] * 100:.1f}%", f"{tail['coverage_of_new_supply'] * 100:.1f}%"
+    relayer, fall, holm = c["largest_relayer"], p["largest_daily_fall"], s["lead_vs_price_holm"]
+    assert (relayer["prior"]["relayer"], relayer["latest"]["relayer"]) == ("hotwallet.kaiching", "sweat-relayer.near")
+    assert relayer["prior"]["transactions"] == p["kaiching_relayed_txs_per_day"]["in_the_month"][c["prior_month"]]
+    before, of = fall["kaiching"]["month_before"], fall["kaiching"]["month_of"]
+    assert (fall["date"], before["month"], of["month"]) == ("2026-04-02", "2026-03", "2026-04")
+    assert holm["tests"] == 17 * len(s["lead_vs_price"]) and holm["significant"] == 0
+    out = c["intents_outcomes"]
+    own, bot = out["senders"]["intents.near"], out["senders"]["escrow.ai.near"]
+    assert bot["failed"] == bot["transactions"] and out["target"] == "intents.near" and out["window"] == "recent"
+    assert out["other_senders"]["failed"] == 0
+    actors = {a["actor"]: a["txs"] for a in c["top_actors_latest"]}
+    assert 0.23 < actors["escrow.ai.near"] / c["intents"]["latest"]["transactions"] < 0.27  # "a quarter"
+    quoted = [
+        # value capture read from the balances
+        f"held {w['change_near_all_wallets']:,.0f} NEAR more at the end",
+        f"That is {w['balance_growth_over_defillama_revenue']:.2f} of the revenue DefiLlama reports",
+        f"it is {cover} of the {w['net_new_supply_near'] / 1e6:.2f}M NEAR of net new supply",
+        f"over the last 30 days it is {cover_tail}",
+        f"Of the {w['held_near_at_end_all_wallets'] / 1e6:.2f}M NEAR the three wallets hold, {w['buyback_wallet_share_of_held'] * 100:.0f}% is in the buyback wallet",
+        f"{w['held_near_at_end'][front] / 1e6:.2f}M NEAR, sits in the front-end fund",
+        f"(−{abs(w['change_near'][one_click]):,.0f} NEAR) while the buyback wallet grew by {w['change_near'][buyback]:,.0f}",
+        f"gives {w['buyback_wallet_coverage_of_new_supply'] * 100:.1f}% over the 90 days and {tail['buyback_wallet_coverage_of_new_supply'] * 100:.1f}% over the last 30",
+        f"grew by {cover} of the new supply of the same 90 days, and by {cover_tail} over the last 30",
+        # concentration by actor and by signer
+        f"signed {relayer['prior']['share_of_all_transactions'] * 100:.0f}% of all transactions in October 2025, and the largest one now, "
+        f"Sweat's, signs {relayer['latest']['share_of_all_transactions'] * 100:.0f}%",
+        # the step in the daily series
+        f"went from {fall['txns']['before']:,} on {fall['day_before']} to {fall['txns']['after']:,} on {fall['date']} ({pct(fall['pct_change'])}",
+        f"({fall['active_accounts']['before']:,} → {fall['active_accounts']['after']:,})",
+        f"KaiChing sent {M(before['txs'])} transactions in March 2026, {M(before['txs_per_day'])} a day, and {M(of['txs'])} in the whole of April",
+        # many lags tested at once
+        "none of the 85 stands after Holm's correction",
+        f"the smallest p-value is {holm['smallest_p']:.3f}; the first step of the correction asks for {holm['threshold_for_the_smallest_p']:.4f}",
+        # how the sampled transactions to NEAR Intents ended
+        f"{out['transactions']} transactions in {out['blocks']} blocks",
+        f"all {bot['transactions']} sent by `escrow.ai.near` in the sample of autumn 2026 failed",
+        f"against {own['failed']} failed of the {own['transactions']} that `intents.near` signed itself and none of the "
+        f"{out['other_senders']['transactions']} from other accounts",
+        f"(all {bot['transactions']} in the keyless sample failed)",
+    ]
+    missing = [q for q in quoted if q not in text]
+    assert not missing, f"THESIS.md does not quote these summary values: {missing}"
+    in_readme = [
+        f"grew by {w['change_near_all_wallets']:,.0f} NEAR over the same 90 days, {cover} of the new supply ({cover_tail} over the last 30)",
+        "none stands after Holm's correction",
+    ]
+    missing = [q for q in in_readme if q not in readme]
+    assert not missing, f"README.md does not quote these summary values: {missing}"
+
+
 def test_thesis_names_the_snapshot_date():
     s = json.loads((ROOT / "data" / "snapshot" / "thesis_summary.json").read_text(encoding="utf-8"))
     assert f"Snapshot as of {s['last_date']}" in (ROOT / "THESIS.md").read_text(encoding="utf-8")

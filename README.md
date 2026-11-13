@@ -27,12 +27,14 @@ NEAR, account by account over the whole chain, and tests with re-runnable code w
   wallet apps still send 43% (Sweat alone 26%), or 45% counting the one-off deletion of old KaiChing accounts.
 * NEAR Intents volume: **$56M → $129M a day**, October to October, but that base was the middle of a ramp-up: the
   volume is level with November 2025 ($122M) and +73% on the nine months in between ($74.5M). Usage does **not** lead price: 6 of 85 weekly
-  lead-lag tests fall outside the noise band where about 4 are expected by chance.
+  lead-lag tests fall outside the noise band where about 4 are expected by chance, and none stands after Holm's
+  correction for testing them together.
 * Three readings from our own drafts ("returning accounts grew", "remaining accounts are busier", "the base outside
   reward apps fell by two thirds") did not survive closer measurement, and a fourth ("regular self-paying accounts
   fell by a third") turned out to be partly one game changing who pays; THESIS.md lists each with what replaced it.
 * Value reaches the token only in part: buybacks funded by Intents revenue run at **$20.7M a year** and cover **18%**
-  of the net new NEAR issued.
+  of the net new NEAR issued. That figure is DefiLlama's; read from the chain with no key, the three wallets the
+  revenue arrives at grew by 1,456,744 NEAR over the same 90 days, 18.3% of the new supply (15.4% over the last 30).
 
 Full argument, evidence against, and kill criteria: [`THESIS.md`](THESIS.md). Nine dated predictions, their
 thresholds reference levels taken from the data or natural lines such as parity, scored by the build (five from
@@ -64,7 +66,9 @@ virtual environment to set up:
 |---|---|
 | `python -m thesis build` | `data/raw/*.json` (exact API responses), `data/daily.csv`, `docs/*.png`, `docs/index.html`, `docs/summary.json`; summary printed to stdout. If an API is down, the build says so and uses the committed copy |
 | `python -m thesis build --offline` | Same outputs rebuilt from the committed `data/raw/` files, no network |
-| `python -m pytest -q` | 86 tests: parsing, metric formulas, a planted 3-week lead recovered by the lead-lag test, the account census on a hand-made table, block parsing with relayed transactions, the scoring of all nine predictions, the numbers quoted in THESIS.md, PREDICTIONS.md and this README against the frozen copy of the summary, full offline build |
+| `python -m pytest -q` | 96 tests: parsing, metric formulas, a planted 3-week lead recovered by the lead-lag test, the account census on a hand-made table, block parsing with relayed transactions, the scoring of all nine predictions, the numbers quoted in THESIS.md, PREDICTIONS.md and this README against the frozen copy of the summary, full offline build |
+| `python -m thesis wallets` (network, about 2 minutes, no key) | `data/raw/revenue_wallets.json`: what NEAR's three revenue wallets hold at the start and the end of the 90-day window and 30 days before its end, read from an archival RPC node. The build sets their growth against the new supply and against DefiLlama's revenue series |
+| `python -m thesis outcomes` (network, about 5 minutes, no key) | `data/raw/census_outcomes.csv`: how the transactions to NEAR Intents in the sampled blocks ended, by sender |
 | `python -m thesis video` (needs ffmpeg) | `demo/near-real-usage.mp4`, a 73-second slideshow rendered from the build outputs, so the numbers on screen are the ones in `docs/summary.json` |
 | Paste [`sql/account_age.sql`](sql/account_age.sql) into the BigQuery console, save the result as CSV, then `python -m thesis bq-age result.csv` | `data/bq/account_age.csv` rebuilt from the chain: 25 months × family × age × returning. Scans 482.64 GB (free tier is 1 TB a month); check the dry-run estimate first |
 | Paste [`sql/payer_frequency.sql`](sql/payer_frequency.sql) into the BigQuery console (91.28 GB), save the result as CSV, then `python -m thesis bq-freq result.csv` | `data/bq/payer_frequency.csv` rebuilt from the chain: accounts by who pays the fee (an app's relayer or the account itself), by namespace and by transactions per month, August 2025 to October 2026 |
@@ -102,6 +106,9 @@ download a source does not publish (`--require-fresh`), so the page never falls 
 * DefiLlama NEAR Intents volume: `https://api.llama.fi/summary/dexs/near-intents`.
 * DefiLlama NEAR Intents fees, captured revenue and buybacks: `https://api.llama.fi/summary/fees/near-intents`
   (`python -m thesis fetch-value` refreshes the saved copies).
+* FastNEAR public endpoints, no key: the block archive and an archival RPC node for the block sample, the same RPC
+  node for the balances of the revenue wallets, and the transaction index `https://tx.main.fastnear.com` for the
+  outcomes of sampled transactions. All are rate-limited; the code paces its requests.
 
 No headline number is typed by hand: the figures in the dashboard and the key figures of `THESIS.md` come from
 `docs/summary.json` (tests check the ones THESIS.md and this README quote against the frozen copy in
@@ -119,6 +126,7 @@ thesis/population.py account census from BigQuery: families, age, returning acco
 thesis/segments.py   accounts by who pays the fee and how often they act (unit-tested)
 thesis/clients.py    largest accounts, the apps behind them, concentration (unit-tested)
 thesis/value.py      Intents fees, captured revenue and buybacks against net new NEAR supply (unit-tested)
+thesis/wallets.py    the same revenue read from the balances of the wallets it arrives at (unit-tested)
 thesis/predictions.py scores predictions.csv against the data (unit-tested)
 thesis/sources.py    fetch + cache raw API responses, parse into a daily table
 thesis/metrics.py    pure metric functions (unit-tested)
@@ -140,6 +148,7 @@ tests/               unit + offline end-to-end tests
 THESIS.md            claim, evidence, contrary evidence, what would change our mind
 AGENTS.md, CLAUDE.md the same notes for coding agents under the two names their tools look for
 PREDICTIONS.md       nine dated predictions; predictions.csv is the frozen, machine-readable list
+predictions.csv.ots  OpenTimestamps proof that predictions.csv existed on 2026-11-13
 ```
 
 ## Hackathon disclosures
