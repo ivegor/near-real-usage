@@ -7,7 +7,7 @@
 --   namespace  kaiching / tg: accounts created by two reward apps inside their own namespaces; rest: all others
 --
 -- Output: one row per month; `cells` is ';'-separated namespace|payer|frequency|accounts|transactions|self-paid.
--- Cost: 91.28 GB (dry run, 2026-11-13). Result unpacked into data/bq/payer_frequency.csv.
+-- Cost: 91.28 GB (dry run, 2026-11-13). `python -m thesis bq-freq` unpacks the result into data/bq/payer_frequency.csv.
 WITH am AS (
   SELECT
     DATE_TRUNC(block_date, MONTH) AS m,

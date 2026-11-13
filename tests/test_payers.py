@@ -22,7 +22,7 @@ def test_groups_and_attribution(tmp_path):
     m = s["month"]
     assert (s["latest_month"], s["prior_month"]) == ("2026-10", "2025-10")
     assert m["sponsored_by_sweat"] == {"latest": 300.0, "prior": 700.0, "pct_change": (300 / 700 - 1) * 100}
-    assert m["independent_accounts"]["latest"] == 70 and m["independent_regular_accounts"]["latest"] == 60   # .tg payers are HOT's
+    assert m["independent_accounts"]["latest"] == 70 and m["independent_returning_accounts"]["latest"] == 60   # .tg payers are HOT's
     assert m["old_core_accounts"]["prior"] == 700 + 200 + 60 and m["old_core_accounts"]["latest"] == 300 + 70
     # the fall of 590 accounts outside the namespaces: 400 Sweat, 200 Ember, and independents grew by 10
     assert abs(s["old_core_fall_explained_by"]["sweat"] - 400 / 590) < 1e-9

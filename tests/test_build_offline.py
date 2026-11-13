@@ -1,5 +1,7 @@
 """End-to-end: synthetic raw files -> charts + dashboard, no network."""
+import html
 import json
+from pathlib import Path
 
 from thesis import charts, clients, dashboard, metrics, population, sources
 
@@ -31,6 +33,21 @@ def test_full_build(tmp_path, monkeypatch):
     # every card prints the request or query behind its chart on the page itself, and the page links the thesis
     assert html.count("behind this chart") == len(built) and "GET https://api.nearblocks.io/v1/charts" in html
     assert html.count('<p class="lead">') == len(built) and "blob/main/THESIS.md" in html and "sql/account_age.sql" in html
+
+
+def test_every_card_of_the_real_dashboard_prints_its_query(tmp_path):
+    """Built from the committed data, every card carries the query or the requests behind its chart."""
+    root = Path(__file__).resolve().parent.parent
+    daily = sources.load_daily(offline=True)
+    summary = json.loads((root / "docs" / "summary.json").read_text())
+    built = charts.build_all(daily, summary, tmp_path)
+    cards = {c.slug: dashboard.query_block(c) for c in built}
+    assert list(cards)[:4] == ["population", "segments", "clients", "value_capture"] and len(cards) == 11
+    for slug, query in (("population", "sql/account_age.sql"), ("segments", "sql/payer_frequency.sql"), ("clients", "sql/top_accounts.sql")):
+        assert html.escape((root / query).read_text()) in cards[slug], slug       # the SQL text itself, not only a link
+    for slug, block in cards.items():
+        assert "behind this chart" in block and charts.CHART_SOURCE[slug] in block, slug
+    assert "GET https://api.llama.fi/summary/fees/near-intents" in cards["value_capture"]
 
 
 def test_dashboard_card_shows_one_sentence_and_prints_the_query(tmp_path):

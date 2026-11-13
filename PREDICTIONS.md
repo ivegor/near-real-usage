@@ -27,7 +27,8 @@ threshold in the file differs from them.
 ## The predictions
 
 SHA-256 of `predictions.csv`: `7ff48f00d7131ae4cf1e5b11ff817242844e6b8dd3a0681d98e1fcbaac65d15a`
-(a test fails if the file no longer matches; the commit that introduced it is tagged `predictions-2026-11-13`).
+(a test fails if the file no longer matches; the commit that holds this version of the file is tagged
+`predictions-2026-11-13`).
 
 | Id | Question | Prediction | Threshold | Where the threshold comes from | Check on | Scoring |
 |---|---|---|---|---|---|---|
@@ -41,9 +42,16 @@ SHA-256 of `predictions.csv`: `7ff48f00d7131ae4cf1e5b11ff817242844e6b8dd3a0681d9
 | B3 | Does the chain still depend on a few dozen accounts? | In January 2027 fewer than a hundred accounts still send half of all transactions | < 100 | dozens rather than hundreds; 30 in October 2026 | 2027-02-01 | bigquery |
 | B4 | Which is the larger half of the chain: reward apps or financial use? | In January 2027 reward and wallet apps still send more transactions than the exchange, Intents, token contracts and bridges together | > 0 | the point where the two are equal; 43% vs 41% in October 2026 | 2027-02-01 | bigquery |
 
+One reference level needs a note. B2's reference month, February 2026, turned out to hold a one-off burst: a third
+of its self-paid transactions came from dormant accounts that sent one transaction each (see "Limits" in THESIS.md).
+Without them the top of the range is 8.65M (June 2026). The file is frozen, so the threshold stays at 10.38M, which
+is the harder of the two for the prediction to stay above; `docs/summary.json` publishes both levels under
+`predictions.baselines`.
+
 ## Scoring
 
 "automatic" predictions are scored by `python -m thesis build` from the daily NearBlocks and DefiLlama series as soon
-as the data reaches the check date; the status is on the dashboard and in `docs/summary.json` under `predictions`.
+as the data reaches the check date and covers every day of the window the prediction names (until then: open); the
+status is on the dashboard and in `docs/summary.json` under `predictions`.
 "bigquery" predictions need `sql/account_age.sql`, `sql/payer_frequency.sql` and `sql/top_accounts.sql` to be run for the named month (the free
 BigQuery tier allows it once a month) and are shown as open until then.

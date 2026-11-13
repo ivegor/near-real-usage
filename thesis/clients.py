@@ -32,6 +32,10 @@ FINANCE_APPS = ("Ref Finance / Rhea (DEX, lending)", "NEAR Intents", "Token cont
                 "Bridges, Aurora, chain signatures")
 OTHER_TOP, TAIL = "Other contracts in the top 40", "Everything outside the top 40"
 _APP_OF = {via: app for app, vias in APPS.items() for via in vias}
+# The game Ember sponsored its users' transactions like the reward apps do, but it is not in REWARD_APPS: prediction B4
+# (predictions.csv) was frozen with that group as it is, so the group stays and Ember's share is published next to it.
+EMBER = ("relayer:mytestapi.embr.playember_reserve.near", "embr.playember_reserve.near")
+EXCHANGE = "Ref Finance / Rhea (DEX, lending)"
 
 
 def load(path: Path | None = None) -> dict | None:
@@ -105,6 +109,16 @@ def summarize(data: dict) -> dict:
                              "top2_signers": list(signed["actor"]),
                              "top2_share": float(signed["txs"].sum() / total) if total else float("nan")}
     out["top_actors_latest"] = data[latest]["actors"].head(10).to_dict("records")
+    # the exchange contract by contract: the same account may call several, so their account counts cannot be added
+    v = data[latest]["via"]
+    app_txs = out["apps"][EXCHANGE]["latest"]
+    out["exchange_contracts_latest"] = [
+        {"contract": r.via, "transactions": int(r.txs), "accounts": int(r.actors), "share_of_app_txs": float(r.txs / app_txs)}
+        for r in v[v["via"].isin(APPS[EXCHANGE])].itertuples()]
+    ember = {k: int(data[m]["via"].loc[data[m]["via"]["via"].isin(EMBER), "txs"].sum()) for k, m in (("latest", latest), ("prior", prior))}
+    share = {k: ember[k] / data[m]["conc"]["txs"] for k, m in (("latest", latest), ("prior", prior))}
+    out["ember"] = {**ember, "latest_share": float(share["latest"]), "prior_share": float(share["prior"]),
+                    "reward_apps_share_with_ember": {k: float(out["reward_apps_share"][k] + share[k]) for k in ("latest", "prior")}}
     return out
 
 

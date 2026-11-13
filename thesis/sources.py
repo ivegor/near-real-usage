@@ -42,9 +42,9 @@ def _fetch_json(url: str, retries: int = 3) -> dict:
 REQUIRED_KEY = {"nearblocks_charts": "charts", "defillama_intents": "totalDataChart"}
 
 
-def _check_shape(name: str, data: object) -> None:
+def _check_shape(name: str, data: object, key: str | None = None) -> None:
     """Raise if a response does not carry the series we read from it (an API change, a rate-limit page, ...)."""
-    key = REQUIRED_KEY.get(name)
+    key = key or REQUIRED_KEY.get(name)
     rows = data.get(key) if isinstance(data, dict) and key else None
     if key and (not isinstance(rows, list) or len(rows) < 30):
         raise RuntimeError(f"unexpected response for {name}: no usable '{key}' series")

@@ -68,10 +68,6 @@ def _save(fig, out: Path, slug: str):
 LEAD_LABELS = {"returning_accounts": "active - new (proxy)", "active_accounts": "active accounts",
                "intents_volume_usd": "intents volume", "fees_near": "fees (in NEAR)", "fees_usd": "fees (in USD)",
                "txns": "transactions"}
-# the query or code behind each chart, linked from the dashboard
-SOURCE_OF = {"population": "sql/account_age.sql", "clients": "sql/top_accounts.sql", "signer_census": "thesis/census.py",
-             "lead_lag": "thesis/metrics.py", "accounts": "thesis/sources.py", "usage_vs_price": "thesis/sources.py",
-             "tx_per_active": "thesis/sources.py", "fees_per_active": "thesis/sources.py", "intents": "thesis/sources.py"}
 FAMILY_STYLE = {"kaiching": ("KaiChing reward app", MUTED, "--"), "tg": ("HOT wallet (.tg)", "#c9a227", "--"),
                 "core": ("everyone else (core)", ACCENT, "-"), "near": ("named .near accounts", INK, "-")}
 POP_AGE = {"ge2y": ("older than 2 years", ACCENT), "lt2y": ("1 to 2 years", "#9bd8c6"), "lt1y": ("30 days to 1 year", "#d9dde1"),
@@ -106,7 +102,7 @@ def _population_chart(pop: pd.DataFrame, summary: dict, out: Path) -> Chart:
     ax.plot(x, core["returning_accounts"] / 1e6, color=ACCENT, label="also active the month before")
     ax.plot(x, core["old_accounts"] / 1e6, color=INK, linewidth=0.9, label="older than 1 year")
     ax.set_ylim(0, 3)  # Feb-Mar 2026: millions of existing accounts sent one transaction each and run off the scale
-    _style(ax, "Accounts outside the reward namespaces, millions")
+    _style(ax, "Core accounts, millions")  # a longer title runs into the next panel's
     ax.legend(frameon=False, fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=2)
 
     ax = axes[2]
@@ -277,6 +273,7 @@ def _clients_chart(cl: dict, out: Path) -> Chart:
     )
 
 
+# The query or code behind each chart. The dashboard prints the SQL text of a query on the page and links the rest.
 CHART_SOURCE = {
     "population": "sql/account_age.sql", "segments": "sql/payer_frequency.sql", "clients": "sql/top_accounts.sql",
     "value_capture": "thesis/value.py", "signer_census": "thesis/census.py", "accounts": "thesis/metrics.py",
@@ -292,8 +289,8 @@ def _takeaway(slug: str, s: dict) -> str:
             return f"NEAR lost {abs(s['population']['segments']['all']['accounts']['pct_change']):.0f}% of its active accounts in a year."
         if slug == "segments":
             m = s["segments"]["metrics"]
-            return (f"Almost all of the lost accounts were users an app was paying for; regular accounts that pay their own "
-                    f"fees fell {abs(m['regular_accounts']['pct_change']):.0f}%.")
+            return (f"Almost all of the lost accounts were users an app was paying for; outside the reward apps, regular "
+                    f"accounts that pay their own fees fell {abs(m['regular_accounts']['pct_change']):.0f}%.")
         if slug == "clients":
             c = s["clients"]
             return f"{c['months'][c['latest_month']]['accounts_for_half_of_txs']} accounts send half of all NEAR transactions."
@@ -569,6 +566,4 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
         c.source = c.source or CHART_SOURCE.get(c.slug, "")
     lead = ["population", "segments", "clients", "value_capture"]  # the full-chain counts lead the dashboard
     charts.sort(key=lambda c: lead.index(c.slug) if c.slug in lead else len(lead))
-    for c in charts:
-        c.source = SOURCE_OF.get(c.slug, "")
     return charts

@@ -1330,6 +1330,47 @@
       "2026-10": 12485623,
       "2024-12": 12074810
     },
+    "core_direct_txs_from_dormant_implicit": {
+      "peak": {
+        "month": "2026-02",
+        "txs": 3371077,
+        "share_of_month": 0.3247450458004325,
+        "month_before_txs": 27664
+      },
+      "largest_share_in_any_other_month": 0.013783915212381752,
+      "monthly": {
+        "2024-12": 51293,
+        "2025-01": 39403,
+        "2025-02": 28609,
+        "2025-03": 25383,
+        "2025-04": 98175,
+        "2025-05": 87672,
+        "2025-06": 61932,
+        "2025-07": 77353,
+        "2025-08": 82645,
+        "2025-09": 46024,
+        "2025-10": 47171,
+        "2025-11": 27429,
+        "2025-12": 79943,
+        "2026-01": 27664,
+        "2026-02": 3371077,
+        "2026-03": 90662,
+        "2026-04": 26640,
+        "2026-05": 42106,
+        "2026-06": 31419,
+        "2026-07": 14663,
+        "2026-08": 13088,
+        "2026-09": 59618,
+        "2026-10": 41163
+      },
+      "change_by_window_without_them": {
+        "1": 28.242356315697425,
+        "3": 36.00352290543691,
+        "6": 24.264766685903805,
+        "9": 1.7165476412344782,
+        "11": -8.011793709317072
+      }
+    },
     "core_txs_per_account_at_prior_mix": 11.668063395487987,
     "core_txs_per_account_by_family": {
       "implicit": {
@@ -1506,6 +1547,16 @@
           "prior": 1758946.3333333333,
           "pct_change": -56.91439515209768
         }
+      },
+      "app_namespace_regular_self_paying_accounts": {
+        "latest": 60879.0,
+        "prior": 333728.0,
+        "pct_change": -81.75789864800078,
+        "three_month_mean": {
+          "latest": 81799.0,
+          "prior": 362735.3333333333,
+          "pct_change": -77.44939836758849
+        }
       }
     },
     "heavy_share_of_independent_self_paid_txs": {
@@ -1554,7 +1605,7 @@
         "prior": 134730.0,
         "pct_change": 1.6202775922214752
       },
-      "independent_regular_accounts": {
+      "independent_returning_accounts": {
         "latest": 31452.0,
         "prior": 40759.0,
         "pct_change": -22.83422066292107
@@ -1564,7 +1615,7 @@
         "prior": 9751032.0,
         "pct_change": 28.044118817372365
       },
-      "independent_regular_self_paid_txs": {
+      "independent_returning_self_paid_txs": {
         "latest": 9600020.0,
         "prior": 8179786.0,
         "pct_change": 17.362728071370093
@@ -1656,7 +1707,7 @@
         "prior": 168139.0,
         "pct_change": -38.81074587097581
       },
-      "independent_regular_accounts": {
+      "independent_returning_accounts": {
         "latest": 20587.333333333332,
         "prior": 42726.0,
         "pct_change": -51.815444147981715
@@ -1666,7 +1717,7 @@
         "prior": 8224600.333333333,
         "pct_change": 35.495779511231376
       },
-      "independent_regular_self_paid_txs": {
+      "independent_returning_self_paid_txs": {
         "latest": 9204570.666666666,
         "prior": 7245582.666666667,
         "pct_change": 27.03699743862329
@@ -1756,7 +1807,7 @@
       "2026-09": 121792.0,
       "2026-10": 136913.0
     },
-    "independent_regular_accounts_by_month": {
+    "independent_returning_accounts_by_month": {
       "2025-07": 0.0,
       "2025-08": 43901.0,
       "2025-09": 43518.0,
@@ -1958,6 +2009,42 @@
         "top_via": "omft.near"
       }
     ],
+    "exchange_contracts_latest": [
+      {
+        "contract": "v2.ref-finance.near",
+        "transactions": 2927283,
+        "accounts": 2586,
+        "share_of_app_txs": 0.9629153877555451
+      },
+      {
+        "contract": "dclv2.ref-labs.near",
+        "transactions": 44392,
+        "accounts": 15140,
+        "share_of_app_txs": 0.014602530706202358
+      },
+      {
+        "contract": "token.rhealab.near",
+        "transactions": 38616,
+        "accounts": 3319,
+        "share_of_app_txs": 0.012702543831111694
+      },
+      {
+        "contract": "xtoken.rhealab.near",
+        "transactions": 29730,
+        "accounts": 370,
+        "share_of_app_txs": 0.009779537707140839
+      }
+    ],
+    "ember": {
+      "latest": 164956,
+      "prior": 2801024,
+      "latest_share": 0.007290083182590916,
+      "prior_share": 0.019867909255545463,
+      "reward_apps_share_with_ember": {
+        "latest": 0.4329784207686495,
+        "prior": 0.8832473415833842
+      }
+    },
     "kaiching_txs_outside_its_contracts": 560106.0,
     "kaiching_share_by_namespace": 0.028407397722350607,
     "reward_apps_share_incl_kaiching_namespace": 0.4504417223133087
@@ -2088,6 +2175,9 @@
       "intents_volume_plateau_top_usd": 89591201.70967741,
       "buyback_plateau_top_usd": 723262.0,
       "core_self_paid_txs_plateau_top": 10380688.0,
+      "core_self_paid_txs_plateau_top_month": "2026-02",
+      "core_self_paid_txs_plateau_top_without_dormant_implicit": 8654344.0,
+      "core_self_paid_txs_plateau_top_without_dormant_implicit_month": "2026-06",
       "regular_self_paying_accounts_low": 7201.0
     }
   },

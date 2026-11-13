@@ -22,6 +22,18 @@ def test_apps_cover_every_transaction(tmp_path):
     assert apps["NEAR Intents"] == 300 and apps[clients.OTHER_TOP] == 40 and apps[clients.TAIL] == 60
 
 
+def test_ember_and_the_exchange_contracts_are_published_separately(tmp_path):
+    p = write(tmp_path)
+    p.write_text(p.read_text().replace("mystery.near|40|1", "mystery.near|40|1;embr.playember_reserve.near|16|2;dclv2.ref-labs.near|10|7"))
+    s = clients.summarize(clients.load(p))
+    assert (s["ember"]["latest"], s["ember"]["prior"]) == (16, 0) and abs(s["ember"]["latest_share"] - 0.02) < 1e-9
+    assert abs(s["ember"]["reward_apps_share_with_ember"]["latest"] - 0.27) < 1e-9
+    assert s["apps"][clients.OTHER_TOP]["latest"] == 56 and abs(s["reward_apps_share"]["latest"] - 0.25) < 1e-9   # the group itself is unchanged
+    ex = {c["contract"]: c for c in s["exchange_contracts_latest"]}
+    assert ex["v2.ref-finance.near"]["accounts"] == 4 and ex["dclv2.ref-labs.near"]["accounts"] == 7
+    assert abs(ex["v2.ref-finance.near"]["share_of_app_txs"] - 200 / 210) < 1e-9
+
+
 def test_summary_and_chart(tmp_path):
     s = clients.summarize(clients.load(write(tmp_path)))
     assert (s["latest_month"], s["prior_month"]) == ("2026-10", "2025-10")

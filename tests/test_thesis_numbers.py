@@ -28,6 +28,20 @@ def test_thesis_quotes_the_committed_summary():
     intents = s["month_yoy"]["intents_volume_usd"]
     fees = s["yoy_90d"]["fees_usd"]
     n_out = sum(len(v["outside_band"]) for v in s["lead_vs_price"].values())
+    all_accounts, pay, sm = seg["all"]["accounts"], s["sponsors"]["month"], s["segments"]["metrics"]
+    hot, hot_regular, independent = (sm[k] for k in ("app_namespace_self_paying_accounts", "app_namespace_regular_self_paying_accounts",
+                                                      "independent_accounts"))
+    hot_regular_change = f"{pct(hot_regular['pct_change'])}; {pct(hot_regular['three_month_mean']['pct_change'])}"
+    # the one-off burst inside the self-paid series, and the reference level of prediction B2 with and without it
+    burst, windows, monthly = p["core_direct_txs_from_dormant_implicit"], p["core_direct_txs_change_by_window"], p["core_direct_txs_monthly"]
+    calm, base = burst["change_by_window_without_them"], s["predictions"]["baselines"]
+    assert (burst["peak"]["month"], base["core_self_paid_txs_plateau_top_month"],
+            base["core_self_paid_txs_plateau_top_without_dormant_implicit_month"]) == ("2026-02", "2026-02", "2026-06")
+    # the payer table keeps the .sweat service accounts that the census leaves out
+    sweat_then, sweat_now = (int(independent[k] - pay["independent_accounts"][k]) for k in ("prior", "latest"))
+    main, pools = c["exchange_contracts_latest"][:2]
+    assert (main["contract"], pools["contract"]) == ("v2.ref-finance.near", "dclv2.ref-labs.near")
+    ember = c["ember"]
     quoted = [
         f"{core['accounts']['prior']:,.0f} → {core['accounts']['latest']:,.0f}",
         f"({pct(core['accounts']['pct_change'])}; {pct(three['accounts']['pct_change'])})",
@@ -43,7 +57,32 @@ def test_thesis_quotes_the_committed_summary():
         f"between {near['accounts_range_12m']['min']:,.0f} and {near['accounts_range_12m']['max']:,.0f}",
         f"{p['reward_apps_share_of_lost']['accounts'] * 100:.1f}% of the accounts lost",
         f"{p['reward_apps_share_of_lost']['txs'] * 100:.1f}% of the transactions lost",
-        f"{p['kaiching_one_off']['accounts']:,} single-transaction accounts",
+        f"({all_accounts['prior']:,.0f} → {all_accounts['latest']:,.0f})",
+        f"{pay['self_paying_accounts']['prior']:,.0f} → {pay['self_paying_accounts']['latest']:,.0f}",
+        f"{p['kaiching_one_off']['single_tx_accounts']:,} old KaiChing accounts paid for one transaction each",
+        f"HOT users who pay their own fees {hot['prior']:,.0f} → {hot['latest']:,.0f}",
+        f"({independent['prior']:,.0f} → {independent['latest']:,.0f})",
+        f"{hot_regular['prior']:,.0f} → {hot_regular['latest']:,.0f} ({hot_regular_change})",
+        f"| {hot_regular['prior']:,.0f} | {hot_regular['latest']:,.0f} | {hot_regular_change} |",
+        f"the regular ones among them {abs(hot_regular['pct_change']):.0f}%",
+        f"({pct(calm['9'])} and {pct(calm['11'])} without a one-off burst in February 2026",
+        f"{M(burst['peak']['txs'])} of that month's {M(monthly['2026-02'])}",
+        f"self-paid core transactions ({burst['peak']['share_of_month'] * 100:.0f}%)",
+        f"sent {burst['peak']['month_before_txs']:,} the month before",
+        f"never more than {burst['largest_share_in_any_other_month'] * 100:.1f}% of a month",
+        f"{pct(calm['9'])} instead of {pct(windows['9'])}", f"{pct(calm['11'])} instead of {pct(windows['11'])}",
+        f"month was {M(base['core_self_paid_txs_plateau_top'])} (February 2026)", f"up to {M(monthly['2024-12'])} in December 2024",
+        f"the top of the range is {M(base['core_self_paid_txs_plateau_top_without_dormant_implicit'])} (June 2026)",
+        f"({sweat_then} in October 2025, {sweat_now} in October",
+        f"at most {sweat_then} of its {sm['heavy_accounts']['prior']:,.0f} heavy accounts a year ago",
+        f"{sweat_now} of the {sm['heavy_accounts']['latest']:,.0f} now",
+        f"the table has {M(sm['independent_self_paid_txs']['prior'])} where the census has {M(core['direct_txs']['prior'])}",
+        f"{main['share_of_app_txs'] * 100:.0f}% of these transactions go to the main contract from {main['accounts']:,} accounts",
+        f"{pools['accounts']:,} accounts used the concentrated-liquidity contract, for {pools['transactions']:,} transactions",
+        f"relayers ({c['reward_apps_share']['prior'] * 100:.0f}% a year ago), or {c['reward_apps_share_incl_kaiching_namespace'] * 100:.0f}% counting",
+        f"it sponsored {pay['sponsored_by_ember']['prior']:,.0f} users a year ago "
+        f"({ember['prior_share'] * 100:.1f}% of transactions, {ember['latest_share'] * 100:.1f}% now)",
+        f"share is {ember['reward_apps_share_with_ember']['latest'] * 100:.1f}% ({ember['reward_apps_share_with_ember']['prior'] * 100:.1f}% a year ago)",
         f"send {p['sweat_share_of_all_txs'] * 100:.1f}% of all transactions",
         f"{p['partial_month']['accounts']['tg']:,}",
         f"({p['partial_month']['latest_complete_accounts']['tg']:,})",

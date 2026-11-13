@@ -1,6 +1,7 @@
 """Value capture: buybacks against net new supply, on a small synthetic table (no network)."""
 import numpy as np
 import pandas as pd
+import pytest
 
 from thesis import value
 
@@ -29,6 +30,23 @@ def test_monthly_keeps_complete_months_only():
     m = value.monthly(daily, fees)
     assert str(m.index[-1]) == "2026-10" and len(m) == 12            # the series ends on 2026-11-12: November is partial
     assert abs(m["new_supply_value"].iloc[-1] - 31 * 100_000 * 2.0) < 1
+
+
+def test_fetch_never_replaces_a_saved_copy_with_an_error_page(tmp_path, monkeypatch):
+    """An HTTP 200 reply without the series (a rate-limit page) must leave all three saved files as they were."""
+    monkeypatch.setattr(value.sources, "RAW_DIR", tmp_path)
+    good = {"totalDataChart": [[1_700_000_000 + 86_400 * i, 5.0] for i in range(40)]}
+    names = list(value.URLS)
+    for name in names:
+        (tmp_path / f"{name}.json").write_text('{"saved": true}')
+    replies = iter([good, good, {"message": "rate limited"}])       # the third reply is the bad one
+    monkeypatch.setattr(value.sources, "_fetch_json", lambda url: next(replies))
+    with pytest.raises(RuntimeError, match="no usable 'totalDataChart' series"):
+        value.fetch()
+    assert all((tmp_path / f"{name}.json").read_text() == '{"saved": true}' for name in names)
+    monkeypatch.setattr(value.sources, "_fetch_json", lambda url: good)
+    value.fetch()
+    assert len(value.load()) == 40 and list(value.load().columns) == ["fees", "revenue", "holders_revenue"]
 
 
 def test_missing_supply_or_files_means_no_section(tmp_path, monkeypatch):

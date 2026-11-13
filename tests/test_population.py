@@ -80,6 +80,22 @@ def test_summary_reports_robust_and_decomposed_figures():
     assert s["segments"]["near"]["accounts_range_12m"] == {"min": 40.0, "max": 40.0}
 
 
+def test_a_burst_of_dormant_accounts_is_split_out_of_the_self_paid_series():
+    """Old implicit accounts that wake up for one month are published separately, with the windows recomputed without them."""
+    df = table()
+    burst = pd.DataFrame([("2026-02", "implicit", "ge2y", "not_returning", 500, 500, 0, 500)], columns=df.columns)
+    s = population.summarize(pd.concat([df, burst]), "2026-03-11")
+    d = s["core_direct_txs_from_dormant_implicit"]
+    # every month the table's old implicit accounts pay for 80 - 70 = 10 transactions out of 825 self-paid core ones
+    assert d["peak"] == {"month": "2026-02", "txs": 510, "share_of_month": 510 / 1325, "month_before_txs": 10}
+    assert abs(d["largest_share_in_any_other_month"] - 10 / 825) < 1e-12
+    assert d["monthly"]["2026-01"] == 10 and d["monthly"]["2026-02"] == 510
+    assert s["core_direct_txs_change_by_window"]["1"] > 60 and d["change_by_window_without_them"] == {"1": 0.0}
+    # and the committed census: February 2026 is the only month where they are more than a few percent
+    real = population.summarize(population.load())["core_direct_txs_from_dormant_implicit"]
+    assert real["peak"]["month"] == "2026-02" and real["peak"]["share_of_month"] > 0.3 > 0.05 > real["largest_share_in_any_other_month"]
+
+
 def test_cross_check_compares_the_same_months():
     df = table()
     sample = {"windows": {"recent": {"start": "2025-12-14", "end": "2026-03-11", "transactions": 100, "relayed_tx_share": 0.2,

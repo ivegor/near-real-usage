@@ -21,10 +21,18 @@ YOCTO = 1e24
 
 
 def fetch() -> None:
-    """Download the three fee series into data/raw/ (network). The build only reads the saved copies."""
-    sources.RAW_DIR.mkdir(parents=True, exist_ok=True)
+    """Download the three fee series into data/raw/ (network). The build only reads the saved copies.
+
+    All three replies are checked before any file is written: an error page or an empty reply must not replace a
+    committed copy, and the three files must come from the same download. Raises RuntimeError otherwise.
+    """
+    replies = {}
     for name, url in URLS.items():
-        (sources.RAW_DIR / f"{name}.json").write_text(json.dumps(sources._fetch_json(url)))
+        replies[name] = sources._fetch_json(url)
+        sources._check_shape(name, replies[name], key="totalDataChart")
+    sources.RAW_DIR.mkdir(parents=True, exist_ok=True)
+    for name, data in replies.items():
+        (sources.RAW_DIR / f"{name}.json").write_text(json.dumps(data))
 
 
 def load() -> pd.DataFrame | None:

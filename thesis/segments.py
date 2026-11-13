@@ -19,6 +19,9 @@ CSV = Path(__file__).resolve().parent.parent / "data" / "bq" / "payer_frequency.
 CLASS = {"1": "occasional", "2-9": "occasional", "10-99": "regular", "100-999": "regular",
          "1,000-9,999": "heavy", "10,000+": "heavy"}
 APP_NAMESPACES = ("kaiching", "tg")
+# the frequency codes sql/payer_frequency.sql writes, and the labels used in the committed table
+FREQUENCY = {"n1": "1", "n2_9": "2-9", "n10_99": "10-99", "n100_999": "100-999", "n1k_9k": "1,000-9,999", "n10k": "10,000+"}
+COLUMNS = ["month", "namespace", "payer", "txs_in_month", "accounts", "txs", "self_paid_txs"]
 
 
 def load(path: Path | None = None) -> pd.DataFrame | None:
@@ -26,6 +29,20 @@ def load(path: Path | None = None) -> pd.DataFrame | None:
     if not path.exists():
         return None
     return pd.read_csv(path, dtype={"txs_in_month": str})
+
+
+def unpack(result_csv: Path, out: Path | None = None) -> pd.DataFrame:
+    """Turn the BigQuery result of sql/payer_frequency.sql (columns m, cells) into the long table used here."""
+    raw = pd.read_csv(result_csv)
+    rows = []
+    for m, cells in zip(raw["m"], raw["cells"]):
+        for cell in str(cells).split(";"):
+            namespace, payer, freq, accounts, txs, self_paid = cell.split("|")
+            assert namespace in (*APP_NAMESPACES, "rest") and payer in ("self", "sponsored") and freq in FREQUENCY, cell
+            rows.append((str(m)[:7], namespace, payer, FREQUENCY[freq], int(accounts), int(txs), int(self_paid)))
+    df = pd.DataFrame(rows, columns=COLUMNS)
+    df.to_csv(out or CSV, index=False)
+    return df
 
 
 def series(df: pd.DataFrame) -> pd.DataFrame:
@@ -44,6 +61,8 @@ def series(df: pd.DataFrame) -> pd.DataFrame:
         out[f"{c}_accounts"] = ind[ind["cls"] == c].groupby("month")["accounts"].sum()
         out[f"{c}_self_paid_txs"] = ind[ind["cls"] == c].groupby("month")["self_paid_txs"].sum()
     out["accounts_outside_app_namespaces"] = d[~d["namespace"].isin(APP_NAMESPACES)].groupby("month")["accounts"].sum()
+    # the same frequency class inside HOT's namespace: self-paying, but users of one reward app, so not "independent"
+    out["app_namespace_regular_self_paying_accounts"] = d[(d["payer"] == "self") & (d["namespace"] == "tg") & (d["cls"] == "regular")].groupby("month")["accounts"].sum()
     return out.fillna(0).sort_index()
 
 

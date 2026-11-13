@@ -110,8 +110,28 @@ def monthly(df: pd.DataFrame) -> pd.DataFrame:
     return out.fillna(0)
 
 
+def dormant_implicit(df: pd.DataFrame) -> pd.DataFrame:
+    """Rows of implicit accounts older than one year that were not active the month before.
+
+    In an ordinary month they send about 1% of the self-paid core transactions. In February 2026 millions of them
+    sent one transaction each and paid for it, so a third of that month's self-paid total is a one-off burst.
+    """
+    return df[(df["family"] == "implicit") & df["age"].isin(OLDER_THAN_1Y) & (df["prev_month"] == "not_returning")]
+
+
 def _change(now: float, then: float) -> dict:
     return {"latest": float(now), "prior": float(then), "pct_change": float((now / then - 1) * 100) if then else float("nan")}
+
+
+def _change_by_window(series: pd.Series) -> dict:
+    """% change of the mean of the last n months against the same n months a year earlier, for several n."""
+    out = {}
+    for n in (1, 3, 6, 9, 11):
+        now_m = list(series.index[-n:])
+        then_m = [(pd.Period(x, "M") - 12).strftime("%Y-%m") for x in now_m]
+        if all(x in series.index for x in then_m):
+            out[str(n)] = float((series.loc[now_m].mean() / series.loc[then_m].mean() - 1) * 100)
+    return out
 
 
 def summarize(df: pd.DataFrame, query_end: str | None = None) -> dict:
@@ -161,14 +181,21 @@ def summarize(df: pd.DataFrame, query_end: str | None = None) -> dict:
     out["core_direct_txs_monthly"] = {m: int(v) for m, v in core_m["direct_txs"].items()}
     # how much the year-on-year change depends on the window: the last n months against the same n a year earlier
     series = core_m["direct_txs"]
-    out["core_direct_txs_change_by_window"] = {}
-    for n in (1, 3, 6, 9, 11):
-        now_m = list(series.index[-n:])
-        then_m = [(pd.Period(x, "M") - 12).strftime("%Y-%m") for x in now_m]
-        if all(x in series.index for x in then_m):
-            out["core_direct_txs_change_by_window"][str(n)] = float((series.loc[now_m].mean() / series.loc[then_m].mean() - 1) * 100)
+    out["core_direct_txs_change_by_window"] = _change_by_window(series)
     best = core_m["direct_txs"].nlargest(3)
     out["core_direct_txs_top3_months"] = {m: int(v) for m, v in best.items()}
+    # one-off bursts inside that series: the part sent by dormant implicit accounts, and the windows without it
+    woke = monthly(dormant_implicit(df)).reindex(months).fillna(0)["direct_txs"]
+    share = (woke / series).fillna(0)
+    peak = str(share.idxmax())
+    before = (pd.Period(peak, "M") - 1).strftime("%Y-%m")
+    out["core_direct_txs_from_dormant_implicit"] = {
+        "peak": {"month": peak, "txs": int(woke[peak]), "share_of_month": float(share[peak]),
+                 "month_before_txs": int(woke[before]) if before in woke.index else None},
+        "largest_share_in_any_other_month": float(share.drop(peak).max()) if len(share) > 1 else float("nan"),
+        "monthly": {m: int(v) for m, v in woke.items()},
+        "change_by_window_without_them": _change_by_window(series - woke),
+    }
 
     # Is "more transactions per core account" a change in behaviour or in who is left? Hold the mix of account
     # types at last year's shares and apply this year's per-account rates.

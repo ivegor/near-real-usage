@@ -2,8 +2,9 @@
 
 *Snapshot as of 2026-11-11. Every number below equals the committed `docs/summary.json` (a test checks the key ones);
 the live dashboard is rebuilt daily, so its NearBlocks and DefiLlama figures will move away from this text.
-Account counts come from full scans of the NEAR BigQuery public dataset (`sql/account_age.sql`, `sql/top_accounts.sql`:
-every transaction, not a sample); prices, fees and Intents volume from NearBlocks and DefiLlama. For accounts,
+Account counts come from full scans of the NEAR BigQuery public dataset (`sql/account_age.sql`,
+`sql/payer_frequency.sql`, `sql/payers.sql`, `sql/top_accounts.sql`: every transaction, not a sample); prices, fees
+and Intents volume from NearBlocks and DefiLlama. For accounts,
 "YoY" = October 2026 vs October 2025, the last complete month, with the mean of August–October against the same three
 months a year earlier in brackets, because single months are noisy.*
 
@@ -13,20 +14,24 @@ In October 2025, 43.6 million accounts acted on NEAR. In October 2026, 1.38 mill
 those are old accounts of one reward app sending a single transaction each in a one-off sweep. Counted account by
 account, **the whole fall is accounts whose fees an app was paying**: 43.05 million of them a year ago, 0.55
 million now. KaiChing alone was 40.4 million.
-That part of the collapse says nothing about demand for NEAR. Outside those two apps the account count also fell by
-two thirds, but **93% of those accounts were users of other apps whose fees a relayer paid**, and they are what
-fell. The accounts that say something about demand pay their own fees: of those, **the regular ones (10 to 999
-transactions a month) fell from 27,078 to 17,105** (−37%; −50% on three-month means), while
+That part of the collapse says nothing about demand for NEAR. Outside the namespaces of the reward apps (KaiChing,
+the HOT wallet, Sweat's service accounts) the account count also fell by two thirds, but **93% of those accounts
+were users of other apps whose fees a relayer paid**, and they are what fell. The accounts that say something about
+demand pay their own fees and sit outside those namespaces: of them, **the regular ones (10 to 999 transactions a
+month) fell from 27,078 to 17,105** (−37%; −50% on three-month means), while
 **475 heavy accounts (1,000 or more a month) send 91% of the self-paid transactions**. What did grow is
 narrower than "users": **transactions that senders pay for themselves, outside the reward apps, are up 28%**
 October to October. That figure depends on the window: +35% on three-month means, +24% on six, +6% on nine and −5% on
-eleven. Read plainly, self-paid activity was flat for most of the year and jumped in September and October 2026,
-while transactions sponsored through relayers fell 75%.
+eleven (+2% and −8% without a one-off burst in February 2026, see "Limits"). Read plainly, self-paid activity was
+flat for most of the year and jumped in September and October 2026, while transactions sponsored through relayers
+fell 75%.
 Transactions to the exchange, NEAR Intents, token contracts and bridges are up 37%, and Intents volume in October was
-$129M a day against $56M a year earlier. All of it is run by very few accounts: **thirty accounts send half of all
-transactions**, and reward apps still send 43% (45% counting a one-off sweep by old KaiChing accounts). Value reaches the token only in part: buybacks funded by Intents
-revenue cover 18% of the new NEAR issued. The long-term case is therefore a narrow one: a small amount of
-self-paid, financial activity operated by a few dozen accounts, not a growing user base. Usage does not lead price.
+$129M a day against $56M a year earlier. All of it is submitted by very few accounts: **thirty accounts send half of
+all transactions**, and reward apps still send 43% (45% counting a one-off sweep by old KaiChing accounts). Value
+reaches the token only in part: buybacks funded by Intents revenue cover 18% of the new NEAR issued. The long-term
+case is therefore a narrow one: a small amount of self-paid, financial activity submitted by a few dozen accounts.
+On the chain itself no base of users who pay their own way is growing; how many people stand behind the relays of
+Intents and the bridges cannot be read from it. Usage does not lead price.
 
 ## Three corrections to our own drafts
 
@@ -37,9 +42,9 @@ self-paid, financial activity operated by a few dozen accounts, not a growing us
 * **"Active accounts" are transaction signers.** 74% of that day's transactions (3,448,826) were relayed: 17 relayer
   accounts signed them on behalf of 2,694,016 users. NearBlocks reported 288,151 active accounts. The users behind
   relayers are not in that number.
-* **"New accounts" are not a subset of them.** 238,403 accounts were created that day in transactions signed by 12
-  creator accounts (NearBlocks reported 267,015 new accounts). The proxy subtracts them from a count of signers. We did
-  not check how many of those accounts ever transact.
+* **"New accounts" are not a subset of them.** 238,403 accounts were created that day by transactions whose first
+  action is `CREATE_ACCOUNT`, all signed by 12 creator accounts (NearBlocks reported 267,015 new accounts). The proxy
+  subtracts them from a count of signers. We did not check how many of those accounts ever transact.
 
 **Second draft: "the remaining accounts are busier" and "named accounts grew on every measure".** A review of that
 draft showed both rested on a single month and on a mean:
@@ -63,15 +68,15 @@ We kept the proxy on the dashboard, labelled as misleading, because every aggreg
 
 | # | Claim | Result | Evidence (October 2025 → October 2026; three-month means in brackets) |
 |---|---|---|---|
-| 1 | The collapse in activity is the exit of reward apps, not of NEAR's own users | **Supported** | Accounts whose fees an app paid: 43,049,960 → 552,826, more than the whole net loss of accounts, because independent self-paying accounts did not fall October to October (134,743 → 136,920). Counted by namespace alone, reward and wallet apps are 97.2% of the accounts lost and 96.2% of the transactions lost. KaiChing: 40.39M accounts a year ago, gone since spring except a one-off 560,093 single-transaction accounts in October |
+| 1 | The collapse in activity is the exit of reward apps, not of NEAR's own users | **Supported** | Accounts whose fees an app paid: 43,049,960 → 552,826. That is more than the whole net loss of accounts (43,642,992 → 1,379,518), because self-paying accounts rose, 593,032 → 826,692, and the rise is itself a one-off: 560,092 old KaiChing accounts paid for one transaction each in October. Without them self-paying accounts fell: HOT users who pay their own fees 458,286 → 129,677, independent ones flat (134,743 → 136,920). Counted by namespace alone, reward and wallet apps are 97.2% of the accounts lost and 96.2% of the transactions lost. KaiChing: 40.39M accounts a year ago, gone since spring except that October sweep |
 | 2 | A stable core of returning users remains (first draft) | **Refuted** | Accounts outside the reward namespaces 1,814,743 → 621,166 (−66%; −57%); of them active the month before 924,642 → 248,954 (−73%; −69%); still falling: 959,812 (Jul) → 621,166 (Oct) |
-| 3 | The number of accounts that pay for themselves holds up | **Only at the top** | Regular self-paying accounts 27,078 → 17,105 (−37%; −50%), low of 7,201 in August 2026; heavy accounts 370 → 475 (+28%; +0%), and they send 91% of self-paid transactions |
+| 3 | The number of accounts that pay for themselves holds up | **Only at the top** | Outside the reward namespaces, regular self-paying accounts 27,078 → 17,105 (−37%; −50%), low of 7,201 in August 2026; heavy accounts 370 → 475 (+28%; +0%), and they send 91% of self-paid transactions. Inside HOT's namespace the regular self-paying accounts are more numerous and fell faster: 333,728 → 60,879 (−82%; −77%) |
 | 4 | The remaining accounts are used more intensively (second draft) | **Refuted** | 10.7 → 23.9 transactions per core account is a change of mix: 11.7 at last year's mix of account types |
 | 5 | Named `.near` accounts are a growing core (second draft) | **Not supported** | Accounts +13% (+2%); with more than one transaction −28% (−15%). Their transactions did grow: 8.96M → 10.77M (+20%; +42%) |
 | 6 | Self-paid activity outside reward apps is growing | **Flat for a year, up in autumn 2026** | Core transactions paid by the sender 9.75M → 12.49M (+28%; +35%); on longer windows +24% (six months), +6% (nine) and −5% (eleven); sponsored through relayers 9.61M → 2.39M (−75%; −66%). The series is volatile: see "Evidence against" |
 | 7 | Financial use of the chain is growing | **Supported** | Transactions to the exchange, Intents, token contracts and bridges 6.72M → 9.18M a month (+37%); Ref/Rhea exchange +96%, token contracts +47%, bridges and chain signatures +43% |
 | 8 | Cross-chain demand through NEAR is growing | **Supported** | NEAR Intents volume $55.6M → $128.6M a day (+131%, October to October, DefiLlama); +84% on the previous 90 days |
-| 9 | NEAR's activity is spread over many independent users | **Refuted** | 30 accounts send 50% of transactions; the top 10 send 37% (17% a year earlier); 486 accounts with 1,000+ transactions send 70% |
+| 9 | NEAR's transactions come from many independent accounts | **Refuted** | 30 accounts send 50% of transactions; the top 10 send 37% (17% a year earlier); 486 accounts with 1,000+ transactions send 70%. Seven of the ten largest are relays or service accounts (Intents, Sweat, the bridges), so this counts who submits transactions; the people behind a relay are not visible on the chain |
 | 10 | Intents revenue offsets the dilution of NEAR holders | **Not yet** | Buybacks at $20.7M a year against $115M a year of net new NEAR: 18% of dilution covered; 5.6 times the captured revenue needed |
 | 11 | Usage changes lead price changes | **Not supported** | 6 of 85 lag tests outside the noise band, about 4 expected by chance |
 
@@ -92,6 +97,7 @@ between the groups is a number we chose (`sql/payer_frequency.sql`, every transa
 | Sponsored users, all apps | 43,049,960 | 552,826 | −99%; −99% |
 | Sponsored users outside the two reward namespaces (Sweat, Meteor and other apps) | 1,680,016 | 484,257 | −71%; −59% |
 | HOT users who pay their own fees | 458,286 | 129,677 | −72%; −68% |
+| of them regular (10 to 999 transactions a month) | 333,728 | 60,879 | −82%; −77% |
 | Independent self-paying, occasional | 107,295 | 119,340 | +11%; −37% |
 | Independent self-paying, **regular** | 27,078 | 17,105 | −37%; −50% |
 | Independent self-paying, **heavy** | 370 | 475 | +28%; +0% |
@@ -101,10 +107,12 @@ sponsored users; what looked like the chain's own base falling by two thirds was
 Named by the relayer that paid for them (`sql/payers.sql`), they were the users of two apps: Sweat's sponsored
 accounts went 1,246,366 → 410,890 and those of the game Ember 387,762 → 0. Together that is
 the whole fall (70% and 32% of it; the other groups grew slightly).
-The regular self-paying accounts are the closest thing the chain has to a count of its own users, and they fell from
-27,078 to 17,105, after a year-long slide to 7,201 in August 2026 and a rebound in September. And
-the growth in self-paid transactions (9.77M → 12.49M, +28%; +35%) belongs to the heavy
-accounts: they send 91% of it (85% a year ago). Occasional accounts swing with one-off events (the series
+The regular self-paying accounts outside the reward namespaces are the closest thing the chain has to a count of its
+own users, and they fell from 27,078 to 17,105, after a year-long slide to 7,201 in August 2026 and a rebound in
+September. HOT's own regular self-paying users were twelve times as many a year ago and fell faster; they are counted
+with their app because it creates their accounts for them. And
+the growth in self-paid transactions (9.77M → 12.49M, +28%; +35%; 9.75M in the census, see "Limits") belongs to the
+heavy accounts: they send 91% of it (85% a year ago). Occasional accounts swing with one-off events (the series
 runs from 49,954 to 3.5 million independent accounts in fifteen months) and are not read as a trend.
 *(chart: segments)*
 
@@ -116,7 +124,7 @@ October 2026, every transaction assigned to the contract it calls or, if relayed
 | Who | Share of transactions | A year earlier | Transactions, YoY | What it is |
 |---|---|---|---|---|
 | Sweat | 25.8% | 7.5% | −45% | Move-to-earn app. Five service accounts send most of it; its relayed users fell 1,263,047 → 413,927 |
-| Ref Finance / Rhea | 13.4% | 1.1% | +96% | Exchange and lending. 2,586 accounts, the largest are trading bots with hundreds of thousands of swaps a month |
+| Ref Finance / Rhea | 13.4% | 1.1% | +96% | Exchange and lending. 96% of these transactions go to the main contract from 2,586 accounts, the largest of them trading bots with hundreds of thousands of swaps a month; 15,140 accounts used the concentrated-liquidity contract, for 44,392 transactions |
 | HOT wallet | 13.3% | 28.5% | −93% | Telegram wallet, reward claims |
 | Token contracts (wNEAR, USDC, USDT) | 9.3% | 1.0% | +47% | Transfers and deposits into the exchange and Intents |
 | Bridges, Aurora, chain signatures | 9.0% | 1.0% | +43% | Omni bridge, BTC and Zcash connectors, the MPC signer |
@@ -127,10 +135,11 @@ October 2026, every transaction assigned to the contract it calls or, if relayed
 | Everything else | 9.8% | 5.9% | −73% | Transactions to contracts outside the 40 largest, including the KaiChing one-off above |
 
 Two readings follow. First, the "infrastructure" picture is only half true: reward and wallet apps still send 43% of
-transactions through their own contracts and relayers, 45% counting the KaiChing one-off (86% a year ago). Second, the financial half is real and growing in absolute terms, but it is operated
-by very few accounts. NEAR Intents is the extreme case: its volume more than doubled while the number of transactions
-it received fell 13% and the accounts sending them fell from 26,272 to 5,353. Intents users sign off-chain and a
-relayer submits, so its customers cannot be counted from the chain at all.
+transactions through their own contracts and relayers (86% a year ago), or 45% counting the KaiChing one-off. Second,
+the financial half is real and growing in absolute terms, but it is operated by very few accounts. NEAR Intents is
+the extreme case: its volume more than doubled while the number of transactions it received fell 13% and the accounts
+sending them fell from 26,272 to 5,353. Intents users sign off-chain and a relayer submits, so its customers cannot
+be counted from the chain at all.
 
 ## Does it reach the token?
 
@@ -181,12 +190,14 @@ tables above do not: a year ago 55% of sampled transactions were a single call, 
 
 * **Regular self-paying accounts fell by a third to a half.** 27,078 → 17,105 October to October, −50% on
   three-month means, after sliding for a year to 7,201 in August 2026. The September rebound is two months old.
-  HOT users who pay their own fees fell 72%.
+  HOT users who pay their own fees fell 72%, the regular ones among them 82%.
 * **The self-paid series is volatile.** Monthly values run from 5.8M to 13.1M with no smooth trend; December 2024 was
-  12.07M, about where October 2026 is. Two strong months are not yet a trend.
+  12.07M, about where October 2026 is, and a third of February 2026 was a one-off burst (see "Limits"). Two strong
+  months are not yet a trend.
 * **Very few accounts carry it.** The largest accounts in October 2026 are `intents.near` (1.44M transactions), three
   Sweat service accounts (1.0M to 1.4M each), two exchange bots (0.77M and 0.46M), a bridge relayer (0.66M) and
-  `escrow.ai.near` (0.51M). This is concentration risk, not adoption.
+  `escrow.ai.near` (0.51M). Seven of the ten largest are relays or service accounts, so the count says who submits
+  transactions, not how many people stand behind them; either way the chain depends on a handful of operators.
 * **Reward apps are still 43% to 45% of transactions.** KaiChing left, but Sweat, HOT and Meteor remain. Sweat's 11 service
   accounts in the `.sweat` namespace alone send 17.7% of all transactions while its user count fell 67%. The next exit
   would look the same.
@@ -208,9 +219,11 @@ line such as break-even), not numbers we picked; the build scores the ones that 
 
 * **Regular self-paying accounts fall back to their low.** They bottomed at 7,201 in August 2026 and rebounded in
   September. A month at or below that low means the rebound was a spike and the base has not found a floor.
-* **Self-paid core transactions fall back into their old range.** Before September 2026 their highest month was
-  10.38M (February 2026). A quarter averaging below that means September and October were a spike, and nothing outside
-  the reward apps is growing.
+* **Self-paid core transactions fall back into their old range.** From December 2025 to August 2026 their highest
+  month was 10.38M (February 2026); earlier months were higher, up to 12.07M in December 2024. A quarter
+  averaging below 10.38M means September and October were a spike, and nothing outside the reward apps is growing.
+  A third of that February was a one-off burst (see "Limits"): without it the top of the range is 8.65M (June 2026),
+  so the threshold we wrote down is the harder of the two to stay above.
 * **A reward app re-inflates the headline.** Active accounts jumping by millions with under 2 transactions per account
   is KaiChing again, not growth. It may already be starting: in the first 11 days of November 2026 HOT (`.tg`)
   accounts number 297,843, more than in all of October (198,246).
@@ -234,7 +247,16 @@ line such as break-even), not numbers we picked; the build scores the ones that 
 * **"Active two months running" is a calendar-month measure.** It says nothing about retention within a month.
 * **February and March 2026** each contain a one-off burst of existing implicit accounts sending one transaction each
   (about 3.5 and 6 million accounts; in February most were older than two years). They inflate core account counts in
-  those two months; comparisons use October and August–October to avoid them.
+  those two months; comparisons use October and August–October to avoid them. March's burst was sponsored through
+  relayers. February's was paid by the senders, so it also sits in the self-paid series: 3.37M of that month's 10.38M
+  self-paid core transactions (32%) came from implicit accounts older than a year that had not been active in January.
+  The same group sent 27,664 the month before and never more than 1.4% of a month otherwise. Without that group the
+  nine-month change quoted above is +2% instead of +6% and the eleven-month one −8% instead of −5%; the one-, three-
+  and six-month figures move by less than a point.
+* **The payer and frequency table knows two namespaces**, `.kaiching` and `.tg`; the account census knows three. The
+  `.sweat` service accounts that paid for at least one of their own transactions (13 in October 2025, 7 in October
+  2026) therefore count among the table's independent accounts, at most 13 of its 370 heavy accounts a year ago and
+  7 of the 475 now, and their self-paid transactions are why the table has 9.77M where the census has 9.75M.
 * **Intents volume, prices and fees are aggregator data** (DefiLlama, NearBlocks). We verified NearBlocks' daily
   transaction count against BigQuery for one day (exact match) and nothing else. The 90-day year-on-year change in
   Intents volume (+223% on 2026-11-11) shrinks every day as its base moves through the ramp-up of autumn 2025, so
@@ -242,6 +264,9 @@ line such as break-even), not numbers we picked; the build scores the ones that 
 * **Lead-lag scans 17 lags × 5 metrics = 85 tests**; about 4 bars outside ±2/√n are expected by chance. One of the
   five metrics is the `active − new` proxy shown above to be unreliable; it is reported for completeness.
 * **The app table is a manual grouping** of the 40 largest contracts and relayers, which cover 90% of October 2026
-  transactions. A relayed transaction is assigned to its relayer, not to the contract it finally calls.
+  transactions. A relayed transaction is assigned to its relayer, not to the contract it finally calls. The game Ember
+  is not in the reward-app group: it sponsored 387,762 users a year ago (2.0% of transactions, 0.7% now) and is filed
+  under "Other contracts in the top 40". With it the reward apps' share is 43.3% (88.3% a year ago). The group is left
+  as it was when prediction B4 was written, so that the prediction is scored on the definition it was made with.
 * **The account census ends on 2026-11-11** and costs 482.64 GB of BigQuery scanning to re-run (the free tier is 1 TB
   a month). The dashboard keeps October 2026 as its last month until the query is run again.

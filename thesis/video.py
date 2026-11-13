@@ -36,7 +36,7 @@ def slides(s: dict) -> list[dict]:
          "line": f"Accounts whose fees an app paid: {sg['sponsored_accounts']['prior'] / 1e6:.1f}M a year ago, "
                  f"{sg['sponsored_accounts']['latest'] / 1e6:.2f}M now.",
          "chart": "population", "sec": 10},
-        {"head": f"Regular accounts that pay their own fees: {sg['regular_accounts']['prior']:,.0f} to {sg['regular_accounts']['latest']:,.0f}.",
+        {"head": f"Regular self-paying accounts outside reward apps: {sg['regular_accounts']['prior']:,.0f} to {sg['regular_accounts']['latest']:,.0f}.",
          "line": f"{sg['heavy_accounts']['latest']:,.0f} heavy accounts (1,000+ transactions a month) send "
                  f"{s['segments']['heavy_share_of_independent_self_paid_txs']['latest'] * 100:.0f}% of self-paid transactions.",
          "chart": "segments", "sec": 11},
@@ -98,6 +98,8 @@ def build(out: Path = OUT) -> Path:
             lines += [f"file '{png}'", f"duration {slide['sec']}"]
         lines.append(lines[-2])  # the concat demuxer needs the last file repeated
         (Path(tmp) / "slides.txt").write_text("\n".join(lines))
+        total = sum(slide["sec"] for slide in spec)  # without -t the repeated last slide stays on screen twice as long
         subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(Path(tmp) / "slides.txt"),
-                        "-vf", "fps=30,format=yuv420p", "-c:v", "libx264", "-movflags", "+faststart", str(out)], check=True)
+                        "-vf", "fps=30,format=yuv420p", "-t", str(total), "-c:v", "libx264", "-movflags", "+faststart", str(out)],
+                       check=True)
     return out

@@ -7,7 +7,7 @@ Start with `README.md` (what it is, how to run it) and `THESIS.md` (the argument
 
 ```bash
 python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
-python -m pytest -q                  # 44 tests, no network
+python -m pytest -q                  # 53 tests, no network
 python -m thesis build --offline     # rebuilds docs/ from the committed data, no network
 python -m thesis build               # same, after refreshing data/raw/ from the public APIs
 ```
@@ -30,4 +30,7 @@ reproduces the numbers exactly; the PNG files are byte-identical only with the l
   the build compares them with BigQuery in `cross_check` of `docs/summary.json`.
 * **`predictions.csv` is frozen.** Its SHA-256 is quoted in `PREDICTIONS.md` and a test compares them. Do not edit
   it after the fact; add new predictions as a new file.
+* **The app groups in `thesis/clients.py` are part of prediction B4.** `REWARD_APPS` and `FINANCE_APPS` stay as they
+  were on 2026-11-13, when the prediction was frozen. Publish a different grouping next to them (as `ember` is), not
+  instead of them.
 * Everything in the repository is in English.

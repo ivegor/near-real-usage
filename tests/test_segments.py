@@ -24,6 +24,7 @@ def test_segments_follow_the_three_questions():
     assert s.loc["2025-10", "sponsored_accounts"] == 1000 + 280 and s.loc["2026-10", "sponsored_accounts"] == 160
     assert s.loc["2025-10", "regular_accounts"] == (100 - 8) + 10 and s.loc["2025-10", "heavy_accounts"] == 2
     assert s.loc["2025-10", "app_namespace_self_paying_accounts"] == 50          # HOT users are not "independent"
+    assert s.loc["2025-10", "app_namespace_regular_self_paying_accounts"] == 50  # but their frequency class is published
     assert s.loc["2026-02", "occasional_accounts"] == 540                         # a one-off burst lands in "occasional"
 
 
@@ -38,6 +39,36 @@ def test_summary_and_chart(tmp_path):
     assert 0.9 < sg["heavy_share_of_independent_self_paid_txs"]["latest"] < 1
     c = charts._segments_chart(df, sg, tmp_path)
     assert (tmp_path / "segments.png").stat().st_size > 5_000 and "nan" not in c.sentence.lower()
+
+
+def test_unpack_reads_what_the_query_returns(tmp_path):
+    """sql/payer_frequency.sql returns one row per month: m, and cells of namespace|payer|frequency|accounts|txs|self-paid."""
+    result = tmp_path / "result.csv"
+    result.write_text('m,cells\n2026-09,"rest|self|n10_99|3|90|80;tg|sponsored|n1|7|7|0"\n2026-10,rest|self|n1k_9k|2|5000|4900\n')
+    df = segments.unpack(result, tmp_path / "out.csv")
+    assert list(df.columns) == segments.COLUMNS and len(df) == 3
+    assert df.iloc[0].tolist() == ["2026-09", "rest", "self", "10-99", 3, 90, 80]
+    assert df.iloc[2].tolist() == ["2026-10", "rest", "self", "1,000-9,999", 2, 5000, 4900]
+    assert set(segments.FREQUENCY.values()) == set(segments.CLASS)          # every code maps to a class the build knows
+    assert segments.load(tmp_path / "out.csv").equals(df)
+
+
+def test_unpack_rebuilds_the_committed_table_byte_for_byte(tmp_path):
+    """Pack the committed table the way the query prints it, unpack it, and get the same file back."""
+    code = {label: c for c, label in segments.FREQUENCY.items()}
+    df = segments.load()
+    lines = ["m,cells"]
+    for month, g in df.groupby("month", sort=False):
+        lines.append(f"{month}," + ";".join(f"{r.namespace}|{r.payer}|{code[r.txs_in_month]}|{r.accounts}|{r.txs}|{r.self_paid_txs}"
+                                            for r in g.itertuples()))
+    result = tmp_path / "result.csv"
+    result.write_text("\n".join(lines) + "\n")
+    # the query orders the cells by namespace, payer and frequency code; the committed table keeps that order
+    for line in lines[1:]:
+        keys = [c.split("|")[:3] for c in line.split(",", 1)[1].split(";")]
+        assert keys == sorted(keys)
+    segments.unpack(result, tmp_path / "out.csv")
+    assert (tmp_path / "out.csv").read_bytes() == segments.CSV.read_bytes()
 
 
 def test_the_committed_table_agrees_with_the_account_census():

@@ -7,7 +7,8 @@ Reads the committed result of sql/payers.sql (data/bq/payers_result.csv). This i
   self-paying account   the account paid the fee of at least one of its own transactions in the month
   independent           self-paying and outside the namespaces of the reward apps (.tg is HOT, .kaiching is KaiChing,
                         .sweat is Sweat's service accounts): the accounts no app is paying or routing for
-  regular               also active in the previous calendar month
+  returning             also active in the previous calendar month (not the "regular" of thesis/segments.py,
+                        which is a frequency class: 10 to 999 transactions a month)
 """
 from __future__ import annotations
 
@@ -47,9 +48,9 @@ def groups(df: pd.DataFrame) -> pd.DataFrame:
             "sponsored_accounts": g.loc[g["payer"] != "self", "accounts"].sum(),
             "self_paying_accounts": g.loc[g["payer"] == "self", "accounts"].sum(),
             "independent_accounts": ind["accounts"].sum(),
-            "independent_regular_accounts": ind.loc[ind["ret"] == "r", "accounts"].sum(),
+            "independent_returning_accounts": ind.loc[ind["ret"] == "r", "accounts"].sum(),
             "independent_self_paid_txs": ind["self_paid_txs"].sum(),
-            "independent_regular_self_paid_txs": ind.loc[ind["ret"] == "r", "self_paid_txs"].sum(),
+            "independent_returning_self_paid_txs": ind.loc[ind["ret"] == "r", "self_paid_txs"].sum(),
             # the earlier drafts' "core": every account outside the three namespaces, whoever pays
             "old_core_accounts": g.loc[~g["family"].isin(APP_NAMESPACES), "accounts"].sum(),
         }
@@ -86,5 +87,5 @@ def summarize(df: pd.DataFrame) -> dict:
     lost_other_sponsor = m["sponsored_by_other"]["prior"] - m["sponsored_by_other"]["latest"]
     out["reward_apps_share_of_lost_accounts"] = float((lost_all - lost_independent - lost_other_sponsor) / lost_all)
     out["independent_accounts_by_month"] = {k: float(v) for k, v in g["independent_accounts"].items()}
-    out["independent_regular_accounts_by_month"] = {k: float(v) for k, v in g["independent_regular_accounts"].items()}
+    out["independent_returning_accounts_by_month"] = {k: float(v) for k, v in g["independent_returning_accounts"].items()}
     return out

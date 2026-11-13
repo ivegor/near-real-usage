@@ -71,6 +71,8 @@ def main() -> None:
     c.add_argument("--seed", type=int, default=census.SEED, help="another seed draws an independent sample")
     ba = sub.add_parser("bq-age", help="unpack a BigQuery result of sql/account_age.sql into data/bq/account_age.csv")
     ba.add_argument("result_csv", help="the result saved from the BigQuery console as CSV (columns m, cells)")
+    bf = sub.add_parser("bq-freq", help="unpack a BigQuery result of sql/payer_frequency.sql into data/bq/payer_frequency.csv")
+    bf.add_argument("result_csv", help="the result saved from the BigQuery console as CSV (columns m, cells)")
     sub.add_parser("snapshot", help="freeze docs/summary.json as the copy THESIS.md is checked against")
     sub.add_parser("video", help="render demo/near-real-usage.mp4 from the build outputs (needs ffmpeg)")
     sub.add_parser("fetch-value", help="download the NEAR Intents fee and buyback series from DefiLlama into data/raw/")
@@ -90,6 +92,10 @@ def main() -> None:
     if args.cmd == "bq-age":
         df = population.unpack(Path(args.result_csv))
         print(f"{len(df)} rows, months {df['month'].min()} .. {df['month'].max()} -> {population.CSV}")
+        return
+    if args.cmd == "bq-freq":
+        df = segments.unpack(Path(args.result_csv))
+        print(f"{len(df)} rows, months {df['month'].min()} .. {df['month'].max()} -> {segments.CSV}")
         return
     if args.cmd == "build":
         build(args.offline)

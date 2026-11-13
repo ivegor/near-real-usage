@@ -10,14 +10,16 @@ NEAR, account by account over the whole chain, and tests with re-runnable code w
 
 * Accounts acting on NEAR fell **97%** (43.6M → 1.38M a month). **The whole fall is accounts whose fees an app was
   paying**: 43.05M a year ago, 0.55M now. One app, KaiChing, had 40.4M of them and stopped in spring 2026.
-* Among accounts that pay their own fees, the regular ones (10 to 999 transactions a month) fell from
-  **27,078 to 17,105** (−37%; −50%), while 475 heavy accounts (1,000 or more a month) send 91% of the
-  self-paid transactions. Our first draft claimed returning accounts grew 37%; the full-chain count refuted it.
+* Among accounts that pay their own fees and are not in a reward app's namespace, the regular ones (10 to 999
+  transactions a month) fell from **27,078 to 17,105** (−37%; −50%), while 475 heavy accounts (1,000 or more a
+  month) send 91% of the self-paid transactions. Our first draft claimed returning accounts grew 37%; the full-chain
+  count refuted it.
 * **Self-paid transactions outside reward apps are up 28%** October to October, but flat over the year as a whole
   (−5% on eleven-month means): they jumped in September and October 2026. Transactions sponsored through relayers
   fell 75%. Transactions to the exchange, Intents, token contracts and bridges are up **37%**.
-* **30 accounts send half of all transactions.** Reward and wallet apps still send 43% (Sweat alone 26%), or
-  45% counting a one-off sweep by old KaiChing accounts.
+* **30 accounts send half of all transactions.** Seven of the ten largest are relays or service accounts (Intents,
+  Sweat, the bridges), so this counts who submits transactions, not how many people stand behind them. Reward and
+  wallet apps still send 43% (Sweat alone 26%), or 45% counting a one-off sweep by old KaiChing accounts.
 * NEAR Intents volume: **$56M → $129M a day**, October to October. Usage does **not** lead price: 6 of 85 weekly
   lead-lag tests fall outside the noise band where about 4 are expected by chance.
 * Three readings from our own drafts ("returning accounts grew", "remaining accounts are busier", "the base outside
@@ -29,13 +31,15 @@ NEAR, account by account over the whole chain, and tests with re-runnable code w
 Full argument, evidence against, and kill criteria: [`THESIS.md`](THESIS.md). Nine dated predictions whose thresholds
 are taken from the data, scored by the build: [`PREDICTIONS.md`](PREDICTIONS.md).
 
-**Demo video (71 s):** [`demo/near-real-usage.mp4`](demo/near-real-usage.mp4).
+**Demo video (73 s):** [`demo/near-real-usage.mp4`](demo/near-real-usage.mp4).
 
 **What it is.** A reproducible research pipeline: one command downloads public data, computes the metrics, renders the
 charts and a static dashboard, and prints every number used in [`THESIS.md`](THESIS.md). The account census is one SQL
 query on NEAR's public BigQuery dataset; its result is committed, so the build needs no Google account.
 
 ## Run it (2 minutes)
+
+Needs Python 3.12 or newer: the pinned versions of pandas and numpy do not install on older ones.
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
@@ -48,16 +52,17 @@ open docs/index.html            # or: python -m http.server -d docs 8000
 |---|---|
 | `python -m thesis build` | `data/raw/*.json` (exact API responses), `data/daily.csv`, `docs/*.png`, `docs/index.html`, `docs/summary.json`; summary printed to stdout. If an API is down, the build says so and uses the committed copy |
 | `python -m thesis build --offline` | Same outputs rebuilt from the committed `data/raw/` files, no network |
-| `python -m pytest -q` | 44 tests: parsing, metric formulas, a planted 3-week lead recovered by the lead-lag test, the account census on a hand-made table, block parsing with relayed transactions, the numbers quoted in THESIS.md against `docs/summary.json`, full offline build |
-| `python -m thesis video` (needs ffmpeg) | `demo/near-real-usage.mp4`, a 71-second slideshow rendered from the build outputs, so the numbers on screen are the ones in `docs/summary.json` |
+| `python -m pytest -q` | 53 tests: parsing, metric formulas, a planted 3-week lead recovered by the lead-lag test, the account census on a hand-made table, block parsing with relayed transactions, the numbers quoted in THESIS.md against `docs/summary.json`, full offline build |
+| `python -m thesis video` (needs ffmpeg) | `demo/near-real-usage.mp4`, a 73-second slideshow rendered from the build outputs, so the numbers on screen are the ones in `docs/summary.json` |
 | Paste [`sql/account_age.sql`](sql/account_age.sql) into the BigQuery console, save the result as CSV, then `python -m thesis bq-age result.csv` | `data/bq/account_age.csv` rebuilt from the chain: 25 months × family × age × returning. Scans 482.64 GB (free tier is 1 TB a month); check the dry-run estimate first |
-| Paste [`sql/payer_frequency.sql`](sql/payer_frequency.sql) into the BigQuery console (91.28 GB) | Accounts by who pays the fee (an app's relayer or the account itself), by namespace and by transactions per month, August 2025 to October 2026 |
+| Paste [`sql/payer_frequency.sql`](sql/payer_frequency.sql) into the BigQuery console (91.28 GB), save the result as CSV, then `python -m thesis bq-freq result.csv` | `data/bq/payer_frequency.csv` rebuilt from the chain: accounts by who pays the fee (an app's relayer or the account itself), by namespace and by transactions per month, August 2025 to October 2026 |
+| Paste [`sql/payers.sql`](sql/payers.sql) into the BigQuery console (53.23 GB), save the result as `data/bq/payers_result.csv` | Sponsored accounts named by the app whose relayer paid for them (Sweat, Ember, HOT, KaiChing, Meteor), July to October of 2025 and 2026 |
 | Paste [`sql/top_accounts.sql`](sql/top_accounts.sql) into the BigQuery console (13.53 GB), save the result as `data/bq/top_accounts_result.csv` | The 40 largest accounts and the 40 largest contracts or relayers for October 2026 and October 2025, plus concentration: 30 accounts send half of all transactions |
 | Paste [`sql/one_day_actions.sql`](sql/one_day_actions.sql) into the BigQuery console (0.6 GB) | One day by action kind: 3,448,826 relayed transactions signed by 17 relayers for 2,694,016 users; 238,403 accounts created by 12 creators; total equal to NearBlocks' count for that day |
 
-**Live dashboard:** rebuilt from scratch by GitHub Actions on every push and daily
-([`.github/workflows/build.yml`](.github/workflows/build.yml): tests → `python -m thesis build` → GitHub Pages),
-so the published charts are always the output of the code in this repository.
+**Live dashboard:** <https://ivegor.github.io/near-real-usage/>, rebuilt from scratch by GitHub Actions on every push
+and daily ([`.github/workflows/build.yml`](.github/workflows/build.yml): tests → `python -m thesis build` → GitHub
+Pages), so the published charts are always the output of the code in this repository.
 
 ## Metrics
 
@@ -78,7 +83,7 @@ so the published charts are always the output of the code in this repository.
 ## Data sources
 
 * NEAR public BigQuery dataset `bigquery-public-data.crypto_near_mainnet_us`, tables `transactions` and
-  `transaction_actions` (`sql/account_age.sql`, `sql/top_accounts.sql`, `sql/one_day_actions.sql`). Fresh to within minutes in November 2026.
+  `transaction_actions` (the five queries in `sql/`). Fresh to within minutes in November 2026.
   Results are committed in `data/bq/`. Do not query the `accounts` table: one query on it scans 1.03 TB.
 * NearBlocks daily network charts: `https://api.nearblocks.io/v1/charts` (no key needed).
 * DefiLlama NEAR Intents volume: `https://api.llama.fi/summary/dexs/near-intents`.
@@ -87,8 +92,8 @@ so the published charts are always the output of the code in this repository.
 
 No headline number is typed by hand: the figures in the dashboard and the key figures of `THESIS.md` come from
 `docs/summary.json` (a test checks the ones THESIS.md quotes against the frozen copy in `data/snapshot/`). A few
-supporting details in the text (the number of accounts trading on one exchange, the size of two one-off bursts,
-the range of sample sizes in the lead-lag test) are read from the committed data files and are not in that JSON.
+supporting details in the text (the number of accounts in two one-off bursts, the range of sample sizes in the
+lead-lag test) are read from the committed data files and are not in that JSON.
 
 The track brief suggests the NEAR Intents Explorer API for swap volume. It needs a partner key, so this project uses
 DefiLlama and NearBlocks instead: both are keyless, so anyone can re-run every step.
@@ -106,6 +111,7 @@ thesis/metrics.py    pure metric functions (unit-tested)
 thesis/charts.py     charts, each with a one-sentence, number-backed caption
 thesis/dashboard.py  static docs/index.html (GitHub Pages ready)
 thesis/census.py     keyless cross-check: random blocks + account ages over public RPC (results in data/raw/census_*)
+thesis/video.py      demo video: slides rendered from docs/summary.json and the charts
 sql/account_age.sql  the account census query (run once, result in data/bq/account_age.csv)
 sql/payer_frequency.sql who pays and how often (result in data/bq/payer_frequency.csv)
 sql/payers.sql       which app's relayer paid for the sponsored accounts (result in data/bq/payers_result.csv)
@@ -113,8 +119,12 @@ thesis/payers.py     reads it; also checks that three separate queries count the
 sql/top_accounts.sql the largest accounts, contracts and relayers (result in data/bq/top_accounts_result.csv)
 sql/one_day_actions.sql  one day by action kind
 data/bq/             committed BigQuery results
+data/raw/            exact API responses and the keyless block sample
+data/snapshot/       the frozen summary THESIS.md is checked against
+docs/                build output: charts, index.html (the dashboard), summary.json
 tests/               unit + offline end-to-end tests
 THESIS.md            claim, evidence, contrary evidence, what would change our mind
+PREDICTIONS.md       nine dated predictions; predictions.csv is the frozen, machine-readable list
 ```
 
 ## Hackathon disclosures
