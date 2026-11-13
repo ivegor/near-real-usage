@@ -32,26 +32,41 @@ def fetch() -> None:
         sources._check_shape(name, replies[name], key="totalDataChart")
     sources.RAW_DIR.mkdir(parents=True, exist_ok=True)
     for name, data in replies.items():
-        (sources.RAW_DIR / f"{name}.json").write_text(json.dumps(data))
+        (sources.RAW_DIR / f"{name}.json").write_text(json.dumps(data), encoding="utf-8")
 
 
 def load() -> pd.DataFrame | None:
-    """Daily gross fees, captured revenue and buybacks in USD, or None when the raw files are absent."""
+    """Daily gross fees, captured revenue and buybacks in USD, or None when the raw files are absent.
+
+    A day that a series does not carry, or carries as null, stays empty (NaN). It is not turned into a zero: a missing
+    day must not read as a day without revenue, and a prediction must be able to see that its window has a hole.
+    """
     cols = {}
     for name in URLS:
         path = sources.RAW_DIR / f"{name}.json"
         if not path.exists():
             return None
-        pts = json.loads(path.read_text()).get("totalDataChart") or []
+        pts = json.loads(path.read_text(encoding="utf-8")).get("totalDataChart") or []
         cols[name.replace("defillama_intents_", "")] = pd.Series(
-            {pd.Timestamp(int(ts), unit="s").normalize(): float(v) for ts, v in pts})
-    return pd.DataFrame(cols).sort_index().fillna(0.0)
+            {pd.Timestamp(int(ts), unit="s").normalize(): float(v) for ts, v in pts if v is not None}, dtype=float)
+    return pd.DataFrame(cols).sort_index()
+
+
+def covered_through(fees: pd.DataFrame) -> pd.Timestamp | None:
+    """The last day on which all three fee series have a value."""
+    full = fees.dropna()
+    return full.index.max() if len(full) else None
 
 
 def summarize(daily: pd.DataFrame, fees: pd.DataFrame, days: int = 90) -> dict | None:
     if "total_supply_yocto" not in daily or daily["total_supply_yocto"].dropna().empty:
         return None
-    end = daily.index.max()
+    last_fee_day = covered_through(fees)
+    if last_fee_day is None:
+        return None
+    # The fee series can end before the daily table: a late update, or the saved copy used during an outage. The
+    # window ends on the last day both cover, so that 90 days of buybacks are always set against 90 days of supply.
+    end = min(daily.index.max(), last_fee_day)
     start = end - pd.Timedelta(days=days - 1)
     f = fees.loc[start:end]
     supply = daily["total_supply_yocto"].dropna() / YOCTO
@@ -64,6 +79,8 @@ def summarize(daily: pd.DataFrame, fees: pd.DataFrame, days: int = 90) -> dict |
     nonzero = fees["holders_revenue"][fees["holders_revenue"] > 0]
     out = {
         "window": [str(start.date()), str(end.date())],
+        "days_behind_the_daily_series": int((daily.index.max() - end).days),
+        "days_without_buyback_data": int(days - f["holders_revenue"].notna().sum()),
         "intents_gross_fees_usd": float(f["fees"].sum()),
         "captured_revenue_usd": float(f["revenue"].sum()),
         "captured_share_of_gross_fees": float(f["revenue"].sum() / f["fees"].sum()) if f["fees"].sum() else float("nan"),
@@ -87,8 +104,9 @@ def summarize(daily: pd.DataFrame, fees: pd.DataFrame, days: int = 90) -> dict |
 
 def monthly(daily: pd.DataFrame, fees: pd.DataFrame, months: int = 12) -> pd.DataFrame:
     """Complete calendar months: gross fees, captured revenue, buybacks and the USD value of net new supply."""
-    end = daily.index.max()
-    last = (end + pd.Timedelta(days=1)).to_period("M") - 1  # the last complete month
+    last_fee_day = covered_through(fees)
+    end = min(daily.index.max(), last_fee_day) if last_fee_day is not None else daily.index.max()
+    last = (end + pd.Timedelta(days=1)).to_period("M") - 1  # the last month complete in both the daily and the fee series
     supply = daily["total_supply_yocto"].dropna() / YOCTO
     m = fees.resample("ME").sum()
     m.index = m.index.to_period("M")

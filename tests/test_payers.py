@@ -26,6 +26,13 @@ def test_groups_and_attribution(tmp_path):
     assert abs(s["old_core_fall_explained_by"]["sweat"] - 400 / 590) < 1e-9
     assert abs(s["old_core_fall_explained_by"]["ember"] - 200 / 590) < 1e-9
     assert s["reward_apps_share_of_lost_accounts"] > 1
+    # "returning" is published only for months whose previous month is in the query: not for the first of each year
+    assert list(s["independent_returning_accounts_by_month"]) == ["2025-09", "2025-10", "2026-09", "2026-10"]
+    assert list(s["independent_accounts_by_month"]) == ["2025-08", "2025-09", "2025-10", "2026-08", "2026-09", "2026-10"]
+    # the game's sponsored accounts and how many of them were there the month before; months without any are left out
+    assert s["ember_accounts_by_month"] == {m: {"accounts": 200, "also_active_the_month_before": 200} for m in ("2025-09", "2025-10")}
+    real = payers.summarize(payers.load())["ember_accounts_by_month"]["2025-10"]
+    assert real["accounts"] - real["also_active_the_month_before"] < 10          # the same accounts, month after month
 
 
 def test_three_independent_queries_count_the_same_chain():

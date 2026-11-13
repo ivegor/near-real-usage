@@ -157,10 +157,10 @@ def parse_block(block: dict | None) -> list[dict]:
 def _cached(name: str, compute):
     path = CACHE_DIR / name
     if path.exists():
-        return json.loads(path.read_text())
+        return json.loads(path.read_text(encoding="utf-8"))
     value = compute()
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value))
+    path.write_text(json.dumps(value), encoding="utf-8")
     return value
 
 
@@ -245,7 +245,7 @@ def fetch(last_date: str, seed: int = SEED, blocks: dict[str, int] | None = None
             "fetched_at_utc": pd.Timestamp.now(tz="UTC").isoformat(), "windows": windows}
     pd.concat(samples).to_csv(RAW_DIR / SAMPLE_FILE, index=False)
     pd.DataFrame(exist_rows).to_csv(RAW_DIR / EXIST_FILE, index=False)
-    (RAW_DIR / META_FILE).write_text(json.dumps(meta, indent=2))
+    (RAW_DIR / META_FILE).write_text(json.dumps(meta, indent=2), encoding="utf-8")
 
 
 # ---------------------------------------------------------------- pure metrics
@@ -254,7 +254,7 @@ def load() -> tuple[pd.DataFrame, pd.DataFrame, dict] | None:
     paths = [RAW_DIR / f for f in (SAMPLE_FILE, EXIST_FILE, META_FILE)]
     if not all(p.exists() for p in paths):
         return None
-    return pd.read_csv(paths[0]), pd.read_csv(paths[1]), json.loads(paths[2].read_text())
+    return pd.read_csv(paths[0]), pd.read_csv(paths[1]), json.loads(paths[2].read_text(encoding="utf-8"))
 
 
 def classify(sample: pd.DataFrame, exist: pd.DataFrame) -> pd.DataFrame:
@@ -271,6 +271,36 @@ def calls_to(sample: pd.DataFrame, target: str) -> dict:
     for label, w in sample.groupby("window"):
         hit = w[w["target"] == target]
         out[label] = {"calls": int(len(hit)), "relayed": int(hit["relayed"].astype(bool).sum())}
+    return out
+
+
+def batched_calls(sample: pd.DataFrame, relayer: str, method: str) -> dict:
+    """Per window: the sampled calls of one method that one relayer submitted, and how many of them arrive as a batch.
+
+    A batch is two or more such calls in the same block for accounts whose names start with the same two letters.
+    Callers acting on their own do not line up alphabetically inside one block; a job walking a sorted list does.
+    Account names are not published, only counts and the shared first letters.
+    """
+    out = {}
+    for label, w in sample.groupby("window"):
+        hit = w[(w["signer"] == relayer) & w["relayed"].astype(bool) & (w["method"] == method)]
+        first = hit["actor"].str[:2]
+        together = hit[hit.groupby([hit["height"], first])["actor"].transform("size") >= 2] if len(hit) else hit
+        out[label] = {"calls": int(len(hit)), "in_batches": int(len(together)), "blocks_with_a_batch": int(together["height"].nunique()),
+                      "largest_batch": int(together.groupby("height").size().max()) if len(together) else 0,
+                      "shared_first_letters": sorted(together["actor"].str[:2].unique())}
+    return out
+
+
+def self_deletions(sample: pd.DataFrame, suffix: str) -> dict:
+    """Per window: the sampled transactions of accounts under a namespace, and how many of them delete the account itself."""
+    out = {}
+    for label, w in sample.groupby("window"):
+        hit = w[w["actor"].str.endswith(suffix)]
+        gone = hit[(hit["method"] == "DeleteAccount") & (hit["actor"] == hit["target"])]
+        days = pd.to_datetime(gone["ts"], unit="ns").dt.strftime("%Y-%m-%d")
+        out[label] = {"transactions": int(len(hit)), "delete_account": int(len(gone)),
+                      "first_day": str(days.min()) if len(gone) else None, "last_day": str(days.max()) if len(gone) else None}
     return out
 
 

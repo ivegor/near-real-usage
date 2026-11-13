@@ -1,7 +1,9 @@
-"""Raw data sources. Every number in this project comes from one of these URLs.
+"""The two daily series the build downloads: NearBlocks network charts and DefiLlama NEAR Intents volume.
 
 Raw responses are cached in data/raw/ so a run is reproducible offline
 (`python -m thesis build --offline`) and judges can diff the exact inputs.
+The other sources are read elsewhere: the BigQuery results (thesis/population.py, segments.py, payers.py,
+clients.py), the DefiLlama fee series (thesis/value.py) and the keyless block sample (thesis/census.py).
 """
 from __future__ import annotations
 
@@ -40,6 +42,7 @@ def _fetch_json(url: str, retries: int = 3) -> dict:
 
 
 REQUIRED_KEY = {"nearblocks_charts": "charts", "defillama_intents": "totalDataChart"}
+NOT_REFRESHED: list[str] = []  # the sources the last fetch_all() could not download and read from their saved copies
 
 
 def _check_shape(name: str, data: object, key: str | None = None) -> None:
@@ -60,18 +63,18 @@ def fetch_all(offline: bool = False) -> dict[str, dict]:
         if offline:
             if not path.exists():
                 raise FileNotFoundError(f"{path} missing; run without --offline first")
-            out[name] = json.loads(path.read_text())
+            out[name] = json.loads(path.read_text(encoding="utf-8"))
         else:
             try:
                 data = _fetch_json(url)
                 _check_shape(name, data)  # never overwrite the committed copy with an error page or an empty reply
-                path.write_text(json.dumps(data))
+                path.write_text(json.dumps(data), encoding="utf-8")
             except RuntimeError as e:
                 # An API outage must not break the build or a judge's reproduction: fall back to the committed copy.
                 if not path.exists():
                     raise
                 print(f"[sources] {name}: {e}; using the saved copy {path.name}")
-                data = json.loads(path.read_text())
+                data = json.loads(path.read_text(encoding="utf-8"))
                 stale.append(name)
             out[name] = data
     meta = {name: {"url": url, "file": f"data/raw/{name}.json"} for name, url in SOURCES.items()}
@@ -79,7 +82,8 @@ def fetch_all(offline: bool = False) -> dict[str, dict]:
         meta["not_refreshed"] = stale
     if not offline:
         meta["fetched_at_utc"] = pd.Timestamp.now(tz="UTC").isoformat()
-        (RAW_DIR / "_meta.json").write_text(json.dumps(meta, indent=2))
+        (RAW_DIR / "_meta.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    NOT_REFRESHED[:] = stale
     return out
 
 
@@ -111,9 +115,9 @@ def parse_nearblocks(raw: dict) -> pd.DataFrame:
 
 def parse_defillama(raw: dict) -> pd.Series:
     pts = raw.get("totalDataChart") or []
-    s = pd.Series(
-        {pd.Timestamp(int(ts), unit="s").normalize(): float(v) for ts, v in pts},
-        name="intents_volume_usd",
+    s = pd.Series(  # a null is a day without a value, not a reason to stop the build
+        {pd.Timestamp(int(ts), unit="s").normalize(): float(v) for ts, v in pts if v is not None},
+        name="intents_volume_usd", dtype=float,
     )
     s.index.name = "date"
     return s.sort_index()

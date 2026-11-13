@@ -123,6 +123,15 @@ def _population_chart(pop: pd.DataFrame, summary: dict, out: Path) -> Chart:
         return f"{v / 1e6:.2f}M" if v >= 1e6 else f"{v / 1e3:.0f}K"
 
     c3, one, ex = c["three_month_mean"], ps["kaiching_one_off"], seg["all_ex_kaiching"]
+    gone = ((summary.get("clients") or {}).get("kaiching_accounts_sample") or {}).get("recent") or {}
+    # in the keyless block sample every transaction of these accounts is the deletion of the account itself
+    one_off = ("that were deleted, one transaction each" if gone.get("transactions") and gone["transactions"] == gone.get("delete_account")
+               else "that sent one transaction each in a single sweep")
+    quota, quota_note = ps.get("kaiching_relayed_txs_per_day"), ""
+    if quota and quota["months_within_a_thousandth_of_it"]:  # the same number of transactions every day is a job, not a crowd
+        quota_note = (f" Its relayer submitted {quota['median_month_to_the_nearest_thousand']:,.0f} transactions a day, to within a "
+                      f"thousandth, in {len(quota['months_within_a_thousandth_of_it'])} of its "
+                      f"{quota['months_with_relayed_transactions']} months in the census: a job with a daily quota.")
     check, checked = ps.get("totals_check"), ""
     if check:  # the same transactions counted by a second, independent source
         short = [abs(v["share"]) * 100 for v in check["differ"].values()]
@@ -136,8 +145,8 @@ def _population_chart(pop: pd.DataFrame, summary: dict, out: Path) -> Chart:
         "population", "Every active account, counted (full chain, not a sample)",
         f"In {lm}, {M(al['accounts']['latest'])} accounts acted on NEAR against {M(al['accounts']['prior'])} in {pm} "
         f"({_pct(al['accounts']['pct_change'])}). {M(one['accounts'])} of them are old accounts of the reward app KaiChing "
-        f"that sent one transaction each in a single sweep; the app itself had {M(k['accounts']['prior'])} accounts a year "
-        f"earlier and stopped in spring 2026. Without KaiChing: {M(ex['accounts']['prior'])} to {M(ex['accounts']['latest'])} "
+        f"{one_off}; the app itself had {M(k['accounts']['prior'])} accounts a year "
+        f"earlier and stopped in spring 2026.{quota_note} Without KaiChing: {M(ex['accounts']['prior'])} to {M(ex['accounts']['latest'])} "
         f"({_pct(ex['accounts']['pct_change'])}). Accounts outside the reward namespaces went {M(c['accounts']['prior'])} to "
         f"{M(c['accounts']['latest'])} ({_pct(c['accounts']['pct_change'])}; {_pct(c3['accounts']['pct_change'])} on three-month "
         f"means) and those also active the month before {M(c['returning_accounts']['prior'])} to "
@@ -171,7 +180,7 @@ def _value_chart(d: pd.DataFrame, fees: pd.DataFrame, vc: dict, out: Path) -> Ch
     _save(fig, out, "value_capture")
     return Chart(
         "value_capture", "Does it reach the token?",
-        f"Over the last 90 days NEAR Intents charged ${vc['intents_gross_fees_usd'] / 1e6:.1f}M in fees "
+        f"Over the 90 days to {vc['window'][1]} NEAR Intents charged ${vc['intents_gross_fees_usd'] / 1e6:.1f}M in fees "
         f"({vc['intents_fees_vs_l1_fees']:.0f}x the network's own transaction fees) and NEAR captured "
         f"${vc['captured_revenue_usd'] / 1e6:.2f}M of it ({vc['captured_share_of_gross_fees'] * 100:.0f}%), all used to buy NEAR "
         f"on the market since {vc['buyback_start']}. That is ${vc['buyback_usd_annualized'] / 1e6:.1f}M a year against "
@@ -180,8 +189,10 @@ def _value_chart(d: pd.DataFrame, fees: pd.DataFrame, vc: dict, out: Path) -> Ch
         f"{vc['buyback_coverage_of_new_supply'] * 100:.0f}% of dilution, and the market capitalisation is "
         f"{vc['market_cap_to_annual_buyback']:.0f} times the annual buyback.",
         "DefiLlama fee series for NEAR Intents (dailyFees, dailyRevenue, dailyHoldersRevenue); net new supply = change in "
-        "NearBlocks' daily total supply (already net of burned fees) valued at the mean price of the period. Bought NEAR is "
-        "held, not burned, so supply itself does not shrink.",
+        "NearBlocks' daily total supply (already net of burned fees) valued at the mean price of the period. The window ends "
+        "on the last day both sources cover. The bought NEAR is not burned, so supply itself does not shrink."
+        + (f" The fee series ends {vc['days_behind_the_daily_series']} days before the daily data."
+           if vc.get("days_behind_the_daily_series", 0) > 1 else ""),
     )
 
 
@@ -222,8 +233,9 @@ def _segments_chart(seg: pd.DataFrame, sg: dict, out: Path) -> Chart:
     game, game_note = sg.get("regular_accounts_reward_game_bound"), ""
     if game:  # part of that fall is one game changing who pays, not accounts leaving
         game_note = (f" That fall is not a clean count of users leaving: up to {game['game_players_prior']:,} of last year's accounts "
-                     f"were players of the Meteor wallet's reward game, who paid their own fees then and go through its relayer "
-                     f"now; with all of them taken out the change would be {_pct(game['pct_change_if_all_of_them_were_regular'])}.")
+                     f"were players of the Meteor wallet's reward game, who paid their own fees then; its relayer submits the "
+                     f"game's calls now. With all of them taken out the change would be "
+                     f"{_pct(game['pct_change_if_all_of_them_were_regular'])}.")
     return Chart(
         "segments", "Who pays, and how often",
         f"Accounts whose fees an app paid: {m['sponsored_accounts']['prior'] / 1e6:.1f}M in {sg['prior_month']}, "
@@ -278,6 +290,10 @@ def _clients_chart(cl: dict, out: Path) -> Chart:
         lo, hi = view["pct_change_ci95"]
         more += (f" On the keyless 90-day block sample the finance group changed {_pct(view['pct_change'])} "
                  f"(95% interval {_pct(lo)} to {_pct(hi)}).")
+    if cl.get("finance_txs_change_range"):  # the group's contracts that one month's 40 do not show
+        lo, hi = cl["finance_txs_change_range"]
+        more += (f" Allowing for the group's contracts that are not among a month's 40 largest, its change on the full "
+                 f"count lies between {_pct(lo)} and {_pct(hi)}.")
     return Chart(
         "clients", "Who sends the transactions",
         f"In {lm}, {L['accounts_for_half_of_txs']} accounts sent half of NEAR's {L['transactions'] / 1e6:.1f}M transactions "
@@ -287,11 +303,12 @@ def _clients_chart(cl: dict, out: Path) -> Chart:
         f"transfers and bridges are {cl['finance_share']['latest'] * 100:.0f}% (was {cl['finance_share']['prior'] * 100:.0f}%); "
         f"transactions on the Ref/Rhea exchange changed {_pct(ref['pct_change'])}. intents.near received "
         f"{i['latest']['transactions'] / 1e6:.2f}M transactions ({i['prior']['transactions'] / 1e6:.2f}M a year earlier), "
-        f"{i['latest']['top2_share'] * 100:.0f}% of them signed by two accounts." + more,
+        f"up to {i['latest']['top2_share'] * 100:.0f}% of them signed by two accounts." + more,
         "sql/top_accounts.sql on the NEAR BigQuery public dataset (13.53 GB), result in data/bq/top_accounts_result.csv. "
         "A direct transaction is assigned to the contract it calls, a relayed one to its relayer; contracts and relayers are "
-        "grouped into apps by the table in thesis/clients.py. Intents users sign off-chain, so its on-chain signers are "
-        "relayers, not users.",
+        "grouped into apps by the table in thesis/clients.py. A month counts only the contracts among its 40 largest; a "
+        "group's other contracts are inside \"everything outside the top 40\" for that month. Intents users sign "
+        "off-chain, so its on-chain signers are relayers, not users.",
     )
 
 
@@ -313,7 +330,7 @@ def _takeaway(slug: str, s: dict) -> str:
             sg = s["segments"]
             return (f"Almost all of the lost accounts were users an app was paying for; outside the reward apps, "
                     f"{sg['metrics']['heavy_accounts']['latest']:,.0f} heavy accounts send "
-                    f"{sg['heavy_share_of_independent_self_paid_txs']['latest'] * 100:.0f}% of the transactions people pay for themselves.")
+                    f"{sg['heavy_share_of_independent_self_paid_txs']['latest'] * 100:.0f}% of the transactions that senders pay for themselves.")
         if slug == "clients":
             c = s["clients"]
             return f"{c['months'][c['latest_month']]['accounts_for_half_of_txs']} accounts send half of all NEAR transactions."
@@ -321,8 +338,10 @@ def _takeaway(slug: str, s: dict) -> str:
             return (f"Buybacks funded by NEAR Intents cover {s['value_capture']['buyback_coverage_of_new_supply'] * 100:.0f}% "
                     "of the new NEAR issued.")
         if slug == "accounts":
-            return ("The usual proxy for returning accounts points the wrong way." if "population" in s
-                    else "Returning accounts are estimated as active minus new accounts.")
+            if "population" not in s:
+                return "Returning accounts are estimated as active minus new accounts."
+            return ("The usual proxy for returning accounts points the wrong way." if _proxy_points_the_other_way(s)
+                    else "The usual proxy for returning accounts is not a count of them.")
         if slug == "usage_vs_price":
             y = s["yoy_90d"]
             return (f"Over a year the NEAR price changed {_pct(y['price_usd']['pct_change'])} and daily transactions "
@@ -333,6 +352,13 @@ def _takeaway(slug: str, s: dict) -> str:
             return f"Total network fees changed {_pct(s['yoy_90d']['fees_usd']['pct_change'])} in a year."
         if slug == "intents":
             mi = s["month_yoy"]["intents_volume_usd"]
+            st = (s.get("predictions") or {}).get("step") or {}
+            v = st.get("intents_volume_usd_a_day") or {}
+            if v.get("range_top"):  # a year-on-year figure depends on where last year's ramp-up was; the range does not
+                where = "above" if mi["recent"] > v["range_top"] else "inside" if mi["recent"] >= v["range_low"] else "below"
+                return (f"In {mi['month']} NEAR Intents volume averaged ${mi['recent'] / 1e6:,.0f}M a day, {where} the "
+                        f"${v['range_low'] / 1e6:,.0f}M to ${v['range_top'] / 1e6:,.0f}M range it held from "
+                        f"{st['reference_range']['first']} to {st['reference_range']['last']}.")
             return f"NEAR Intents volume changed {_pct(mi['pct_change'])} against the same month a year earlier."
         if slug == "signer_census":
             return "A sample of random blocks, taken without any API key, agrees with the full count."
@@ -343,6 +369,19 @@ def _takeaway(slug: str, s: dict) -> str:
     except (KeyError, TypeError):
         return ""
     return ""
+
+
+def _proxy_points_the_other_way(s: dict) -> bool:
+    """True while the aggregate proxy and the full-chain count of returning accounts changed in opposite directions.
+
+    The proxy is a rolling 90-day comparison and the count is frozen with the census, so the sentence on the page
+    is decided by the data of the day, not written once.
+    """
+    proxy = s["yoy_90d"]["returning_accounts"]["pct_change"]
+    counted = s["population"]["segments"]["core"]["returning_accounts"]["pct_change"]
+    if proxy is None or counted is None or not (np.isfinite(proxy) and np.isfinite(counted)):
+        return False
+    return (proxy > 0) != (counted > 0)
 
 
 AGE_LABELS = {"365d+": "older than 1 year", "30-365d": "30 days to 1 year", "new": "newer than 30 days"}
@@ -423,12 +462,13 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
     _save(fig, out, "accounts")
     proxy_title, proxy_note = "New vs returning accounts", ""
     if "population" in summary:
-        core = summary["population"]["segments"]["core"]["returning_accounts"]
+        core, ps = summary["population"]["segments"]["core"]["returning_accounts"], summary["population"]
         proxy_title = "What the daily aggregates show, and why they mislead"
+        verdict = ("is wrong about the direction" if _proxy_points_the_other_way(summary) else "is not a count of returning accounts")
         proxy_note = (
-            f" This proxy is wrong about the direction: counted directly on the full chain, core accounts active two months "
-            f"running changed {_pct(core['pct_change'])} over the same year (see the first chart). The aggregator's "
-            "\"active accounts\" are transaction signers, so users acting through relayers are missing, and its "
+            f" This proxy {verdict}: counted directly on the full chain, core accounts active two months "
+            f"running changed {_pct(core['pct_change'])} from {ps['prior_month']} to {ps['latest_month']} (see the first chart). "
+            "The aggregator's \"active accounts\" are transaction signers, so users acting through relayers are missing, and its "
             "\"new accounts\" include accounts created in bulk by a handful of creator accounts.")
     charts.append(Chart(
         "accounts", proxy_title,
@@ -526,14 +566,23 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
             v, pr = st["intents_volume_usd_a_day"], st["price_usd"]
             rally = (f" The step up in {st['month']} (${v['before'] / 1e6:,.1f}M to ${v['month'] / 1e6:,.1f}M a day) came in the "
                      f"month the NEAR price went from ${pr['first_day']:.2f} to ${pr['last_day']:.2f}.")
+            if v.get("range_mean"):  # last year's base was still rising, so say what the level in between was
+                was, rng = v["month_before_range"], st["reference_range"]
+                rally += (f" A year earlier the base was still rising: {was['month']} already averaged ${was['value'] / 1e6:,.1f}M "
+                          f"a day, and from {rng['first']} to {rng['last']} volume averaged ${v['range_mean'] / 1e6:,.1f}M.")
+        so_far = (summary.get("month_to_date_yoy") or {}).get("intents_volume_usd")
+        if so_far:  # the days of the current month already in hand, against the same days a year earlier
+            rally += (f" From {so_far['from']} to {so_far['through']} it averaged ${so_far['recent'] / 1e6:,.1f}M a day against "
+                      f"${so_far['prior'] / 1e6:,.1f}M in the same days a year earlier ({_pct(so_far['pct_change'])}).")
         charts.append(Chart(
             "intents", "NEAR Intents volume",
             f"In {mi.get('month')} Intents volume averaged ${mi.get('recent', float('nan')) / 1e6:,.1f}M a day against "
             f"${mi.get('prior', float('nan')) / 1e6:,.1f}M in the same month a year earlier ({_pct(mi.get('pct_change'))}); "
             f"the last 90 days averaged ${yi.get('recent', float('nan')) / 1e6:,.1f}M a day, {_pct(qi.get('pct_change'))} on the "
             f"90 days before and {_pct(yi.get('pct_change'))} on the same 90 days a year earlier." + rally,
-            "DefiLlama dexs/near-intents totalDataChart, 7-day rolling mean. The 90-day year-on-year figure shrinks every "
-            "day as its base moves through the ramp-up of autumn 2025; the calendar-month comparison does not.",
+            "DefiLlama dexs/near-intents totalDataChart, 7-day rolling mean. Both year-on-year figures shrink as their "
+            "base moves through the ramp-up of autumn 2025: the 90-day one every day, the calendar-month one at each "
+            "month's end. The level the volume held between the two autumns does not move.",
         ))
 
     # 5a. Full-population account census from BigQuery (only when data/bq/account_age.csv exists)

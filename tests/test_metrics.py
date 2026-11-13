@@ -115,7 +115,8 @@ def test_build_survives_an_api_outage(tmp_path, monkeypatch):
     (tmp_path / "defillama_intents.json").write_text(json.dumps(ll))
     raw = sources.fetch_all()                  # saved copies exist: they are used instead
     assert len(raw["nearblocks_charts"]["charts"]) == 60
-    assert json.loads((tmp_path / "_meta.json").read_text())["not_refreshed"] == ["nearblocks_charts", "defillama_intents"]
+    assert json.loads((tmp_path / "_meta.json").read_text(encoding="utf-8"))["not_refreshed"] == ["nearblocks_charts", "defillama_intents"]
+    assert sources.NOT_REFRESHED == ["nearblocks_charts", "defillama_intents"]       # the build can tell that it fell back
 
 
 def test_a_bad_api_reply_never_replaces_the_saved_copy(tmp_path, monkeypatch):
@@ -129,6 +130,60 @@ def test_a_bad_api_reply_never_replaces_the_saved_copy(tmp_path, monkeypatch):
     monkeypatch.setattr(sources, "_fetch_json", lambda url: {"message": "rate limited"})   # HTTP 200 with the wrong body
     out = sources.fetch_all(offline=False)
     assert out["nearblocks_charts"] == nb                                    # the build falls back to the saved copy
-    assert json.loads((tmp_path / "nearblocks_charts.json").read_text()) == nb          # and the file is untouched
+    assert json.loads((tmp_path / "nearblocks_charts.json").read_text(encoding="utf-8")) == nb          # and the file is untouched
     with pytest.raises(RuntimeError):
         sources._check_shape("defillama_intents", {"totalDataChart": []})
+
+
+def test_best_lead_reports_the_range_of_sample_sizes():
+    """Each week of lag costs one week of data, so the text quotes the smallest and the largest n, not one of them."""
+    d = daily()
+    ll = metrics.lead_lag(d["active_accounts"], d["price_usd"])
+    best = metrics.best_lead(ll)
+    lo, hi = best["n_weeks_range"]
+    assert (lo, hi) == (int(ll["n"].min()), int(ll["n"].max())) and hi - lo == 8 and lo <= best["n_weeks"] <= hi
+    assert best["band_range"][0] < best["band_range"][1] and abs(best["band_range"][1] - 2 / lo ** 0.5) < 1e-12
+
+
+def test_a_null_in_a_series_is_a_missing_day_not_a_crash():
+    s = sources.parse_defillama({"totalDataChart": [[1_700_000_000, 1.0], [1_700_086_400, None], [1_700_172_800, 3.0]]})
+    assert list(s) == [1.0, 3.0] and s.name == "intents_volume_usd"
+    assert sources.parse_defillama({"totalDataChart": []}).empty
+
+
+def test_month_to_date_compares_the_same_days_a_year_apart():
+    """The month in progress, as far as it has come, against the same days of the same month a year earlier."""
+    idx = pd.date_range("2025-01-01", "2026-11-11", freq="D")
+    s = pd.Series(np.where(idx >= "2026-01-01", 200.0, 100.0), index=idx)
+    out = metrics.month_to_date_change(s)
+    assert (out["from"], out["through"], out["days"], out["recent"], out["prior"], out["pct_change"]) == ("2026-11-01", "2026-11-11", 11, 200.0, 100.0, 100.0)
+    assert metrics.month_to_date_change(s.loc[:"2026-10-31"]) is None            # a complete month has no "so far"
+    assert metrics.month_to_date_change(s.loc["2025-11-05":]) is None            # last year's days are not all there
+    assert metrics.summarize(daily())["month_to_date_yoy"]["price_usd"]["days"] == 9     # the synthetic series ends on 9 November
+
+
+def test_require_fresh_refuses_to_build_from_saved_copies(tmp_path, monkeypatch):
+    """The scheduled build starts from the committed copies; an outage must not publish them as today's page."""
+    import pytest
+
+    from thesis import __main__ as cli
+    from thesis import value
+    table = sources.load_daily(offline=True)
+    (tmp_path / "data").mkdir()
+    monkeypatch.setattr(cli, "ROOT", tmp_path)
+    monkeypatch.setattr(cli, "DOCS", tmp_path / "docs")
+    monkeypatch.setattr(sources, "load_daily", lambda offline=False: table)
+
+    def down():
+        raise RuntimeError("API down")
+
+    monkeypatch.setattr(value, "fetch", down)
+    with pytest.raises(SystemExit, match="not refreshed: defillama_intents_fees"):
+        cli.build(offline=False, require_fresh=True)
+    assert not (tmp_path / "docs").exists()                                       # nothing was rendered
+    monkeypatch.setattr(value, "fetch", lambda: None)
+    monkeypatch.setattr(sources, "NOT_REFRESHED", ["nearblocks_charts"])
+    with pytest.raises(SystemExit, match="nearblocks_charts"):
+        cli.build(offline=False, require_fresh=True)
+    cli.build(offline=False)                                                      # without the flag the saved copies are used
+    assert (tmp_path / "docs" / "index.html").exists()

@@ -2,12 +2,14 @@
 
 NEAR Real Usage is a reproducible research pipeline for the NEAR HACKATHON (November 2026), track Investment Thesis.
 Start with `README.md` (what it is, how to run it) and `THESIS.md` (the argument and its limits).
+`AGENTS.md` and `CLAUDE.md` are the same text under the two names coding agents look for; a test compares them, so
+edit both.
 
 ## Build and test
 
 ```bash
-python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
-python -m pytest -q                  # 63 tests, no network
+python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
+python -m pytest -q                  # 86 tests, no network
 python -m thesis build --offline     # rebuilds docs/ from the committed data, no network
 python -m thesis build               # same, after refreshing data/raw/ from the public APIs
 ```
@@ -22,7 +24,8 @@ reproduces the numbers exactly; the PNG files are byte-identical only with the l
   estimate before running anything, and never query the `accounts` table of the NEAR dataset (1.03 TB per query).
   The build does not need BigQuery: results are committed in `data/bq/`.
 * **The account census ends on 2026-11-11** (`QUERY_END` in `thesis/population.py`). If the query is re-run, update
-  that constant together with `data/bq/account_age.csv`.
+  that constant together with `data/bq/account_age.csv`: a month counts only if the scan reached its last day.
+  Predictions B1 to B4 are scored by the build from `data/bq/` once the files there hold January 2027.
 * **THESIS.md is a snapshot.** `tests/test_thesis_numbers.py` checks its key numbers, and the README's, against the
   frozen copy of the summary in `data/snapshot/` (`python -m thesis snapshot` refreshes it after an offline build).
   Change them together, and do not type numbers by hand: take them from `summary.json`.

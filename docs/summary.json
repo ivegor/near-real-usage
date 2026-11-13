@@ -200,12 +200,38 @@
       "pct_change": 131.3061844262865
     }
   },
+  "month_to_date_yoy": {
+    "price_usd": {
+      "from": "2026-11-01",
+      "through": "2026-11-11",
+      "days": 11,
+      "recent": 3.8461493663636364,
+      "prior": 2.3437917699999997,
+      "pct_change": 64.09944840635893
+    },
+    "intents_volume_usd": {
+      "from": "2026-11-01",
+      "through": "2026-11-11",
+      "days": 11,
+      "recent": 129656724.18181819,
+      "prior": 125394005.9090909,
+      "pct_change": 3.3994593615724433
+    }
+  },
   "lead_vs_price": {
     "returning_accounts": {
       "lag_weeks": 8,
       "corr": 0.08231188175297806,
       "band": 0.11867816581938533,
       "n_weeks": 284,
+      "n_weeks_range": [
+        284,
+        292
+      ],
+      "band_range": [
+        0.11704114719613057,
+        0.11867816581938533
+      ],
       "significant": false,
       "outside_band": []
     },
@@ -214,6 +240,14 @@
       "corr": 0.14091180401497264,
       "band": 0.11233119126034607,
       "n_weeks": 317,
+      "n_weeks_range": [
+        309,
+        317
+      ],
+      "band_range": [
+        0.11233119126034607,
+        0.11377602479771486
+      ],
       "significant": true,
       "outside_band": [
         {
@@ -231,6 +265,14 @@
       "corr": -0.1471815064972403,
       "band": 0.2,
       "n_weeks": 100,
+      "n_weeks_range": [
+        92,
+        100
+      ],
+      "band_range": [
+        0.2,
+        0.20851441405707477
+      ],
       "significant": false,
       "outside_band": []
     },
@@ -239,6 +281,14 @@
       "corr": 0.11194040151884815,
       "band": 0.11377602479771486,
       "n_weeks": 309,
+      "n_weeks_range": [
+        309,
+        317
+      ],
+      "band_range": [
+        0.11233119126034607,
+        0.11377602479771486
+      ],
       "significant": false,
       "outside_band": []
     },
@@ -247,6 +297,14 @@
       "corr": -0.14861456950233456,
       "band": 0.11340959542474854,
       "n_weeks": 311,
+      "n_weeks_range": [
+        309,
+        317
+      ],
+      "band_range": [
+        0.11233119126034607,
+        0.11377602479771486
+      ],
       "significant": true,
       "outside_band": [
         {
@@ -273,6 +331,14 @@
     "corr": 0.38021826586972607,
     "band": 0.11233119126034607,
     "n_weeks": 317,
+    "n_weeks_range": [
+      309,
+      317
+    ],
+    "band_range": [
+      0.11233119126034607,
+      0.11377602479771486
+    ],
     "significant": true,
     "outside_band": [
       {
@@ -1371,6 +1437,57 @@
         "11": -8.011793709317072
       }
     },
+    "implicit_one_transaction_bursts": {
+      "median_month": 106652.0,
+      "bursts": [
+        {
+          "month": "2026-02",
+          "accounts": 3483774,
+          "times_the_median_month": 32.66487266999212,
+          "older_than_2y_share": 0.7134145326304174,
+          "relayed_tx_share": 0.14635624542471334
+        },
+        {
+          "month": "2026-03",
+          "accounts": 6012241,
+          "times_the_median_month": 56.37251059520684,
+          "older_than_2y_share": 0.006217814621868951,
+          "relayed_tx_share": 0.9845560954190431
+        },
+        {
+          "month": "2026-04",
+          "accounts": 1110400,
+          "times_the_median_month": 10.411431571841128,
+          "older_than_2y_share": 0.02202269452449568,
+          "relayed_tx_share": 0.9761481118414934
+        }
+      ],
+      "monthly": {
+        "2024-12": 398537,
+        "2025-01": 179026,
+        "2025-02": 109225,
+        "2025-03": 106652,
+        "2025-04": 107741,
+        "2025-05": 190222,
+        "2025-06": 102147,
+        "2025-07": 117498,
+        "2025-08": 120984,
+        "2025-09": 89734,
+        "2025-10": 90774,
+        "2025-11": 85081,
+        "2025-12": 138258,
+        "2026-01": 97709,
+        "2026-02": 3483774,
+        "2026-03": 6012241,
+        "2026-04": 1110400,
+        "2026-05": 80986,
+        "2026-06": 88777,
+        "2026-07": 75062,
+        "2026-08": 70952,
+        "2026-09": 72254,
+        "2026-10": 75722
+      }
+    },
     "core_txs_per_account_at_prior_mix": 11.668063395487987,
     "core_txs_per_account_by_family": {
       "implicit": {
@@ -1386,6 +1503,58 @@
       "accounts": 560093,
       "single_tx_accounts": 560092,
       "share_of_all_accounts": 0.40600630075142186
+    },
+    "kaiching_relayed_txs_per_day": {
+      "median_month_to_the_nearest_thousand": 2000000.0,
+      "months_with_relayed_transactions": 17,
+      "months_within_a_thousandth_of_it": [
+        "2025-05",
+        "2025-06",
+        "2025-08",
+        "2025-09",
+        "2025-10",
+        "2025-11",
+        "2026-01",
+        "2026-03"
+      ],
+      "per_day": {
+        "2024-12": 1759687.9032258065,
+        "2025-01": 1963761.5483870967,
+        "2025-02": 1664286.607142857,
+        "2025-03": 1682632.1612903227,
+        "2025-04": 2030733.9,
+        "2025-05": 2000315.935483871,
+        "2025-06": 2000000.9,
+        "2025-07": 1889050.5483870967,
+        "2025-08": 1999997.8387096773,
+        "2025-09": 1999997.5,
+        "2025-10": 2000001.0,
+        "2025-11": 2000001.4,
+        "2025-12": 1989043.8387096773,
+        "2026-01": 2000321.5806451612,
+        "2026-02": 1984001.7857142857,
+        "2026-03": 1999943.677419355,
+        "2026-04": 39858.833333333336
+      },
+      "in_the_month": {
+        "2024-12": 54550325,
+        "2025-01": 60876608,
+        "2025-02": 46600025,
+        "2025-03": 52161597,
+        "2025-04": 60922017,
+        "2025-05": 62009794,
+        "2025-06": 60000027,
+        "2025-07": 58560567,
+        "2025-08": 61999933,
+        "2025-09": 59999925,
+        "2025-10": 62000031,
+        "2025-11": 60000042,
+        "2025-12": 61660359,
+        "2026-01": 62009969,
+        "2026-02": 55552050,
+        "2026-03": 61998254,
+        "2026-04": 1195765
+      }
     },
     "partial_month": {
       "month": "2026-11",
@@ -1414,6 +1583,7 @@
       "relayed_users": 2694016,
       "direct_function_call_signers": 284712,
       "create_account_transactions": 238403,
+      "accounts_created": 238399,
       "account_creators": 12,
       "nearblocks": {
         "txns": 4632736,
@@ -1624,6 +1794,31 @@
       "month": "2026-08",
       "value": 7201.0
     },
+    "regular_accounts_by_month": {
+      "2025-08": 30735,
+      "2025-09": 27833,
+      "2025-10": 27078,
+      "2025-11": 23777,
+      "2025-12": 24553,
+      "2026-01": 22367,
+      "2026-02": 13041,
+      "2026-03": 12117,
+      "2026-04": 10669,
+      "2026-05": 10298,
+      "2026-06": 8830,
+      "2026-07": 7465,
+      "2026-08": 7201,
+      "2026-09": 18379,
+      "2026-10": 17105
+    },
+    "regular_accounts_largest_monthly_fall": {
+      "month": "2026-02",
+      "month_before": "2026-01",
+      "before": 22367,
+      "after": 13041,
+      "fall": 9326,
+      "share_of_fall_from_prior_month_to_low": 0.4691854907682246
+    },
     "independent_accounts_range": {
       "min": 49954.0,
       "max": 3497840.0
@@ -1634,6 +1829,12 @@
       "fall": 9973.0,
       "pct_change_as_counted": -36.83063741782997,
       "pct_change_if_all_of_them_were_regular": 43.54649211144679
+    },
+    "self_paid_txs_reward_game_bound": {
+      "game_direct_txs_prior": 532727,
+      "share_of_prior_self_paid_txs_at_most": 0.05451268366144171,
+      "pct_change_as_counted": 27.830665805886756,
+      "pct_change_if_all_of_them_were_independent": 35.20082564504059
     }
   },
   "sponsors": {
@@ -1693,7 +1894,7 @@
       "old_core_sponsored_by_kaiching": {
         "latest": 0.0,
         "prior": 0.0,
-        "pct_change": NaN
+        "pct_change": null
       },
       "sponsored_by_hot": {
         "latest": 70432.0,
@@ -1795,7 +1996,7 @@
       "old_core_sponsored_by_kaiching": {
         "latest": 0.0,
         "prior": 0.0,
-        "pct_change": NaN
+        "pct_change": null
       },
       "sponsored_by_hot": {
         "latest": 64461.0,
@@ -1868,14 +2069,26 @@
       "2026-10": 136913.0
     },
     "independent_returning_accounts_by_month": {
-      "2025-07": 0.0,
       "2025-08": 43901.0,
       "2025-09": 43518.0,
       "2025-10": 40759.0,
-      "2026-07": 0.0,
       "2026-08": 13625.0,
       "2026-09": 16685.0,
       "2026-10": 31452.0
+    },
+    "ember_accounts_by_month": {
+      "2025-08": {
+        "accounts": 387781,
+        "also_active_the_month_before": 387676
+      },
+      "2025-09": {
+        "accounts": 387784,
+        "also_active_the_month_before": 387775
+      },
+      "2025-10": {
+        "accounts": 387762,
+        "also_active_the_month_before": 387756
+      }
     },
     "sponsored_by_month": {
       "kaiching": {
@@ -2056,6 +2269,187 @@
       "prior": 121721238,
       "pct_change": -92.08663815923397
     },
+    "groups_outside_the_40": {
+      "finance": {
+        "latest": {
+          "contracts": 6,
+          "transactions_each_at_most": 26690,
+          "transactions_at_most": 160140
+        },
+        "prior": {
+          "contracts": 7,
+          "transactions_each_at_most": 45655,
+          "transactions_at_most": 319585
+        }
+      },
+      "reward_apps": {
+        "latest": {
+          "contracts": 7,
+          "transactions_each_at_most": 26690,
+          "transactions_at_most": 186830
+        },
+        "prior": {
+          "contracts": 1,
+          "transactions_each_at_most": 45655,
+          "transactions_at_most": 45655
+        }
+      }
+    },
+    "finance_txs_change_range": [
+      30.460512566530795,
+      39.04908296860044
+    ],
+    "exchange_bot_targets": {
+      "contracts": [
+        "pyth-oracle.near",
+        "acc.toalice.near"
+      ],
+      "latest": 0,
+      "prior": 305146,
+      "exchange_pct_change_with_them": 63.587018813991534,
+      "finance_pct_change_with_them": 30.72868752080302
+    },
+    "other_top_40": {
+      "latest": [
+        {
+          "contract": "cooldogsclub.near",
+          "transactions": 503492,
+          "accounts": 36
+        },
+        {
+          "contract": "aggregate-oracle.near",
+          "transactions": 157054,
+          "accounts": 8
+        },
+        {
+          "contract": "officialevents.near",
+          "transactions": 137180,
+          "accounts": 10
+        },
+        {
+          "contract": "x.paras.near",
+          "transactions": 104713,
+          "accounts": 22
+        },
+        {
+          "contract": "nearlytrade.near",
+          "transactions": 94266,
+          "accounts": 1054
+        },
+        {
+          "contract": "mrbrownproject.near",
+          "transactions": 88208,
+          "accounts": 10
+        },
+        {
+          "contract": "desktopapp.near",
+          "transactions": 69746,
+          "accounts": 6
+        },
+        {
+          "contract": "whatdoyoumean.near",
+          "transactions": 50929,
+          "accounts": 1
+        },
+        {
+          "contract": "tigeracademy.near",
+          "transactions": 49559,
+          "accounts": 4
+        },
+        {
+          "contract": "meta-pool.near",
+          "transactions": 35360,
+          "accounts": 310
+        },
+        {
+          "contract": "dex.intear.near",
+          "transactions": 32989,
+          "accounts": 1153
+        },
+        {
+          "contract": "via-trading.near",
+          "transactions": 31108,
+          "accounts": 2
+        },
+        {
+          "contract": "near",
+          "transactions": 30497,
+          "accounts": 183
+        },
+        {
+          "contract": "ai-8.nearlytrade.near",
+          "transactions": 29115,
+          "accounts": 13604
+        },
+        {
+          "contract": "relayer:coin.abound.near",
+          "transactions": 26690,
+          "accounts": 26324
+        }
+      ],
+      "prior": [
+        {
+          "contract": "nearprotolcol.near",
+          "transactions": 408326,
+          "accounts": 78
+        },
+        {
+          "contract": "neargives.near",
+          "transactions": 277680,
+          "accounts": 208
+        },
+        {
+          "contract": "pyth-oracle.near",
+          "transactions": 185151,
+          "accounts": 27
+        },
+        {
+          "contract": "official-near.near",
+          "transactions": 138096,
+          "accounts": 117
+        },
+        {
+          "contract": "acc.toalice.near",
+          "transactions": 119995,
+          "accounts": 1
+        },
+        {
+          "contract": "coin.abound.near",
+          "transactions": 69918,
+          "accounts": 1
+        },
+        {
+          "contract": "contractmain2.mainfrac.near",
+          "transactions": 59084,
+          "accounts": 166
+        },
+        {
+          "contract": "jambo-1679.meme-cooking.near",
+          "transactions": 55670,
+          "accounts": 8365
+        },
+        {
+          "contract": "near",
+          "transactions": 54461,
+          "accounts": 144
+        },
+        {
+          "contract": "contract.dollaaa.near",
+          "transactions": 48561,
+          "accounts": 9
+        }
+      ],
+      "in_both_months": [
+        "near"
+      ]
+    },
+    "reward_minus_finance_share": {
+      "latest": 0.019868521646561072,
+      "latest_range": [
+        0.01279127728527619,
+        0.02812530673472677
+      ]
+    },
     "sweat_users": {
       "latest": 413927,
       "prior": 1263047
@@ -2198,6 +2592,28 @@
           "calls": 41,
           "relayed": 41
         }
+      },
+      "sample_claims": {
+        "prior": {
+          "calls": 1,
+          "in_batches": 0,
+          "blocks_with_a_batch": 0,
+          "largest_batch": 0,
+          "shared_first_letters": []
+        },
+        "recent": {
+          "calls": 19,
+          "in_batches": 17,
+          "blocks_with_a_batch": 5,
+          "largest_batch": 4,
+          "shared_first_letters": [
+            "ab",
+            "co",
+            "fu",
+            "le",
+            "ne"
+          ]
+        }
       }
     },
     "kaiching_txs_outside_its_contracts": 560106.0,
@@ -2221,6 +2637,11 @@
         "prior": 2999104.0,
         "pct_change": 2.9467134184076205
       },
+      "rest_without_exchange_bot_targets": {
+        "latest": 3087479.0,
+        "prior": 2693958.0,
+        "pct_change": 14.607540280880404
+      },
       "other_top_40_without_ember": {
         "latest": 1440906.0,
         "prior": 1416942.0,
@@ -2230,6 +2651,20 @@
         "latest": 1646573.0,
         "prior": 1582162.0,
         "pct_change": 4.07107489624956
+      }
+    },
+    "kaiching_accounts_sample": {
+      "prior": {
+        "transactions": 657,
+        "delete_account": 0,
+        "first_day": null,
+        "last_day": null
+      },
+      "recent": {
+        "transactions": 13,
+        "delete_account": 13,
+        "first_day": "2026-10-02",
+        "last_day": "2026-10-07"
       }
     },
     "sample_view": {
@@ -2449,9 +2884,21 @@
           "value": 3.58413601
         }
       },
+      "reference_range": {
+        "first": "2025-12",
+        "last": "2026-08",
+        "months": 9
+      },
       "intents_volume_usd_a_day": {
         "before": 89591201.70967741,
-        "month": 160103145.9
+        "month": 160103145.9,
+        "range_mean": 74529333.67518248,
+        "range_low": 63184683.4,
+        "range_top": 89591201.70967741,
+        "month_before_range": {
+          "month": "2025-11",
+          "value": 122035159.9
+        }
       },
       "buyback_usd": {
         "before": 723262.0,
@@ -2459,7 +2906,12 @@
       },
       "core_self_paid_txs": {
         "before": 7842036.0,
-        "month": 13104300.0
+        "month": 13104300.0,
+        "range_mean": 7606964.111111111,
+        "range_mean_a_year_earlier": 9163344.444444444,
+        "range_pct_change": -16.98485026694523,
+        "range_pct_change_without_dormant_implicit": -20.938373037747006,
+        "range_months_below_a_year_earlier": 7
       },
       "regular_self_paying_accounts": {
         "before": 7201.0,
@@ -2476,6 +2928,8 @@
       "2026-08-14",
       "2026-11-11"
     ],
+    "days_behind_the_daily_series": 0,
+    "days_without_buyback_data": 0,
     "intents_gross_fees_usd": 18923966.0,
     "captured_revenue_usd": 5111113.0,
     "captured_share_of_gross_fees": 0.27008677779277346,

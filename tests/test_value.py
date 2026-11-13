@@ -1,4 +1,6 @@
 """Value capture: buybacks against net new supply, on a small synthetic table (no network)."""
+import json
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -43,7 +45,7 @@ def test_fetch_never_replaces_a_saved_copy_with_an_error_page(tmp_path, monkeypa
     monkeypatch.setattr(value.sources, "_fetch_json", lambda url: next(replies))
     with pytest.raises(RuntimeError, match="no usable 'totalDataChart' series"):
         value.fetch()
-    assert all((tmp_path / f"{name}.json").read_text() == '{"saved": true}' for name in names)
+    assert all((tmp_path / f"{name}.json").read_text(encoding="utf-8") == '{"saved": true}' for name in names)
     monkeypatch.setattr(value.sources, "_fetch_json", lambda url: good)
     value.fetch()
     assert len(value.load()) == 40 and list(value.load().columns) == ["fees", "revenue", "holders_revenue"]
@@ -54,3 +56,33 @@ def test_missing_supply_or_files_means_no_section(tmp_path, monkeypatch):
     assert value.summarize(daily.drop(columns="total_supply_yocto"), fees) is None
     monkeypatch.setattr(value.sources, "RAW_DIR", tmp_path)
     assert value.load() is None
+
+
+def test_window_ends_on_the_last_day_both_series_cover():
+    """A fee series that stops early must not turn 70 days of buybacks into "the last 90 days"."""
+    daily, fees = frames()
+    late = fees.iloc[:-20]                                       # the fee series stops 20 days before the daily table
+    v = value.summarize(daily, late)
+    assert v["window"][1] == str(late.index.max().date()) and v["days_behind_the_daily_series"] == 20
+    assert abs(v["buyback_coverage_of_new_supply"] - 0.05) < 1e-9 and v["days_without_buyback_data"] == 0   # 90 days against 90 days
+    full = value.summarize(daily, fees)
+    assert full["days_behind_the_daily_series"] == 0 and full["window"][1] == str(daily.index.max().date())
+    # and a month the fee series has not finished is not drawn as a complete month
+    assert str(value.monthly(daily, fees.loc[:"2026-10-29"]).index[-1]) == "2026-09"
+    assert value.summarize(daily, fees.assign(holders_revenue=np.nan)) is None      # no day covered by all three series
+
+
+def test_a_missing_day_stays_missing(tmp_path, monkeypatch):
+    """A day one series does not carry, or carries as null, is not a day with zero revenue."""
+    monkeypatch.setattr(value.sources, "RAW_DIR", tmp_path)
+    points = [[1_700_000_000 + 86_400 * i, 5.0] for i in range(40)]
+    for name in value.URLS:
+        rows = list(points)
+        if name.endswith("holders_revenue"):
+            rows[20] = [rows[20][0], None]                       # a null value
+            del rows[10]                                         # and a day that is not there at all
+        (tmp_path / f"{name}.json").write_text(json.dumps({"totalDataChart": rows}))
+    fees = value.load()
+    assert len(fees) == 40 and int(fees["holders_revenue"].isna().sum()) == 2 and fees["fees"].notna().all()
+    assert value.covered_through(fees) == fees.index.max()
+    assert value.covered_through(fees.iloc[:21]) == fees.index[19]            # the last day with all three is before the null

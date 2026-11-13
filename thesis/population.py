@@ -64,6 +64,7 @@ def one_day(daily: pd.DataFrame | None = None) -> dict | None:
         "relayed_users": int(first.loc["DELEGATE_ACTION", "receivers"]),
         "direct_function_call_signers": int(first.loc["FUNCTION_CALL", "signers"]),
         "create_account_transactions": int(first.loc["CREATE_ACCOUNT", "txs"]),
+        "accounts_created": int(first.loc["CREATE_ACCOUNT", "receivers"]),
         "account_creators": int(first.loc["CREATE_ACCOUNT", "signers"]),
     }
     if daily is not None and pd.Timestamp(ONE_DAY) in daily.index:
@@ -76,13 +77,11 @@ def complete_months(df: pd.DataFrame, query_end: str | None = None) -> list[str]
     """Months fully covered by the query: the first one has no 'previous month', the last may be partial.
 
     Completeness depends on where the BigQuery scan stopped (QUERY_END), not on today's date: a later rebuild
-    of the dashboard must not start treating the half-scanned last month as a full one.
+    of the dashboard must not start treating the half-scanned last month as a full one. A month counts only if the
+    scan reached its last day, so a newer table committed without a newer QUERY_END does not add months either.
     """
-    months = sorted(df["month"].unique())[1:]
     end = pd.Timestamp(query_end or QUERY_END)
-    if months and (end + pd.Timedelta(days=1)).day != 1 and months[-1] == end.strftime("%Y-%m"):
-        months = months[:-1]
-    return months
+    return [m for m in sorted(df["month"].unique())[1:] if pd.Period(m, "M").end_time.normalize() <= end]
 
 
 def segment(df: pd.DataFrame, name: str) -> pd.DataFrame:
@@ -171,7 +170,8 @@ def summarize(df: pd.DataFrame, query_end: str | None = None) -> dict:
 
     # the reward apps as "all minus core", so the .sweat service accounts are included
     out["reward_apps_share_of_lost"] = {
-        col: (lost("all", col) - lost("core", col)) / lost("all", col) for col in ("accounts", "txs")
+        col: (lost("all", col) - lost("core", col)) / lost("all", col) if lost("all", col) else float("nan")
+        for col in ("accounts", "txs")
     }
     out["near_share_of_all_txs"] = {k: seg["near"]["txs"][k] / seg["all"]["txs"][k] for k in ("latest", "prior")}
     out["sweat_share_of_all_txs"] = seg["sweat"]["txs"]["latest"] / seg["all"]["txs"]["latest"]
@@ -197,6 +197,20 @@ def summarize(df: pd.DataFrame, query_end: str | None = None) -> dict:
         "change_by_window_without_them": _change_by_window(series - woke),
     }
 
+    # One-off bursts of accounts: implicit accounts that already existed, were not active the month before and sent
+    # exactly one transaction. An ordinary month has about a hundred thousand of them. A burst is a month with more
+    # than ten times the median month: an order of magnitude, not a tuned line.
+    wake = df[(df["family"] == "implicit") & (df["age"] != "m0") & (df["prev_month"] == "not_returning")]
+    one = wake.groupby("month")["single_tx_accounts"].sum().reindex(months).fillna(0)
+    usual, bursts = float(one.median()), []
+    for m in (one[one > 10 * usual].index if usual > 0 else []):
+        rows = wake[wake["month"] == m]
+        bursts.append({"month": m, "accounts": int(one[m]), "times_the_median_month": float(one[m] / usual),
+                       "older_than_2y_share": float(rows.loc[rows["age"] == "ge2y", "single_tx_accounts"].sum() / one[m]),
+                       "relayed_tx_share": float(rows["relayed_txs"].sum() / rows["txs"].sum())})
+    out["implicit_one_transaction_bursts"] = {"median_month": usual, "bursts": bursts,
+                                              "monthly": {m: int(v) for m, v in one.items()}}
+
     # Is "more transactions per core account" a change in behaviour or in who is left? Hold the mix of account
     # types at last year's shares and apply this year's per-account rates.
     fam = segment(df, "core").groupby(["month", "family"])[["accounts", "txs"]].sum()
@@ -213,6 +227,18 @@ def summarize(df: pd.DataFrame, query_end: str | None = None) -> dict:
     k = df[(df["family"] == "kaiching") & (df["month"] == latest) & (df["prev_month"] == "not_returning")]
     out["kaiching_one_off"] = {"accounts": int(k["accounts"].sum()), "single_tx_accounts": int(k["single_tx_accounts"].sum()),
                                "share_of_all_accounts": float(k["accounts"].sum() / seg["all"]["accounts"]["latest"])}
+
+    # KaiChing's relayed transactions per day of the month. People do not arrive in the same round number every day;
+    # a job with a daily quota does. The level is the median month rounded to the nearest thousand, not a typed number.
+    relayed = df[df["family"] == "kaiching"].groupby("month")["relayed_txs"].sum().reindex(months).fillna(0)
+    per_day = pd.Series({m: v / pd.Period(m, "M").days_in_month for m, v in relayed.items() if v > 0}, dtype=float)
+    if len(per_day):
+        level = round(float(per_day.median()), -3)
+        out["kaiching_relayed_txs_per_day"] = {
+            "median_month_to_the_nearest_thousand": level, "months_with_relayed_transactions": int(len(per_day)),
+            "months_within_a_thousandth_of_it": [m for m, v in per_day.items() if level and abs(v / level - 1) < 0.001],
+            "per_day": {m: float(v) for m, v in per_day.items()},
+            "in_the_month": {m: int(relayed[m]) for m in per_day.index}}
 
     # the partial last month is not used for comparisons, but a rebound inside it is worth a line
     all_months = sorted(df["month"].unique())

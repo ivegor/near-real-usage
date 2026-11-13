@@ -37,10 +37,17 @@ _APP_OF = {via: app for app, vias in APPS.items() for via in vias}
 # (predictions.csv) was frozen with that group as it is, so the group stays and Ember's share is published next to it.
 EMBER = ("relayer:mytestapi.embr.playember_reserve.near", "embr.playember_reserve.near")
 EXCHANGE = "Ref Finance / Rhea (DEX, lending)"
+# Two contracts of the "Other" row that the exchange's own accounts called in October 2025: pyth-oracle.near (the
+# price bots pyth-bot.ref-labs.near and pyth-bot-a.ref-labs.near) and acc.toalice.near (watcher05.ref-watchdog.near,
+# its only caller). They are not in the exchange's list, which is frozen with prediction B4 like the groups, so the
+# figures with them filed under the exchange are published next to the frozen ones.
+EXCHANGE_BOT_TARGETS = ("pyth-oracle.near", "acc.toalice.near")
 # Meteor's reward game, Harvest Moon. A year ago its players called the game contract themselves and paid the fee; now
-# Meteor's relayer submits those calls. The players moved from "self-paying" to "sponsored" without leaving, so the fall
-# of regular self-paying accounts cannot be read as users leaving (see segments.add_reward_game_bound).
+# Meteor's relayer submits those calls. A player who is still there moved from "self-paying" to "sponsored", so the fall
+# of regular self-paying accounts cannot be read as users leaving (see segments.add_reward_game_bound). How many of
+# them are still there the tables do not say.
 GAME_CONTRACT, GAME_RELAYER = "aa-harvest-moon.near", "relayer:meteor-relayer.near"
+GAME_CLAIM = "claim_meteor_staking_reward"  # the game's reward claim; in the block sample it arrives in alphabetical batches
 
 
 def load(path: Path | None = None) -> dict | None:
@@ -102,6 +109,41 @@ def summarize(data: dict) -> dict:
     for name, t in groups.items():
         out[name] = {**t, "pct_change": (t["latest"] / t["prior"] - 1) * 100 if t["prior"] else float("nan")}
 
+    # A group is a list of contracts and relayers, and a month counts only those among its 40 largest: the others sit
+    # in "Everything outside the top 40" for that month. Each of them received at most as many transactions as the
+    # smallest entry of that month's list, which bounds what a group can be missing and how far its change can be off.
+    def outside(month: str, group: tuple) -> dict:
+        listed, floor = set(data[month]["via"]["via"]), int(data[month]["via"]["txs"].min())
+        missing = [v for app in group for v in APPS[app] if v not in listed]
+        return {"contracts": len(missing), "transactions_each_at_most": floor, "transactions_at_most": len(missing) * floor}
+
+    unseen = {name: {k: outside(m, group) for k, m in both}
+              for name, group in (("finance", FINANCE_APPS), ("reward_apps", REWARD_APPS))}
+    out["groups_outside_the_40"] = unseen
+    fin, total = groups["finance_txs"], data[latest]["conc"]["txs"]
+    more_then, more_now = (unseen["finance"][k]["transactions_at_most"] for k in ("prior", "latest"))
+    out["finance_txs_change_range"] = [
+        (fin["latest"] / (fin["prior"] + more_then) - 1) * 100 if fin["prior"] + more_then else float("nan"),
+        ((fin["latest"] + more_now) / fin["prior"] - 1) * 100 if fin["prior"] else float("nan")]
+    bots = {k: int(data[m]["via"].loc[data[m]["via"]["via"].isin(EXCHANGE_BOT_TARGETS), "txs"].sum()) for k, m in both}
+    ex = out["apps"][EXCHANGE]
+    out["exchange_bot_targets"] = {
+        "contracts": list(EXCHANGE_BOT_TARGETS), **bots,
+        "exchange_pct_change_with_them": ((ex["latest"] + bots["latest"]) / (ex["prior"] + bots["prior"]) - 1) * 100
+        if ex["prior"] + bots["prior"] else float("nan"),
+        "finance_pct_change_with_them": ((fin["latest"] + bots["latest"]) / (fin["prior"] + bots["prior"]) - 1) * 100
+        if fin["prior"] + bots["prior"] else float("nan")}
+    # The "Other contracts in the top 40" row without Ember, contract by contract: is it the same activity in both months?
+    named = set(_APP_OF) | set(EMBER)
+    rest = {k: data[m]["via"][~data[m]["via"]["via"].isin(named)] for k, m in both}
+    out["other_top_40"] = {
+        **{k: [{"contract": r.via, "transactions": int(r.txs), "accounts": int(r.actors)} for r in rest[k].itertuples()] for k, _ in both},
+        "in_both_months": sorted(set(rest["latest"]["via"]) & set(rest["prior"]["via"]))}
+    gap = groups["reward_apps_txs"]["latest"] - fin["latest"]  # what prediction B4 is scored on, as a share of all transactions
+    out["reward_minus_finance_share"] = {
+        "latest": gap / total,
+        "latest_range": [(gap - more_now) / total, (gap + unseen["reward_apps"]["latest"]["transactions_at_most"]) / total]}
+
     # one row of the "via" table: the transactions a contract or relayer received and the distinct accounts behind them
     def via_row(month: str, via: str) -> dict | None:
         v = data[month]["via"]
@@ -116,6 +158,8 @@ def summarize(data: dict) -> dict:
     out["intents"] = {}
     for k, m in (("latest", latest), ("prior", prior)):
         a = data[m]["actors"]
+        # The query gives each account's total and its most frequent destination, not its count per destination, so
+        # the share of the two largest is an upper bound: all of their transactions are taken as sent to intents.near.
         signed = a[a["top_via"] == "intents.near"].nlargest(2, "txs")
         total = int(data[m]["via"].loc[data[m]["via"]["via"] == "intents.near", "txs"].sum())
         out["intents"][k] = {"transactions": total, "actors": actors_of(m, "intents.near"),
@@ -182,10 +226,13 @@ def add_three_parts(cl: dict, kaiching_namespace_txs_prior: float) -> None:
     cl["kaiching_txs_outside_its_contracts_prior"] = extra["prior"]
     cl["reward_apps_share_incl_kaiching_namespace_prior"] = (
         cl["reward_apps_share"]["prior"] + extra["prior"] / cl["months"][cl["prior_month"]]["transactions"])
+    bots = cl.get("exchange_bot_targets") or {}
     cl["three_parts"] = {
         "reward_side": change({k: cl["reward_apps_txs"][k] + cl["ember"][k] + extra[k] for k in keys}),
         "finance": change(cl["finance_txs"]),
         "rest": change({k: other[k] + tail[k] for k in keys}),
+        # the same without the two contracts the exchange's own bots called (see EXCHANGE_BOT_TARGETS)
+        "rest_without_exchange_bot_targets": change({k: other[k] + tail[k] - bots.get(k, 0) for k in keys}),
         "other_top_40_without_ember": change(other),
         "outside_top_40_without_kaiching": change(tail),
     }

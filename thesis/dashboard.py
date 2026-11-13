@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import html
 import json
+import math
 import re
 from pathlib import Path
 
@@ -33,6 +34,41 @@ def _repo_link(path: str) -> str:
     return f'<a href="{REPO_URL}/blob/main/{html.escape(path)}"><code>{html.escape(path)}</code></a>'
 
 
+def json_safe(obj):
+    """A copy with every NaN and infinity replaced by None, so that the text written from it is valid JSON."""
+    if isinstance(obj, dict):
+        return {k: json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [json_safe(v) for v in obj]
+    if isinstance(obj, float) and not math.isfinite(obj):
+        return None
+    return obj
+
+
+def summary_json(summary: dict) -> str:
+    """The summary as JSON text. A change from zero has no percentage; Python would write it as NaN, which is not
+    JSON (a browser, Node or a strict parser refuses the whole file), so it is written as null."""
+    return json.dumps(json_safe(summary), indent=2, default=str, allow_nan=False)
+
+
+def measured_text(p: dict) -> str:
+    """What a scored prediction was measured at, in the unit its statement uses."""
+    v, metric = p.get("measured"), str(p.get("metric", ""))
+    if v is None:
+        return ""
+    if metric.startswith("intents_volume"):
+        return f"${v / 1e6:,.1f}M a day"
+    if metric.startswith("buyback_month"):
+        return f"${v / 1e6:,.2f}M"
+    if metric.startswith("buyback_coverage"):
+        return f"{v * 100:.0f}% of net new supply"
+    if metric.startswith("core_self_paid_txs"):
+        return f"{v / 1e6:,.2f}M a month"
+    if metric.startswith("reward_minus_finance"):
+        return f"{v * 100:+.1f} points of all transactions"
+    return f"{v:,.0f}"
+
+
 def split_sentence(text: str) -> tuple[str, str]:
     """The first sentence (shown as the card's one plain sentence) and the rest (folded under "More numbers")."""
     parts = re.split(r"(?<=[.!?])\s+(?=[A-Z0-9$])", text.strip(), maxsplit=1)
@@ -44,7 +80,7 @@ def query_block(c: Chart) -> str:
     path = ROOT / c.source if c.source else None
     if path and path.suffix == ".sql" and path.exists():
         return (f'<details><summary>The query behind this chart: {_repo_link(c.source)}</summary>'
-                f'<pre>{html.escape(path.read_text())}</pre></details>')
+                f'<pre>{html.escape(path.read_text(encoding="utf-8"))}</pre></details>')
     requests = REQUESTS.get(c.slug, [])
     if not requests and not c.source:
         return ""
@@ -62,7 +98,7 @@ def render(charts: list[Chart], summary: dict, out: Path) -> Path:
 <section class="card">
   <h2>{html.escape(c.title)}</h2>
   <p class="lead">{html.escape(lead)}</p>
-  <img src="{c.slug}.png" alt="{html.escape(c.title)}">
+  <a href="{c.slug}.png" title="Open the chart at full size"><img src="{c.slug}.png" alt="{html.escape(c.title)}"></a>
   {more}
   <p class="method"><b>Method:</b> {html.escape(c.method)}</p>
   {query_block(c)}
@@ -71,7 +107,7 @@ def render(charts: list[Chart], summary: dict, out: Path) -> Path:
     pred_card = ""
     if pred:
         def row(p: dict) -> str:
-            measured = "" if p["measured"] is None else f" ({p['measured']:,.2f})"
+            measured = "" if p["measured"] is None else f" ({html.escape(measured_text(p))})"
             cells = [str(p["id"]), str(p["check_on"]), str(p["statement"])]
             return ("<tr>" + "".join(f"<td>{html.escape(c)}</td>" for c in cells)
                     + f"<td><b>{html.escape(p['status'])}</b>{measured}</td></tr>")
@@ -90,7 +126,7 @@ h1{{font-size:24px;margin:0 0 4px}} .sub{{color:#57606a;margin:0 0 24px}}
 .card{{border:1px solid #e6e8eb;border-radius:10px;padding:16px 18px;margin:0 0 18px}}
 .card h2{{font-size:17px;margin:0 0 6px}} .lead{{margin:0 0 10px}}
 img{{width:100%;height:auto}} .method{{color:#57606a;font-size:13px;margin:8px 0 0}}
-code{{background:#f6f8fa;padding:1px 4px;border-radius:4px}}
+code{{background:#f6f8fa;padding:1px 4px;border-radius:4px}} a,code{{overflow-wrap:anywhere}}
 details{{margin:8px 0 0;font-size:13px;color:#57606a}} summary{{cursor:pointer}}
 pre{{background:#f6f8fa;border-radius:6px;padding:10px 12px;overflow-x:auto;font-size:12px;line-height:1.4;color:#1f2328}}
 table{{border-collapse:collapse;font-size:13px;width:100%}} td,th{{border-top:1px solid #e6e8eb;padding:5px 8px;text-align:left;vertical-align:top}}
@@ -109,6 +145,6 @@ Code and data: <a href="{REPO_URL}">{REPO_URL.split('//')[1]}</a>.</p>
 </body></html>"""
     out.mkdir(parents=True, exist_ok=True)
     p = out / "index.html"
-    p.write_text(page)
-    (out / "summary.json").write_text(json.dumps(summary, indent=2, default=str))
+    p.write_text(page, encoding="utf-8")  # the page has arrows and minus signs: not every default encoding has them
+    (out / "summary.json").write_text(summary_json(summary), encoding="utf-8")
     return p

@@ -27,7 +27,9 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
       - run: python -m pytest -q
-      - run: python -m thesis build
+      # A scheduled run starts from the committed copies of the data. If a source cannot be downloaded it stops here and
+      # the page of the last good run stays in place; a push or a manual run falls back to the committed copies instead.
+      - run: python -m thesis build ${{ github.event_name == 'schedule' && '--require-fresh' || '' }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: docs
@@ -40,4 +42,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

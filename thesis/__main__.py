@@ -14,8 +14,9 @@ DOCS = ROOT / "docs"
 SNAPSHOT = ROOT / "data" / "snapshot" / "thesis_summary.json"
 
 
-def build(offline: bool) -> None:
+def build(offline: bool, require_fresh: bool = False) -> None:
     daily = sources.load_daily(offline=offline)
+    stale = [] if offline else list(sources.NOT_REFRESHED)  # sources read from their saved copies because a download failed
     daily.to_csv(ROOT / "data" / "daily.csv")
     summary = metrics.summarize(daily)
     cs = census.load()
@@ -45,6 +46,11 @@ def build(offline: bool) -> None:
             clients.add_three_parts(summary["clients"], kaiching["prior"])
         if cs:  # the same groups and the reward game on the keyless sample
             summary["clients"]["reward_game"]["sample_calls"] = census.calls_to(cs[0], clients.GAME_CONTRACT)
+            # how many of those calls are reward claims, and how many of the claims arrive as a batch run by the app
+            summary["clients"]["reward_game"]["sample_claims"] = census.batched_calls(
+                cs[0], clients.GAME_RELAYER.split(":", 1)[1], clients.GAME_CLAIM)
+            # the one-off of October 2026: what the old KaiChing user accounts in the sample actually sent
+            summary["clients"]["kaiching_accounts_sample"] = census.self_deletions(cs[0], ".users.kaiching")
             view = clients.sample_view(cs[0], cs[2].get("windows", {}), daily, seed=cs[2].get("seed", census.SEED))
             if view:
                 summary["clients"]["sample_view"] = view
@@ -55,8 +61,13 @@ def build(offline: bool) -> None:
             value.fetch()  # keep the fee and buyback series current; fall back to the saved copies on an outage
         except RuntimeError as e:
             print(f"[value] {e}; using the saved copies")
+            stale += list(value.URLS)
+    if require_fresh and stale:
+        # The scheduled build starts from the committed copies every day. Falling back to them would publish a page
+        # that is days or months old; failing here leaves the page of the last good run in place instead.
+        raise SystemExit(f"not refreshed: {', '.join(stale)}. With --require-fresh nothing is built from saved copies.")
     fees = value.load()
-    pred = predictions.evaluate(daily, fees)
+    pred = predictions.evaluate(daily, fees, census=pop, seg=seg, top=top)
     if pred:
         pred["baselines"] = predictions.baselines(daily, fees, pop, seg)
         pred["step"] = predictions.step(daily, fees, pop, seg)  # what moved in the step month, the price included
@@ -69,7 +80,7 @@ def build(offline: bool) -> None:
         summary["cross_check"] = population.cross_check(summary["signer_census"], pop, summary.get("clients"))
     built = charts.build_all(daily, summary, DOCS)
     page = dashboard.render(built, summary, DOCS)
-    print(json.dumps(summary, indent=2, default=str))
+    print(dashboard.summary_json(summary))
     print(f"\nDashboard: {page}")
     for c in built:
         print(f"- {c.title}: {c.sentence}")
@@ -80,6 +91,8 @@ def main() -> None:
     sub = ap.add_subparsers(dest="cmd", required=True)
     b = sub.add_parser("build", help="fetch data, compute metrics, render charts + dashboard")
     b.add_argument("--offline", action="store_true", help="use cached data/raw/*.json")
+    b.add_argument("--require-fresh", action="store_true",
+                   help="fail instead of falling back to a saved copy when a source cannot be downloaded")
     c = sub.add_parser("census", help="sample blocks from the chain and measure account ages (network, ~1.5 h, resumable)")
     c.add_argument("--seed", type=int, default=census.SEED, help="another seed draws an independent sample")
     ba = sub.add_parser("bq-age", help="unpack a BigQuery result of sql/account_age.sql into data/bq/account_age.csv")
@@ -92,7 +105,7 @@ def main() -> None:
     args = ap.parse_args()
     if args.cmd == "snapshot":
         SNAPSHOT.parent.mkdir(parents=True, exist_ok=True)
-        SNAPSHOT.write_text((DOCS / "summary.json").read_text())
+        SNAPSHOT.write_text((DOCS / "summary.json").read_text(encoding="utf-8"), encoding="utf-8")
         print(SNAPSHOT)
         return
     if args.cmd == "video":
@@ -111,7 +124,7 @@ def main() -> None:
         print(f"{len(df)} rows, months {df['month'].min()} .. {df['month'].max()} -> {segments.CSV}")
         return
     if args.cmd == "build":
-        build(args.offline)
+        build(args.offline, require_fresh=args.require_fresh)
     elif args.cmd == "census":
         last_date = str(sources.load_daily(offline=True).index.max().date())
         census.fetch(last_date, seed=args.seed)

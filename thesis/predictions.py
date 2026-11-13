@@ -2,19 +2,21 @@
 
 "automatic" predictions are scored by the build from the daily series once the data reaches the check date and
 covers every day of the window the prediction names; until then they stay open.
-"bigquery" predictions need the account queries in sql/ to be run again for the named month; until then they
-are reported as open. The file's SHA-256 is quoted in PREDICTIONS.md so later edits are visible.
+"bigquery" predictions are scored by the build from the committed query results (data/bq/) once those hold the
+month a prediction names: the account queries in sql/ have to be run again for it, by hand. Until then they are
+reported as open. The file's SHA-256 is quoted in PREDICTIONS.md so later edits are visible.
 """
 from __future__ import annotations
 
 import hashlib
 import operator
+import re
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from . import metrics, population, value
+from . import clients, metrics, population, segments, value
 
 CSV = Path(__file__).resolve().parent.parent / "predictions.csv"
 OPS = {">=": operator.ge, "<=": operator.le, "<": operator.lt, ">": operator.gt}
@@ -57,7 +59,6 @@ def baselines(daily: pd.DataFrame, fees: pd.DataFrame | None, census: pd.DataFra
             out["core_self_paid_txs_plateau_top_without_dormant_implicit"] = float(calm.max())
             out["core_self_paid_txs_plateau_top_without_dormant_implicit_month"] = str(calm.idxmax())
     if seg is not None:
-        from . import segments
         out["regular_self_paying_accounts_low"] = float(segments.series(seg)["regular_accounts"].loc[PLATEAU[0]:PLATEAU[1]].min())
     return out
 
@@ -87,15 +88,40 @@ def step(daily: pd.DataFrame, fees: pd.DataFrame | None = None, census: pd.DataF
         s.index = pd.PeriodIndex(s.index, freq="M")
         return {"before": float(s[before]), "month": float(s[month])} if before in s.index and month in s.index else None
 
+    first, year = pd.Period(PLATEAU[0], "M"), 12
+    out["reference_range"] = {"first": str(first), "last": str(before), "months": int((before - first).n + 1)}
     if "intents_volume_usd" in daily:
-        out["intents_volume_usd_a_day"] = pair(daily["intents_volume_usd"].resample("ME").mean())
+        monthly = daily["intents_volume_usd"].resample("ME").mean()
+        monthly.index = monthly.index.to_period("M")
+        out["intents_volume_usd_a_day"] = pair(monthly)
+        days = daily["intents_volume_usd"].dropna()
+        in_range = days[(days.index.to_period("M") >= first) & (days.index.to_period("M") <= before)]
+        if out["intents_volume_usd_a_day"] and len(in_range) and first - 1 in monthly.index:
+            # The level between the spike a year ago and the step: what "growth" has to be measured against once the
+            # year-on-year base has moved through the ramp-up of autumn 2025.
+            out["intents_volume_usd_a_day"].update({
+                "range_mean": float(in_range.mean()), "range_low": float(monthly[first:before].min()),
+                "range_top": float(monthly[first:before].max()),
+                "month_before_range": {"month": str(first - 1), "value": float(monthly[first - 1])}})
     if fees is not None and not fees.empty:
         out["buyback_usd"] = pair(fees["holders_revenue"].resample("ME").sum())
     if census is not None:
         core = census[~census["family"].isin(["kaiching", "tg", "sweat"])].groupby("month")[["txs", "relayed_txs"]].sum()
-        out["core_self_paid_txs"] = pair(core["txs"] - core["relayed_txs"])
+        direct = core["txs"] - core["relayed_txs"]
+        out["core_self_paid_txs"] = pair(direct)
+        months = [str(m) for m in pd.period_range(first, before, freq="M")]
+        earlier = [str(pd.Period(m, "M") - year) for m in months]
+        if out["core_self_paid_txs"] and set(months) | set(earlier) <= set(direct.index):
+            # The months of the range against the same months a year earlier: what the series did before the step.
+            woke = population.dormant_implicit(census[~census["family"].isin(["kaiching", "tg", "sweat"])]).groupby("month")[["txs", "relayed_txs"]].sum()
+            calm = direct - (woke["txs"] - woke["relayed_txs"]).reindex(direct.index).fillna(0)
+            now, then = direct[months], direct[earlier]
+            out["core_self_paid_txs"].update({
+                "range_mean": float(now.mean()), "range_mean_a_year_earlier": float(then.mean()),
+                "range_pct_change": float((now.mean() / then.mean() - 1) * 100),
+                "range_pct_change_without_dormant_implicit": float((calm[months].mean() / calm[earlier].mean() - 1) * 100),
+                "range_months_below_a_year_earlier": int((now.to_numpy() < then.to_numpy()).sum())})
     if seg is not None:
-        from . import segments
         s = segments.series(seg)
         out["regular_self_paying_accounts"] = pair(s["regular_accounts"])
         out["heavy_self_paying_accounts"] = pair(s["heavy_accounts"])
@@ -106,7 +132,7 @@ def _window(s: pd.Series, start: pd.Timestamp, end: pd.Timestamp) -> pd.Series |
     """The values of every day from start to end, or None while a day is missing.
 
     The daily table is driven by NearBlocks; a DefiLlama series can end a few days earlier (a late update, or the
-    saved copy used during an outage). A prediction is not scored on part of its window.
+    saved copy used during an outage), or miss a day in the middle. A prediction is not scored on part of its window.
     """
     w = s.reindex(pd.date_range(start, end, freq="D"))
     return None if w.isna().any() else w
@@ -121,19 +147,72 @@ def _measure(metric: str, on: pd.Timestamp, daily: pd.DataFrame, fees: pd.DataFr
         return None if w is None else float(w.mean())
     if metric == "metrics_with_adjacent_positive_leads":
         return float(adjacent_positive_leads(metrics.summarize(d)["lead_vs_price"]))
-    if fees is None or fees.empty or fees.index.max() < on:
+    if fees is None or fees.empty:
         return None
     f = fees.loc[:on]
     if metric == "buyback_month_usd":
         w = _window(f["holders_revenue"], on.replace(day=1), on)
         return None if w is None else float(w.sum())
     if metric == "buyback_coverage_90d":
+        start = on - pd.Timedelta(days=89)
+        if any(_window(f[c], start, on) is None for c in f.columns):
+            return None  # a day without fee data inside the 90 days: wait for it, do not score on part of the window
         v = value.summarize(d, f)
         return float(v["buyback_coverage_of_new_supply"]) if v else None
     return None
 
 
-def evaluate(daily: pd.DataFrame, fees: pd.DataFrame | None, path: Path | None = None) -> dict | None:
+# What the build can measure. An "automatic" metric is read from the daily series (_measure). A "bigquery" metric
+# names what it counts and the month or months it covers, regular_self_paying_accounts_2027_01 or
+# core_self_paid_txs_mean_2026_11_to_2027_01, and is read from the committed query results (_measure_committed).
+AUTOMATIC = ("intents_volume_7d_mean_usd", "intents_volume_month_mean_usd", "metrics_with_adjacent_positive_leads",
+             "buyback_month_usd", "buyback_coverage_90d")
+COMMITTED = ("regular_self_paying_accounts", "core_self_paid_txs_mean", "accounts_for_half_of_txs", "reward_minus_finance_tx_share")
+BQ_METRIC = re.compile(r"^(?P<name>[a-z_]+?)_(?P<first>\d{4}_\d{2})(?:_to_(?P<last>\d{4}_\d{2}))?$")
+
+
+def _measure_committed(p: dict, census: pd.DataFrame | None, seg: pd.DataFrame | None, top: dict | None) -> float | None:
+    """A "bigquery" prediction measured from the committed query results; None while they do not hold its months.
+
+    The queries cover whole calendar months and are run by hand: sql/payer_frequency.sql for the frequency classes,
+    sql/account_age.sql for the census (with QUERY_END in thesis/population.py), sql/top_accounts.sql for the largest
+    accounts and the apps. Once a result that holds the named month is committed, the build scores the prediction
+    with the same definitions its threshold was taken from.
+    """
+    m = BQ_METRIC.match(str(p["metric"]))
+    if not m or m["name"] not in COMMITTED:
+        return None
+    first, last = m["first"].replace("_", "-"), (m["last"] or m["first"]).replace("_", "-")
+    months = [str(x) for x in pd.period_range(first, last, freq="M")]
+    name = m["name"]
+    if name == "regular_self_paying_accounts" and seg is not None:
+        regular = segments.series(seg)["regular_accounts"]
+        return float(regular[months].mean()) if set(months) <= set(regular.index) else None
+    if name == "core_self_paid_txs_mean" and census is not None:
+        if not set(months) <= set(population.complete_months(census)):
+            return None  # a month the scan has not finished is not a month
+        core = census[~census["family"].isin(population.REWARD_FAMILIES)].groupby("month")[["txs", "relayed_txs"]].sum()
+        return float((core["txs"] - core["relayed_txs"])[months].mean())
+    if top and len(months) == 1 and {"via", "conc"} <= set(top.get(months[0], {})):
+        month = top[months[0]]
+        c = month["conc"]
+        if name == "accounts_for_half_of_txs":
+            if c["heavy_txs"] >= 0.5 * c["txs"]:
+                return float(c["n50"])
+            # The query ranks only the accounts with 1,000 or more transactions. If together they send less than
+            # half, more accounts than that whole group are needed. This is a lower bound, so it is used only when
+            # it already decides the prediction.
+            at_least = c["heavy_actors"] + 1
+            return float(at_least) if at_least >= p["threshold"] else None
+        if name == "reward_minus_finance_tx_share":
+            apps = clients.by_app(month)
+            reward, finance = (sum(int(apps.get(a, 0)) for a in group) for group in (clients.REWARD_APPS, clients.FINANCE_APPS))
+            return (reward - finance) / c["txs"]
+    return None
+
+
+def evaluate(daily: pd.DataFrame, fees: pd.DataFrame | None, path: Path | None = None, census: pd.DataFrame | None = None,
+             seg: pd.DataFrame | None = None, top: dict | None = None) -> dict | None:
     path = path or CSV
     if not path.exists():
         return None
@@ -142,14 +221,15 @@ def evaluate(daily: pd.DataFrame, fees: pd.DataFrame | None, path: Path | None =
     for p in pd.read_csv(path, dtype={"threshold": float}).to_dict("records"):
         on = pd.Timestamp(p["check_on"])
         status, measured = "open", None
-        if p["scoring"] == "bigquery":
-            status = "open (needs the census query for that month)" if last >= on else "open"
-        elif last >= on:
-            measured = _measure(p["metric"], on, daily, fees)
+        if last >= on:
+            if p["scoring"] == "bigquery":
+                measured, waiting = _measure_committed(p, census, seg, top), "open (needs the census query for that month)"
+            else:
+                measured, waiting = _measure(p["metric"], on, daily, fees), "open (waiting for complete data)"
             if measured is not None and not np.isfinite(measured):
                 measured = None  # an empty or undefined measurement is not a miss
             if measured is None:
-                status = "open (waiting for complete data)"
+                status = waiting
             else:
                 status = "held" if OPS[p["operator"]](measured, p["threshold"]) else "failed"
         rows.append({**p, "status": status, "measured": measured})

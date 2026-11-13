@@ -84,6 +84,9 @@ def best_lead(ll: pd.DataFrame) -> dict:
         "corr": float(row["corr"]),
         "band": float(row["band"]),
         "n_weeks": int(row["n"]),
+        # the sample shrinks by one week per week of lag: the smallest and largest n over the lags tested
+        "n_weeks_range": [int(ll["n"].min()), int(ll["n"].max())],
+        "band_range": [float(ll["band"].min()), float(ll["band"].max())],
         "significant": bool(abs(row["corr"]) > row["band"]),
         # every lag whose correlation is outside the noise band, not only the largest one
         "outside_band": [
@@ -154,6 +157,28 @@ def month_change(series: pd.Series) -> dict:
             "pct_change": float(pct) if pd.notna(pct) else np.nan}
 
 
+def month_to_date_change(series: pd.Series) -> dict | None:
+    """The days of the current, incomplete month against the same days a year earlier; None when the last month is complete.
+
+    A calendar-month comparison waits for the month to end. When last year's base was rising month by month, the
+    days already in hand say where the year-on-year figure is heading.
+    """
+    s = series.dropna()
+    if s.empty:
+        return None
+    end = s.index.max()
+    if (end + pd.Timedelta(days=1)).day == 1:
+        return None
+    start = end.replace(day=1)
+    now = s[start:end]
+    then = s[start - pd.DateOffset(years=1):end - pd.DateOffset(years=1)]
+    if not len(now) or len(then) != len(now):
+        return None
+    r, p = float(now.mean()), float(then.mean())
+    return {"from": str(start.date()), "through": str(end.date()), "days": int(len(now)), "recent": r, "prior": p,
+            "pct_change": (r / p - 1) * 100 if p else float("nan")}
+
+
 LEAD_METRICS = ["returning_accounts", "active_accounts", "intents_volume_usd", "fees_near", "txns"]
 
 
@@ -173,6 +198,7 @@ def summarize(daily: pd.DataFrame) -> dict:
         "qoq_90d": decoupling_table(d, lookback_days=90).set_index("metric").to_dict(orient="index"),
         "month_yoy": {c: month_change(d[c]) for c in ("price_usd", "txns", "active_accounts", "fees_usd", "fees_near",
                                                        "intents_volume_usd") if c in d},
+        "month_to_date_yoy": {c: month_to_date_change(d[c]) for c in ("price_usd", "intents_volume_usd") if c in d},
         "lead_vs_price": leads,
         # reported apart from the scan above: USD fees contain the price, so this correlation is mechanical
         "lead_fees_usd_mechanical": best_lead(lead_lag(d["fees_usd"], d["price_usd"])),

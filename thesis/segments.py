@@ -88,6 +88,19 @@ def summarize(df: pd.DataFrame) -> dict:
         for k, m in (("latest", latest), ("prior", prior))}
     low = s["regular_accounts"].idxmin()
     out["regular_accounts_low"] = {"month": low, "value": float(s.loc[low, "regular_accounts"])}
+    # Month by month, and the largest fall in a single month: a step that large is not a gradual slide.
+    regular = s["regular_accounts"]
+    out["regular_accounts_by_month"] = {m: int(v) for m, v in regular.items()}
+    step = regular.diff().dropna()
+    if len(step) and step.min() < 0:
+        worst = step.idxmin()
+        before = regular.index[regular.index.get_loc(worst) - 1]
+        to_low = float(regular[prior] - regular[low]) if prior <= low else float("nan")
+        out["regular_accounts_largest_monthly_fall"] = {
+            "month": worst, "month_before": before, "before": int(regular[before]), "after": int(regular[worst]),
+            "fall": int(regular[before] - regular[worst]),
+            # how much of the fall from the comparison month a year ago to the low this one month is
+            "share_of_fall_from_prior_month_to_low": float((regular[before] - regular[worst]) / to_low) if to_low > 0 else float("nan")}
     out["independent_accounts_range"] = {"min": float(s["independent_accounts"].min()), "max": float(s["independent_accounts"].max())}
     return out
 
@@ -96,10 +109,15 @@ def add_reward_game_bound(sg: dict, game: dict) -> None:
     """How much of the fall in regular accounts can be one game changing who pays the fee (clients.GAME_CONTRACT).
 
     A year ago the players of Meteor's reward game called its contract themselves, so each of them counted as
-    self-paying; now a relayer submits those calls and the same players count as sponsored. The committed tables say
-    how many accounts called the game directly, not which frequency class they were in. That count is therefore an
-    upper bound on the game's players among last year's regular accounts, and it gives the two ends between which the
-    change without them lies: the counted one (none of them were regular) and the one with all of them taken out.
+    self-paying; now a relayer submits those calls, and a player who is still there counts as sponsored. The committed
+    tables say how many accounts called the game directly, not which frequency class they were in, nor how many of
+    them still play. That count is therefore an upper bound on the game's players among last year's regular accounts,
+    and it gives the two ends between which the change without them lies: the counted one (none of them were regular)
+    and the one with all of them taken out.
+
+    The same holds for transactions. The game's direct calls were paid by their senders, so they are inside last
+    year's self-paid transactions of independent accounts and outside this year's: at most all of them, which gives
+    the same two ends for the change of that series.
     """
     direct = (game.get("direct") or {}).get("prior")
     if not direct:
@@ -114,3 +132,13 @@ def add_reward_game_bound(sg: dict, game: dict) -> None:
         "pct_change_as_counted": reg["pct_change"],
         "pct_change_if_all_of_them_were_regular": (reg["latest"] / rest - 1) * 100 if rest else float("nan"),
     }
+    txs = sg["metrics"].get("independent_self_paid_txs")
+    if txs and direct.get("transactions"):
+        calls = min(float(direct["transactions"]), txs["prior"])
+        without = txs["prior"] - calls
+        sg["self_paid_txs_reward_game_bound"] = {
+            "game_direct_txs_prior": int(direct["transactions"]),
+            "share_of_prior_self_paid_txs_at_most": calls / txs["prior"] if txs["prior"] else float("nan"),
+            "pct_change_as_counted": txs["pct_change"],
+            "pct_change_if_all_of_them_were_independent": (txs["latest"] / without - 1) * 100 if without else float("nan"),
+        }

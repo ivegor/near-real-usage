@@ -92,7 +92,7 @@ def _render(slide: dict, path: Path) -> None:
 def build(out: Path = OUT) -> Path:
     if not shutil.which("ffmpeg"):
         raise SystemExit("ffmpeg not found on PATH")
-    spec = slides(json.loads((DOCS / "summary.json").read_text()))
+    spec = slides(json.loads((DOCS / "summary.json").read_text(encoding="utf-8")))
     out.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
         lines = []
@@ -101,7 +101,7 @@ def build(out: Path = OUT) -> Path:
             _render(slide, png)
             lines += [f"file '{png}'", f"duration {slide['sec']}"]
         lines.append(lines[-2])  # the concat demuxer needs the last file repeated
-        (Path(tmp) / "slides.txt").write_text("\n".join(lines))
+        (Path(tmp) / "slides.txt").write_text("\n".join(lines), encoding="utf-8")
         total = sum(slide["sec"] for slide in spec)  # without -t the repeated last slide stays on screen twice as long
         subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(Path(tmp) / "slides.txt"),
                         "-vf", "fps=30,format=yuv420p", "-t", str(total), "-c:v", "libx264", "-movflags", "+faststart", str(out)],

@@ -58,6 +58,7 @@ def test_one_day_matches_the_aggregator_transaction_count():
     assert d["transactions"] == d["nearblocks"]["txns"]          # two independent sources agree exactly
     assert d["relayed_users"] > 9 * d["nearblocks"]["active_accounts"]   # relayed users are not in "active accounts"
     assert d["account_creators"] == 12
+    assert (d["create_account_transactions"], d["accounts_created"]) == (238403, 238399)   # four transactions repeat an account
 
 
 def test_last_month_depends_on_the_query_not_on_todays_date():
@@ -94,6 +95,40 @@ def test_a_burst_of_dormant_accounts_is_split_out_of_the_self_paid_series():
     # and the committed census: February 2026 is the only month where they are more than a few percent
     real = population.summarize(population.load())["core_direct_txs_from_dormant_implicit"]
     assert real["peak"]["month"] == "2026-02" and real["peak"]["share_of_month"] > 0.3 > 0.05 > real["largest_share_in_any_other_month"]
+
+
+def test_one_transaction_bursts_are_the_months_ten_times_the_median():
+    """Existing accounts that wake up for a single transaction: an ordinary month has few, a burst has ten times as many."""
+    df = table()                                              # every month: 40 implicit accounts with one transaction
+    burst = pd.DataFrame([("2026-02", "implicit", "ge2y", "not_returning", 500, 500, 0, 500)], columns=df.columns)
+    s = population.summarize(pd.concat([df, burst]), "2026-03-11")["implicit_one_transaction_bursts"]
+    assert s["median_month"] == 40 and s["monthly"]["2026-01"] == 40 and [b["month"] for b in s["bursts"]] == ["2026-02"]
+    b = s["bursts"][0]
+    assert b["accounts"] == 540 and abs(b["times_the_median_month"] - 13.5) < 1e-12
+    assert abs(b["older_than_2y_share"] - 500 / 540) < 1e-12 and abs(b["relayed_tx_share"] - 70 / 580) < 1e-12
+    assert population.summarize(df, "2026-03-11")["implicit_one_transaction_bursts"]["bursts"] == []
+    # the committed census: three months in a row, and no other month comes near
+    real = population.summarize(population.load())["implicit_one_transaction_bursts"]
+    assert [b["month"] for b in real["bursts"]] == ["2026-02", "2026-03", "2026-04"]
+    rest = [v for m, v in real["monthly"].items() if m not in ("2026-02", "2026-03", "2026-04")]
+    assert max(rest) < 5 * real["median_month"]
+
+
+def test_a_relayer_with_a_daily_quota_is_visible_in_the_monthly_totals():
+    """The same number of relayed transactions every day of every month: the median month gives the level, no number is typed."""
+    rows = []
+    for month in pd.period_range("2025-01", "2026-03", freq="M"):
+        relayed = 5_000 * month.days_in_month if str(month) != "2025-07" else 4_000 * month.days_in_month      # one slower month
+        rows.append((str(month), "kaiching", "lt1y", "returning", 100, relayed + 50, relayed, 0))
+        rows.append((str(month), "near", "ge2y", "returning", 30, 900, 100, 1))
+    df = pd.DataFrame(rows, columns=["month", "family", "age", "prev_month", "accounts", "txs", "relayed_txs", "single_tx_accounts"])
+    q = population.summarize(df, "2026-03-31")["kaiching_relayed_txs_per_day"]
+    assert q["median_month_to_the_nearest_thousand"] == 5_000 and q["months_with_relayed_transactions"] == 14
+    assert "2025-07" not in q["months_within_a_thousandth_of_it"] and len(q["months_within_a_thousandth_of_it"]) == 13
+    assert q["in_the_month"]["2025-02"] == 5_000 * 28 and abs(q["per_day"]["2025-07"] - 4_000) < 1e-9
+    assert "kaiching_relayed_txs_per_day" not in population.summarize(table(), "2026-03-11")      # no relayed transactions: nothing to say
+    real = population.summarize(population.load())["kaiching_relayed_txs_per_day"]
+    assert real["median_month_to_the_nearest_thousand"] == 2_000_000 and len(real["months_within_a_thousandth_of_it"]) >= 8
 
 
 def test_totals_check_separates_the_months_that_agree_from_those_that_do_not():

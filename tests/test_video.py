@@ -6,7 +6,7 @@ from thesis import video
 
 
 def test_slides_quote_the_summary_without_gaps():
-    s = json.loads((Path(__file__).resolve().parent.parent / "docs" / "summary.json").read_text())
+    s = json.loads((Path(__file__).resolve().parent.parent / "docs" / "summary.json").read_text(encoding="utf-8"))
     spec = video.slides(s)
     text = " ".join(x["head"] + " " + x["line"] for x in spec)
     assert 6 <= len(spec) <= 9 and 50 <= sum(x["sec"] for x in spec) <= 95

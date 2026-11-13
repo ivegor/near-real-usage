@@ -61,6 +61,32 @@ def test_reward_game_bound_gives_both_ends_of_the_range(tmp_path):
     assert "regular_accounts_reward_game_bound" not in plain
 
 
+def test_reward_game_bound_covers_the_transactions_too():
+    """The game's direct calls were self-paid: they sit in last year's self-paid transactions and not in this year's."""
+    sg = segments.summarize(table())
+    segments.add_reward_game_bound(sg, {"direct": {"latest": None, "prior": {"transactions": 900, "accounts": 30}}})
+    b, txs = sg["self_paid_txs_reward_game_bound"], sg["metrics"]["independent_self_paid_txs"]
+    assert b["game_direct_txs_prior"] == 900 and abs(b["share_of_prior_self_paid_txs_at_most"] - 900 / txs["prior"]) < 1e-12
+    assert abs(b["pct_change_as_counted"] - txs["pct_change"]) < 1e-12
+    assert abs(b["pct_change_if_all_of_them_were_independent"] - (txs["latest"] / (txs["prior"] - 900) - 1) * 100) < 1e-9
+    assert b["pct_change_if_all_of_them_were_independent"] > b["pct_change_as_counted"]
+
+
+def test_the_largest_monthly_fall_of_regular_accounts_is_published():
+    """A slide that loses a third of its accounts in one month is a step, and the text has to be able to say so."""
+    df = table()
+    late = (df["month"] >= "2026-02") & (df["namespace"] == "rest") & (df["payer"] == "self") & (df["txs_in_month"] == "10-99")
+    df.loc[late, "accounts"] -= 30
+    sg = segments.summarize(df)
+    fall = sg["regular_accounts_largest_monthly_fall"]
+    assert (fall["month"], fall["month_before"], fall["before"], fall["after"], fall["fall"]) == ("2026-02", "2026-01", 90, 56, 34)
+    assert sg["regular_accounts_by_month"]["2026-01"] == 90 and len(sg["regular_accounts_by_month"]) == 15
+    # from 102 a year before the latest month to the low of 24: this one month is 34 of those 78
+    assert abs(fall["share_of_fall_from_prior_month_to_low"] - 34 / 78) < 1e-12
+    real = segments.summarize(segments.load())["regular_accounts_largest_monthly_fall"]
+    assert real["month"] == "2026-02" and 0.4 < real["share_of_fall_from_prior_month_to_low"] < 0.5
+
+
 def test_unpack_reads_what_the_query_returns(tmp_path):
     """sql/payer_frequency.sql returns one row per month: m, and cells of namespace|payer|frequency|accounts|txs|self-paid."""
     result = tmp_path / "result.csv"

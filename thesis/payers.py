@@ -6,7 +6,8 @@ Reads the committed result of sql/payers.sql (data/bq/payers_result.csv). This i
                         counted for the app that runs the relayer (KaiChing, HOT, Sweat, Ember, Meteor, other)
   self-paying account   the account paid the fee of at least one of its own transactions in the month
   independent           self-paying and outside the namespaces of the reward apps (.tg is HOT, .kaiching is KaiChing,
-                        .sweat is Sweat's service accounts): the accounts no app is paying or routing for
+                        .sweat is Sweat's service accounts). A group defined by exclusion: users of an app that
+                        lets them pay their own fees from ordinary accounts sit inside it (see THESIS.md, "Limits")
   returning             also active in the previous calendar month (not the "regular" of thesis/segments.py,
                         which is a frequency class: 10 to 999 transactions a month)
 """
@@ -87,7 +88,14 @@ def summarize(df: pd.DataFrame) -> dict:
     lost_other_sponsor = m["sponsored_by_other"]["prior"] - m["sponsored_by_other"]["latest"]
     out["reward_apps_share_of_lost_accounts"] = float((lost_all - lost_independent - lost_other_sponsor) / lost_all)
     out["independent_accounts_by_month"] = {k: float(v) for k, v in g["independent_accounts"].items()}
-    out["independent_returning_accounts_by_month"] = {k: float(v) for k, v in g["independent_returning_accounts"].items()}
+    # "returning" needs the month before: the first month of each year's range has none in the query and is left out
+    has_previous = [k for k in g.index if (pd.Period(k, "M") - 1).strftime("%Y-%m") in g.index]
+    out["independent_returning_accounts_by_month"] = {k: float(g.loc[k, "independent_returning_accounts"]) for k in has_previous}
+    # Ember's sponsored accounts, and how many of them had also been active the month before: the same set every month
+    ember = df[df["payer"] == "ember"].groupby(["month", "ret"])["accounts"].sum().unstack(fill_value=0)
+    out["ember_accounts_by_month"] = {
+        m: {"accounts": int(ember.loc[m].sum()), "also_active_the_month_before": int(ember.loc[m].get("r", 0))}
+        for m in has_previous if m in ember.index and ember.loc[m].sum() > 0}
     # accounts each app fully sponsors, month by month: a step here is an app changing who pays, not users arriving
     out["sponsored_by_month"] = {s: {k: float(v) for k, v in g[f"sponsored_by_{s}"].items()} for s in SPONSORS}
     return out

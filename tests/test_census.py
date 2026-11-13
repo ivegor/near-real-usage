@@ -34,6 +34,38 @@ def test_calls_to_says_how_many_calls_a_relayer_submitted():
     assert census.calls_to(sample, "dex.near")["recent"] == {"calls": 0, "relayed": 0}
 
 
+def test_batched_calls_finds_claims_that_line_up_alphabetically_in_a_block():
+    rows = [("recent", 10, "abel.near", "relay.near", "claim", True), ("recent", 10, "abby.near", "relay.near", "claim", True),
+            ("recent", 10, "abdul.tg", "relay.near", "claim", True), ("recent", 10, "zoe.near", "relay.near", "claim", True),
+            ("recent", 11, "abner.near", "relay.near", "claim", True),                       # alone in its block
+            ("recent", 12, "mona.near", "relay.near", "claim", True), ("recent", 12, "moe.near", "relay.near", "claim", True),
+            ("recent", 12, "mo.near", "relay.near", "harvest", True),                        # another method
+            ("recent", 12, "morgan.near", "other.near", "claim", True),                      # another relayer
+            ("prior", 5, "abel.near", "abel.near", "claim", False)]                          # not relayed
+    sample = pd.DataFrame(rows, columns=["window", "height", "actor", "signer", "method", "relayed"])
+    out = census.batched_calls(sample, "relay.near", "claim")
+    assert out["recent"] == {"calls": 7, "in_batches": 5, "blocks_with_a_batch": 2, "largest_batch": 3, "shared_first_letters": ["ab", "mo"]}
+    assert out["prior"] == {"calls": 0, "in_batches": 0, "blocks_with_a_batch": 0, "largest_batch": 0, "shared_first_letters": []}
+    # the committed sample: most of the game's reward claims come in such batches now
+    real = census.batched_calls(census.load()[0], "meteor-relayer.near", "claim_meteor_staking_reward")["recent"]
+    assert real["in_batches"] > real["calls"] / 2 and real["blocks_with_a_batch"] >= 3
+
+
+def test_self_deletions_counts_accounts_that_delete_themselves():
+    rows = [("recent", "a.users.app", "a.users.app", "DeleteAccount", 1_759_400_000_000_000_000),      # 2025-10-02
+            ("recent", "b.users.app", "b.users.app", "DeleteAccount", 1_759_500_000_000_000_000),      # 2025-10-03
+            ("recent", "c.users.app", "game.near", "claim", 1_759_500_000_000_000_000),
+            ("recent", "d.near", "d.near", "DeleteAccount", 1_759_500_000_000_000_000),                # another namespace
+            ("prior", "e.users.app", "game.near", "claim", 1_727_900_000_000_000_000)]
+    sample = pd.DataFrame(rows, columns=["window", "actor", "target", "method", "ts"])
+    out = census.self_deletions(sample, ".users.app")
+    assert out["recent"] == {"transactions": 3, "delete_account": 2, "first_day": "2025-10-02", "last_day": "2025-10-03"}
+    assert out["prior"] == {"transactions": 1, "delete_account": 0, "first_day": None, "last_day": None}
+    # the committed sample: every transaction of an old KaiChing user account in autumn 2026 deletes that account
+    real = census.self_deletions(census.load()[0], ".users.kaiching")["recent"]
+    assert real["transactions"] == real["delete_account"] > 0
+
+
 def synthetic(old_share_recent=0.8, old_share_prior=0.2, seed=1):
     rng = np.random.default_rng(seed)
     rows, exist = [], []

@@ -9,20 +9,24 @@ NEAR, account by account over the whole chain, and tests with re-runnable code w
 **Key findings (snapshot 2026-11-11; accounts: October 2026 vs October 2025, three-month means in brackets):**
 
 * Accounts acting on NEAR fell **97%** (43.6M → 1.38M a month). **The whole fall is accounts whose fees an app was
-  paying**: 43.05M a year ago, 0.55M now. One app, KaiChing, had 40.4M of them and stopped in spring 2026.
+  paying**: 43.05M a year ago, 0.55M now. One app, KaiChing, had 40.4M of them and stopped in spring 2026; its
+  relayer sent 2,000,000 transactions a day, to within a thousandth in 8 of its 17 months: a job with a quota.
 * Among accounts that pay their own fees and are not in a reward app's namespace, **475 heavy accounts (1,000 or more
   transactions a month) send 91% of the self-paid transactions**. The regular ones (10 to 999 a month) number 17,105
   against 27,078 a year earlier, but up to 15,162 of last year's were players of one wallet's reward game who paid
-  their own fees then and are sponsored now, so how many really left is not established. Our first draft claimed
+  their own fees then, and the game's calls are relayed now, so how many really left is not established. Our first draft claimed
   returning accounts grew 37%; the full-chain count refuted it.
-* **Self-paid transactions outside reward apps are up 28%** October to October, but flat over the year as a whole
-  (−5% on eleven-month means): they jumped in September and October 2026, when the NEAR price went from $1.92 to
+* **Self-paid transactions outside reward apps are up 28%** October to October, but only since autumn: in the nine
+  months before (December to August) they ran 17% below the year before, and the year as a whole is flat
+  (−5% on eleven-month means). They jumped in September and October 2026, when the NEAR price went from $1.92 to
   $4.89 in one month. Transactions sponsored through relayers fell 75%. Transactions to the exchange, Intents, token
-  contracts and bridges are up **37%**; what is neither that group nor the reward apps is level (+3%).
+  contracts and bridges are up **37%**; what is neither that group nor the reward apps is level (+3%). Both are
+  October-to-October figures: the tables hold no month before the rally for them.
 * **30 accounts send half of all transactions.** Seven of the ten largest are relays or service accounts (Intents,
   Sweat, the bridges), so this counts who submits transactions, not how many people stand behind them. Reward and
-  wallet apps still send 43% (Sweat alone 26%), or 45% counting a one-off sweep by old KaiChing accounts.
-* NEAR Intents volume: **$56M → $129M a day**, October to October. Usage does **not** lead price: 6 of 85 weekly
+  wallet apps still send 43% (Sweat alone 26%), or 45% counting the one-off deletion of old KaiChing accounts.
+* NEAR Intents volume: **$56M → $129M a day**, October to October, but that base was the middle of a ramp-up: the
+  volume is level with November 2025 ($122M) and +73% on the nine months in between ($74.5M). Usage does **not** lead price: 6 of 85 weekly
   lead-lag tests fall outside the noise band where about 4 are expected by chance.
 * Three readings from our own drafts ("returning accounts grew", "remaining accounts are busier", "the base outside
   reward apps fell by two thirds") did not survive closer measurement, and a fourth ("regular self-paying accounts
@@ -30,8 +34,9 @@ NEAR, account by account over the whole chain, and tests with re-runnable code w
 * Value reaches the token only in part: buybacks funded by Intents revenue run at **$20.7M a year** and cover **18%**
   of the net new NEAR issued.
 
-Full argument, evidence against, and kill criteria: [`THESIS.md`](THESIS.md). Nine dated predictions whose thresholds
-are taken from the data, scored by the build: [`PREDICTIONS.md`](PREDICTIONS.md).
+Full argument, evidence against, and kill criteria: [`THESIS.md`](THESIS.md). Nine dated predictions, their
+thresholds reference levels taken from the data or natural lines such as parity, scored by the build (five from
+the daily series, four once the BigQuery queries are run again for January 2027): [`PREDICTIONS.md`](PREDICTIONS.md).
 
 **Demo video (73 s):** [`demo/near-real-usage.mp4`](demo/near-real-usage.mp4).
 
@@ -45,13 +50,13 @@ Needs Python 3.11 or newer: the pinned pandas and matplotlib do not install on o
 3.13 and 3.14.
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 python -m thesis build          # downloads data, rebuilds everything
 open docs/index.html            # or: python -m http.server -d docs 8000
 ```
 
-If your default `python` is older and you have [uv](https://docs.astral.sh/uv/), one line does the same with no
+If your default `python3` is older and you have [uv](https://docs.astral.sh/uv/), one line does the same with no
 virtual environment to set up:
 `uv run --no-project --python 3.12 --with-requirements requirements.txt python -m thesis build`.
 
@@ -59,17 +64,18 @@ virtual environment to set up:
 |---|---|
 | `python -m thesis build` | `data/raw/*.json` (exact API responses), `data/daily.csv`, `docs/*.png`, `docs/index.html`, `docs/summary.json`; summary printed to stdout. If an API is down, the build says so and uses the committed copy |
 | `python -m thesis build --offline` | Same outputs rebuilt from the committed `data/raw/` files, no network |
-| `python -m pytest -q` | 63 tests: parsing, metric formulas, a planted 3-week lead recovered by the lead-lag test, the account census on a hand-made table, block parsing with relayed transactions, the numbers quoted in THESIS.md, PREDICTIONS.md and this README against the frozen copy of the summary, full offline build |
+| `python -m pytest -q` | 86 tests: parsing, metric formulas, a planted 3-week lead recovered by the lead-lag test, the account census on a hand-made table, block parsing with relayed transactions, the scoring of all nine predictions, the numbers quoted in THESIS.md, PREDICTIONS.md and this README against the frozen copy of the summary, full offline build |
 | `python -m thesis video` (needs ffmpeg) | `demo/near-real-usage.mp4`, a 73-second slideshow rendered from the build outputs, so the numbers on screen are the ones in `docs/summary.json` |
 | Paste [`sql/account_age.sql`](sql/account_age.sql) into the BigQuery console, save the result as CSV, then `python -m thesis bq-age result.csv` | `data/bq/account_age.csv` rebuilt from the chain: 25 months × family × age × returning. Scans 482.64 GB (free tier is 1 TB a month); check the dry-run estimate first |
 | Paste [`sql/payer_frequency.sql`](sql/payer_frequency.sql) into the BigQuery console (91.28 GB), save the result as CSV, then `python -m thesis bq-freq result.csv` | `data/bq/payer_frequency.csv` rebuilt from the chain: accounts by who pays the fee (an app's relayer or the account itself), by namespace and by transactions per month, August 2025 to October 2026 |
 | Paste [`sql/payers.sql`](sql/payers.sql) into the BigQuery console (53.23 GB), save the result as `data/bq/payers_result.csv` | Sponsored accounts named by the app whose relayer paid for them (Sweat, Ember, HOT, KaiChing, Meteor), July to October of 2025 and 2026 |
 | Paste [`sql/top_accounts.sql`](sql/top_accounts.sql) into the BigQuery console (13.53 GB), save the result as `data/bq/top_accounts_result.csv` | The 40 largest accounts and the 40 largest contracts or relayers for October 2026 and October 2025, plus concentration: 30 accounts send half of all transactions |
-| Paste [`sql/one_day_actions.sql`](sql/one_day_actions.sql) into the BigQuery console (0.6 GB) | One day by action kind: 3,448,826 relayed transactions signed by 17 relayers for 2,694,016 users; 238,403 accounts created by 12 creators; total equal to NearBlocks' count for that day |
+| Paste [`sql/one_day_actions.sql`](sql/one_day_actions.sql) into the BigQuery console (0.6 GB) | One day by action kind: 3,448,826 relayed transactions signed by 17 relayers for 2,694,016 users; 238,399 accounts created by 12 creators; total equal to NearBlocks' count for that day |
 
 **Live dashboard:** <https://ivegor.github.io/near-real-usage/>, rebuilt from scratch by GitHub Actions on every push
 and daily ([`.github/workflows/build.yml`](.github/workflows/build.yml): tests → `python -m thesis build` → GitHub
-Pages), so the published charts are always the output of the code in this repository.
+Pages), so the published charts are always the output of the code in this repository. A daily run that cannot
+download a source does not publish (`--require-fresh`), so the page never falls back to older data.
 
 ## Metrics
 
@@ -84,7 +90,7 @@ Pages), so the published charts are always the output of the code in this reposi
 | Who pays (account) | sponsored: a relayer submitted every transaction of the account in the month; self-paying: the account paid for at least one | Separates users an app is paying for from accounts that spend their own money. The line is the fee payer, not a threshold |
 | How often (account) | transactions in the month by powers of ten: occasional under 10, regular 10 to 999, heavy 1,000 or more | 1,000 a month is over 30 a day, which nobody does by hand; the lines are powers of ten, not tuned |
 | Self-paid vs sponsored (transaction) | a transaction is sponsored when a relayer signs it for the user (meta transaction), self-paid otherwise | Separates activity someone pays for from activity an app subsidises |
-| YoY change | accounts: last complete month vs the same month a year earlier, and the same on three-month means; Intents: calendar month vs the same month a year earlier; prices and fees: last 90-day mean vs the 90 days a year earlier | One month can be an outlier; a 90-day window drifts as its base moves |
+| YoY change | accounts: last complete month vs the same month a year earlier, and the same on three-month means; Intents: calendar month vs the same month a year earlier, and vs its level between the two autumns; prices and fees: last 90-day mean vs the 90 days a year earlier | One month can be an outlier; a 90-day window drifts as its base moves, and for Intents so does the calendar month, because last year's base was a ramp-up |
 | Lead-lag vs price | `corr(Δlog metric_t, Δlog price_{t+k})`, weekly, k = −8…+8; fees are taken in NEAR | Does usage move before price? ±2/√n noise band shown. Fees in USD contain the price, so their correlation with it is mechanical |
 
 ## Data sources
@@ -100,8 +106,8 @@ Pages), so the published charts are always the output of the code in this reposi
 No headline number is typed by hand: the figures in the dashboard and the key figures of `THESIS.md` come from
 `docs/summary.json` (tests check the ones THESIS.md and this README quote against the frozen copy in
 `data/snapshot/`). A few
-supporting details in the text (the number of accounts in two one-off bursts, the range of sample sizes in the
-lead-lag test) are read from the committed data files and are not in that JSON.
+supporting details in the text (which of the largest accounts are an app's service accounts or trading bots, for
+example) are read from the committed data files and are not in that JSON.
 
 The track brief suggests the NEAR Intents Explorer API for swap volume. It needs a partner key, so this project uses
 DefiLlama and NearBlocks instead: both are keyless, so anyone can re-run every step.
@@ -132,6 +138,7 @@ data/snapshot/       the frozen summary THESIS.md is checked against
 docs/                build output: charts, index.html (the dashboard), summary.json
 tests/               unit + offline end-to-end tests
 THESIS.md            claim, evidence, contrary evidence, what would change our mind
+AGENTS.md, CLAUDE.md the same notes for coding agents under the two names their tools look for
 PREDICTIONS.md       nine dated predictions; predictions.csv is the frozen, machine-readable list
 ```
 

@@ -7,7 +7,7 @@ h1{font-size:24px;margin:0 0 4px} .sub{color:#57606a;margin:0 0 24px}
 .card{border:1px solid #e6e8eb;border-radius:10px;padding:16px 18px;margin:0 0 18px}
 .card h2{font-size:17px;margin:0 0 6px} .lead{margin:0 0 10px}
 img{width:100%;height:auto} .method{color:#57606a;font-size:13px;margin:8px 0 0}
-code{background:#f6f8fa;padding:1px 4px;border-radius:4px}
+code{background:#f6f8fa;padding:1px 4px;border-radius:4px} a,code{overflow-wrap:anywhere}
 details{margin:8px 0 0;font-size:13px;color:#57606a} summary{cursor:pointer}
 pre{background:#f6f8fa;border-radius:6px;padding:10px 12px;overflow-x:auto;font-size:12px;line-height:1.4;color:#1f2328}
 table{border-collapse:collapse;font-size:13px;width:100%} td,th{border-top:1px solid #e6e8eb;padding:5px 8px;text-align:left;vertical-align:top}
@@ -21,8 +21,8 @@ Code and data: <a href="https://github.com/ivegor/near-real-usage">github.com/iv
 <section class="card">
   <h2>Every active account, counted (full chain, not a sample)</h2>
   <p class="lead">NEAR lost 97% of its active accounts in a year.</p>
-  <img src="population.png" alt="Every active account, counted (full chain, not a sample)">
-  <details><summary>More numbers</summary><p>In 2026-10, 1.38M accounts acted on NEAR against 43.64M in 2025-10 (-97%). 560K of them are old accounts of the reward app KaiChing that sent one transaction each in a single sweep; the app itself had 40.39M accounts a year earlier and stopped in spring 2026. Without KaiChing: 3.25M to 819K (-75%). Accounts outside the reward namespaces went 1.81M to 621K (-66%; -57% on three-month means) and those also active the month before 925K to 249K (-73%); most of those accounts were sponsored users of other apps, see the next chart. Their transactions paid by the sender grew +28% (+35% on three-month means) while those sponsored through relayers fell -75%. Transactions per account in that group rose from 10.7 to 23.9 a month, but with last year&#x27;s mix of account types it would be 11.7: low-activity accounts left, the rest did not get busier. Named .near accounts: +13% (+2% on three-month means).</p></details>
+  <a href="population.png" title="Open the chart at full size"><img src="population.png" alt="Every active account, counted (full chain, not a sample)"></a>
+  <details><summary>More numbers</summary><p>In 2026-10, 1.38M accounts acted on NEAR against 43.64M in 2025-10 (-97%). 560K of them are old accounts of the reward app KaiChing that were deleted, one transaction each; the app itself had 40.39M accounts a year earlier and stopped in spring 2026. Its relayer submitted 2,000,000 transactions a day, to within a thousandth, in 8 of its 17 months in the census: a job with a daily quota. Without KaiChing: 3.25M to 819K (-75%). Accounts outside the reward namespaces went 1.81M to 621K (-66%; -57% on three-month means) and those also active the month before 925K to 249K (-73%); most of those accounts were sponsored users of other apps, see the next chart. Their transactions paid by the sender grew +28% (+35% on three-month means) while those sponsored through relayers fell -75%. Transactions per account in that group rose from 10.7 to 23.9 a month, but with last year&#x27;s mix of account types it would be 11.7: low-activity accounts left, the rest did not get busier. Named .near accounts: +13% (+2% on three-month means).</p></details>
   <p class="method"><b>Method:</b> sql/account_age.sql on the NEAR BigQuery public dataset (all transactions, 482.64 GB scanned, result in data/bq/account_age.csv). The actor of a relayed transaction is the user, not the relayer. Core = accounts outside the kaiching, .tg and .sweat namespaces. The scan ends on 2026-11-11, so the last month shown is 2026-10. In February and March 2026 millions of existing implicit accounts sent one transaction each; those two months are off the scale in the middle panel. Checked against NearBlocks month by month: in 22 of 25 months the two transaction counts differ by at most 484 transactions; in the other 3 (2024-11, 2024-12, 2025-03) BigQuery is lower by 0.3% to 2.5%.</p>
   <details><summary>The query behind this chart: <a href="https://github.com/ivegor/near-real-usage/blob/main/sql/account_age.sql"><code>sql/account_age.sql</code></a></summary><pre>-- Who is behind NEAR&#x27;s transactions, month by month: account family, account age, and whether the
 -- account was also active in the previous month. Full population, not a sample.
@@ -106,9 +106,9 @@ ORDER BY m
 </section>
 <section class="card">
   <h2>Who pays, and how often</h2>
-  <p class="lead">Almost all of the lost accounts were users an app was paying for; outside the reward apps, 475 heavy accounts send 91% of the transactions people pay for themselves.</p>
-  <img src="segments.png" alt="Who pays, and how often">
-  <details><summary>More numbers</summary><p>Accounts whose fees an app paid: 43.0M in 2025-10, 0.55M in 2026-10. Accounts that pay for themselves and are not in a reward app&#x27;s namespace, acting 10 to 999 times a month: 27,078 to 17,105, -37% (-50% on three-month means); their low was 7,201 in 2026-08. That fall is not a clean count of users leaving: up to 15,162 of last year&#x27;s accounts were players of the Meteor wallet&#x27;s reward game, who paid their own fees then and go through its relayer now; with all of them taken out the change would be +44%. Accounts sending 1,000 or more a month: 370 to 475, and they send 91% of those self-paid transactions, which changed +28% (+35% on three-month means).</p></details>
+  <p class="lead">Almost all of the lost accounts were users an app was paying for; outside the reward apps, 475 heavy accounts send 91% of the transactions that senders pay for themselves.</p>
+  <a href="segments.png" title="Open the chart at full size"><img src="segments.png" alt="Who pays, and how often"></a>
+  <details><summary>More numbers</summary><p>Accounts whose fees an app paid: 43.0M in 2025-10, 0.55M in 2026-10. Accounts that pay for themselves and are not in a reward app&#x27;s namespace, acting 10 to 999 times a month: 27,078 to 17,105, -37% (-50% on three-month means); their low was 7,201 in 2026-08. That fall is not a clean count of users leaving: up to 15,162 of last year&#x27;s accounts were players of the Meteor wallet&#x27;s reward game, who paid their own fees then; its relayer submits the game&#x27;s calls now. With all of them taken out the change would be +44%. Accounts sending 1,000 or more a month: 370 to 475, and they send 91% of those self-paid transactions, which changed +28% (+35% on three-month means).</p></details>
   <p class="method"><b>Method:</b> sql/payer_frequency.sql on the NEAR BigQuery public dataset (91.28 GB), result in data/bq/payer_frequency.csv. Sponsored = every transaction of the account that month was submitted by a relayer. Frequency classes are powers of ten of the monthly transaction count; 1,000 a month is more than 30 a day. Occasional accounts (under 10 a month) swing with one-off events and are not read as a trend.</p>
   <details><summary>The query behind this chart: <a href="https://github.com/ivegor/near-real-usage/blob/main/sql/payer_frequency.sql"><code>sql/payer_frequency.sql</code></a></summary><pre>-- Who pays for a transaction, and how often the account acts: the product view of NEAR&#x27;s accounts.
 --
@@ -152,9 +152,9 @@ ORDER BY m
 <section class="card">
   <h2>Who sends the transactions</h2>
   <p class="lead">30 accounts send half of all NEAR transactions.</p>
-  <img src="clients.png" alt="Who sends the transactions">
-  <details><summary>More numbers</summary><p>In 2026-10, 30 accounts sent half of NEAR&#x27;s 22.6M transactions and the top 10 sent 37% (17% in 2025-10). Reward and wallet apps (Sweat, HOT, Meteor, KaiChing) are 43% of transactions, down from 86%; Sweat alone is 26%. Trading, Intents, token transfers and bridges are 41% (was 5%); transactions on the Ref/Rhea exchange changed +96%. intents.near received 2.01M transactions (2.32M a year earlier), 97% of them signed by two accounts. Counted in three parts, with the game Ember and KaiChing&#x27;s own accounts on the reward side: the reward side changed -92%, the finance group +37%, and everything else is 3.09M transactions against 3.00M (+3%). On the keyless 90-day block sample the finance group changed +108% (95% interval +36% to +229%).</p></details>
-  <p class="method"><b>Method:</b> sql/top_accounts.sql on the NEAR BigQuery public dataset (13.53 GB), result in data/bq/top_accounts_result.csv. A direct transaction is assigned to the contract it calls, a relayed one to its relayer; contracts and relayers are grouped into apps by the table in thesis/clients.py. Intents users sign off-chain, so its on-chain signers are relayers, not users.</p>
+  <a href="clients.png" title="Open the chart at full size"><img src="clients.png" alt="Who sends the transactions"></a>
+  <details><summary>More numbers</summary><p>In 2026-10, 30 accounts sent half of NEAR&#x27;s 22.6M transactions and the top 10 sent 37% (17% in 2025-10). Reward and wallet apps (Sweat, HOT, Meteor, KaiChing) are 43% of transactions, down from 86%; Sweat alone is 26%. Trading, Intents, token transfers and bridges are 41% (was 5%); transactions on the Ref/Rhea exchange changed +96%. intents.near received 2.01M transactions (2.32M a year earlier), up to 97% of them signed by two accounts. Counted in three parts, with the game Ember and KaiChing&#x27;s own accounts on the reward side: the reward side changed -92%, the finance group +37%, and everything else is 3.09M transactions against 3.00M (+3%). On the keyless 90-day block sample the finance group changed +108% (95% interval +36% to +229%). Allowing for the group&#x27;s contracts that are not among a month&#x27;s 40 largest, its change on the full count lies between +30% and +39%.</p></details>
+  <p class="method"><b>Method:</b> sql/top_accounts.sql on the NEAR BigQuery public dataset (13.53 GB), result in data/bq/top_accounts_result.csv. A direct transaction is assigned to the contract it calls, a relayed one to its relayer; contracts and relayers are grouped into apps by the table in thesis/clients.py. A month counts only the contracts among its 40 largest; a group&#x27;s other contracts are inside &quot;everything outside the top 40&quot; for that month. Intents users sign off-chain, so its on-chain signers are relayers, not users.</p>
   <details><summary>The query behind this chart: <a href="https://github.com/ivegor/near-real-usage/blob/main/sql/top_accounts.sql"><code>sql/top_accounts.sql</code></a></summary><pre>-- Who sends NEAR&#x27;s transactions: the largest accounts, what they call, and how concentrated it is.
 -- Two months: October 2026 and October 2025.
 --
@@ -211,9 +211,9 @@ ORDER BY 1, 2
 <section class="card">
   <h2>Does it reach the token?</h2>
   <p class="lead">Buybacks funded by NEAR Intents cover 18% of the new NEAR issued.</p>
-  <img src="value_capture.png" alt="Does it reach the token?">
-  <details><summary>More numbers</summary><p>Over the last 90 days NEAR Intents charged $18.9M in fees (51x the network&#x27;s own transaction fees) and NEAR captured $5.11M of it (27%), all used to buy NEAR on the market since 2026-02-23. That is $20.7M a year against $115M a year of net new NEAR (32.3M NEAR at $3.58): buybacks cover 18% of dilution, and the market capitalisation is 227 times the annual buyback.</p></details>
-  <p class="method"><b>Method:</b> DefiLlama fee series for NEAR Intents (dailyFees, dailyRevenue, dailyHoldersRevenue); net new supply = change in NearBlocks&#x27; daily total supply (already net of burned fees) valued at the mean price of the period. Bought NEAR is held, not burned, so supply itself does not shrink.</p>
+  <a href="value_capture.png" title="Open the chart at full size"><img src="value_capture.png" alt="Does it reach the token?"></a>
+  <details><summary>More numbers</summary><p>Over the 90 days to 2026-11-11 NEAR Intents charged $18.9M in fees (51x the network&#x27;s own transaction fees) and NEAR captured $5.11M of it (27%), all used to buy NEAR on the market since 2026-02-23. That is $20.7M a year against $115M a year of net new NEAR (32.3M NEAR at $3.58): buybacks cover 18% of dilution, and the market capitalisation is 227 times the annual buyback.</p></details>
+  <p class="method"><b>Method:</b> DefiLlama fee series for NEAR Intents (dailyFees, dailyRevenue, dailyHoldersRevenue); net new supply = change in NearBlocks&#x27; daily total supply (already net of burned fees) valued at the mean price of the period. The window ends on the last day both sources cover. The bought NEAR is not burned, so supply itself does not shrink.</p>
   <details><summary>The requests behind this chart</summary><pre>GET https://api.llama.fi/summary/fees/near-intents?dataType=dailyFees
 GET https://api.llama.fi/summary/fees/near-intents?dataType=dailyRevenue
 GET https://api.llama.fi/summary/fees/near-intents?dataType=dailyHoldersRevenue
@@ -222,15 +222,15 @@ GET https://api.nearblocks.io/v1/charts</pre> Computed by <a href="https://githu
 <section class="card">
   <h2>What the daily aggregates show, and why they mislead</h2>
   <p class="lead">The usual proxy for returning accounts points the wrong way.</p>
-  <img src="accounts.png" alt="What the daily aggregates show, and why they mislead">
-  <details><summary>More numbers</summary><p>Over the last 90 days the proxy active - new averaged 60,746/day (+37% vs a year earlier), new accounts 10,946/day (-96%). By medians it changed +11%. This proxy is wrong about the direction: counted directly on the full chain, core accounts active two months running changed -73% over the same year (see the first chart). The aggregator&#x27;s &quot;active accounts&quot; are transaction signers, so users acting through relayers are missing, and its &quot;new accounts&quot; include accounts created in bulk by a handful of creator accounts.</p></details>
+  <a href="accounts.png" title="Open the chart at full size"><img src="accounts.png" alt="What the daily aggregates show, and why they mislead"></a>
+  <details><summary>More numbers</summary><p>Over the last 90 days the proxy active - new averaged 60,746/day (+37% vs a year earlier), new accounts 10,946/day (-96%). By medians it changed +11%. This proxy is wrong about the direction: counted directly on the full chain, core accounts active two months running changed -73% from 2025-10 to 2026-10 (see the first chart). The aggregator&#x27;s &quot;active accounts&quot; are transaction signers, so users acting through relayers are missing, and its &quot;new accounts&quot; include accounts created in bulk by a handful of creator accounts.</p></details>
   <p class="method"><b>Method:</b> returning_accounts = active_accounts - new_accounts (NearBlocks daily charts), 30-day rolling mean. This is a lower bound: new accounts that did not transact on their first day are subtracted anyway. New accounts exceeded active accounts (returning clipped to 0) on 0 of the last 90 days, 7 of the 90 days a year earlier and 234 days in all history (mostly mid-2022, shown as a gap).</p>
   <details><summary>The requests behind this chart</summary><pre>GET https://api.nearblocks.io/v1/charts</pre> Computed by <a href="https://github.com/ivegor/near-real-usage/blob/main/thesis/metrics.py"><code>thesis/metrics.py</code></a>.</details>
 </section>
 <section class="card">
   <h2>Usage vs price</h2>
   <p class="lead">Over a year the NEAR price changed +39% and daily transactions -84%.</p>
-  <img src="usage_vs_price.png" alt="Usage vs price">
+  <a href="usage_vs_price.png" title="Open the chart at full size"><img src="usage_vs_price.png" alt="Usage vs price"></a>
   <details><summary>More numbers</summary><p>Price changed +39% year-on-year (90-day averages) while daily transactions changed -84% and active accounts -75%.</p></details>
   <p class="method"><b>Method:</b> Same 90-day window compared with the window 365 days earlier.</p>
   <details><summary>The requests behind this chart</summary><pre>GET https://api.nearblocks.io/v1/charts</pre> Computed by <a href="https://github.com/ivegor/near-real-usage/blob/main/thesis/metrics.py"><code>thesis/metrics.py</code></a>.</details>
@@ -238,7 +238,7 @@ GET https://api.nearblocks.io/v1/charts</pre> Computed by <a href="https://githu
 <section class="card">
   <h2>Transactions per active account</h2>
   <p class="lead">Transactions per active account mostly show which apps are on the chain, not how people behave.</p>
-  <img src="tx_per_active.png" alt="Transactions per active account">
+  <a href="tx_per_active.png" title="Open the chart at full size"><img src="tx_per_active.png" alt="Transactions per active account"></a>
   <details><summary>More numbers</summary><p>Each active account sent 11.2 transactions a day on average in the last 90 days (-30% YoY). This aggregate moved with the reward apps: relayers that signed millions of transactions for other accounts count as single active accounts here, and most of them are gone.</p></details>
   <p class="method"><b>Method:</b> txns / active_accounts (NearBlocks), 30-day rolling mean. NearBlocks&#x27; active accounts are transaction signers; users acting through relayers are not counted, so this is not transactions per user (see the first chart).</p>
   <details><summary>The requests behind this chart</summary><pre>GET https://api.nearblocks.io/v1/charts</pre> Computed by <a href="https://github.com/ivegor/near-real-usage/blob/main/thesis/metrics.py"><code>thesis/metrics.py</code></a>.</details>
@@ -246,24 +246,24 @@ GET https://api.nearblocks.io/v1/charts</pre> Computed by <a href="https://githu
 <section class="card">
   <h2>Fees per active account</h2>
   <p class="lead">Total network fees changed -52% in a year.</p>
-  <img src="fees_per_active.png" alt="Fees per active account">
+  <a href="fees_per_active.png" title="Open the chart at full size"><img src="fees_per_active.png" alt="Fees per active account"></a>
   <details><summary>More numbers</summary><p>An active account paid $0.066 a day in fees over the last 90 days (+120% YoY in USD, +43% in NEAR terms, +53% by USD medians); total fees were $4,122/day (-52% YoY).</p></details>
   <p class="method"><b>Method:</b> txn_fee_usd / active_accounts (NearBlocks), 30-day rolling mean; NEAR terms = the same divided by the daily price. The denominator counts transaction signers only, so read the level with care; total fees do not depend on it.</p>
   <details><summary>The requests behind this chart</summary><pre>GET https://api.nearblocks.io/v1/charts</pre> Computed by <a href="https://github.com/ivegor/near-real-usage/blob/main/thesis/metrics.py"><code>thesis/metrics.py</code></a>.</details>
 </section>
 <section class="card">
   <h2>NEAR Intents volume</h2>
-  <p class="lead">NEAR Intents volume changed +131% against the same month a year earlier.</p>
-  <img src="intents.png" alt="NEAR Intents volume">
-  <details><summary>More numbers</summary><p>In 2026-10 Intents volume averaged $128.6M a day against $55.6M in the same month a year earlier (+131%); the last 90 days averaged $134.9M a day, +84% on the 90 days before and +223% on the same 90 days a year earlier. The step up in 2026-09 ($89.6M to $160.1M a day) came in the month the NEAR price went from $1.92 to $4.89.</p></details>
-  <p class="method"><b>Method:</b> DefiLlama dexs/near-intents totalDataChart, 7-day rolling mean. The 90-day year-on-year figure shrinks every day as its base moves through the ramp-up of autumn 2025; the calendar-month comparison does not.</p>
+  <p class="lead">In 2026-10 NEAR Intents volume averaged $129M a day, above the $63M to $90M range it held from 2025-12 to 2026-08.</p>
+  <a href="intents.png" title="Open the chart at full size"><img src="intents.png" alt="NEAR Intents volume"></a>
+  <details><summary>More numbers</summary><p>In 2026-10 Intents volume averaged $128.6M a day against $55.6M in the same month a year earlier (+131%); the last 90 days averaged $134.9M a day, +84% on the 90 days before and +223% on the same 90 days a year earlier. The step up in 2026-09 ($89.6M to $160.1M a day) came in the month the NEAR price went from $1.92 to $4.89. A year earlier the base was still rising: 2025-11 already averaged $122.0M a day, and from 2025-12 to 2026-08 volume averaged $74.5M. From 2026-11-01 to 2026-11-11 it averaged $129.7M a day against $125.4M in the same days a year earlier (+3%).</p></details>
+  <p class="method"><b>Method:</b> DefiLlama dexs/near-intents totalDataChart, 7-day rolling mean. Both year-on-year figures shrink as their base moves through the ramp-up of autumn 2025: the 90-day one every day, the calendar-month one at each month&#x27;s end. The level the volume held between the two autumns does not move.</p>
   <details><summary>The requests behind this chart</summary><pre>GET https://api.llama.fi/summary/dexs/near-intents?excludeTotalDataChart=false&amp;excludeTotalDataChartBreakdown=true
 GET https://api.nearblocks.io/v1/charts</pre> Computed by <a href="https://github.com/ivegor/near-real-usage/blob/main/thesis/sources.py"><code>thesis/sources.py</code></a>.</details>
 </section>
 <section class="card">
   <h2>Who signs the transactions (measured on the chain)</h2>
   <p class="lead">A sample of random blocks, taken without any API key, agrees with the full count.</p>
-  <img src="signer_census.png" alt="Who signs the transactions (measured on the chain)">
+  <a href="signer_census.png" title="Open the chart at full size"><img src="signer_census.png" alt="Who signs the transactions (measured on the chain)"></a>
   <details><summary>More numbers</summary><p>Accounts older than one year sign 69% (95% interval 65-73%) of transactions now, against 38% (95% interval 32-47%) a year earlier; accounts newer than 30 days sign 17% (95% interval 15-20%) now, against 21% (95% interval 16-26%). The ten busiest accounts send 39% of transactions now (14% a year earlier).</p></details>
   <p class="method"><b>Method:</b> Random block heights (seed 20261112) from the FastNEAR block archive: 329 blocks / 1200 transactions now, 120 blocks / 1200 transactions a year earlier. For a relayed (meta) transaction the user is read from the delegate action. An account&#x27;s age class comes from view_account on an archival RPC node at the block 30 and 365 days before the window starts. Intervals resample whole blocks. Sampled accounts over-represent frequent senders. Re-run: python -m thesis census [--seed N].</p>
   <details><summary>The requests behind this chart</summary><pre>GET https://mainnet.neardata.xyz/v0/block/{height}
@@ -272,7 +272,7 @@ https://archival-rpc.mainnet.fastnear.com  (JSON-RPC query view_account at a pas
 <section class="card">
   <h2>Does usage lead price?</h2>
   <p class="lead">Usage does not lead price.</p>
-  <img src="lead_lag.png" alt="Does usage lead price?">
+  <a href="lead_lag.png" title="Open the chart at full size"><img src="lead_lag.png" alt="Does usage lead price?"></a>
   <details><summary>More numbers</summary><p>Weekly-change correlation with price, lags outside the noise band (6 of 85 tested; about 4 expected by chance): active - new (proxy): nothing outside the noise band; active accounts: -5 wk r=+0.12, +0 wk r=+0.14; intents volume: nothing outside the noise band; fees (in NEAR): nothing outside the noise band; transactions: -8 wk r=+0.14, +2 wk r=-0.13, +4 wk r=+0.11, +6 wk r=-0.15. Fees are tested in NEAR: in USD they correlate with price in the same week (r=0.38) only because USD fees are NEAR fees multiplied by the price.</p></details>
   <p class="method"><b>Method:</b> corr(Δlog metric_t, Δlog price_{t+k}), k in weeks, positive k = metric moves first (green bars); dotted lines = ±2/√n noise band.</p>
   <details><summary>The requests behind this chart</summary><pre>GET https://api.nearblocks.io/v1/charts
