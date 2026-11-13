@@ -167,8 +167,12 @@ def test_a_relayer_with_a_daily_quota_is_visible_in_the_monthly_totals():
     assert "2025-07" not in q["months_within_a_thousandth_of_it"] and len(q["months_within_a_thousandth_of_it"]) == 13
     assert q["in_the_month"]["2025-02"] == 5_000 * 28 and abs(q["per_day"]["2025-07"] - 4_000) < 1e-9
     assert "kaiching_relayed_txs_per_day" not in population.summarize(table(), "2026-03-11")      # no relayed transactions: nothing to say
+    # the months counted are those of every series: the table starts a month earlier, and that month has no month before it
+    s = population.summarize(df, "2026-03-31")
+    assert (s["table_first_month"], s["first_month"], q["first_month"], q["last_month"]) == ("2025-01", "2025-02", "2025-02", "2026-03")
     real = population.summarize(snapshot.census(), snapshot.SCAN_END)["kaiching_relayed_txs_per_day"]
     assert real["median_month_to_the_nearest_thousand"] == 2_000_000 and len(real["months_within_a_thousandth_of_it"]) >= 8
+    assert (real["first_month"], real["last_month"], real["months_with_relayed_transactions"]) == ("2024-12", "2026-04", 17)
 
 
 def test_totals_check_separates_the_months_that_agree_from_those_that_do_not():
@@ -223,6 +227,70 @@ def test_largest_daily_fall_is_found_by_rule_and_set_next_to_kaiching():
     assert level["kaiching_share_of_it"] == pytest.approx(1500 / 31 / 750)
     # the one day: the app sent nothing in the month the day before the fall lies in, so none of that day's fall is its own
     assert (s["fall_txs"], s["kaiching_share_of_the_fall_at_most"], s["other_accounts_in_the_fall_at_least"]) == (750, 0.0, 750)
+
+
+def test_new_accounts_are_set_next_to_the_fall():
+    """The aggregator's new accounts on the two days and in the two months, next to the app's accounts seen for the first time."""
+    df = table()
+    created = pd.DataFrame([("2025-12", "kaiching", "m0", "not_returning", 700, 700, 700, 700)], columns=df.columns)
+    df = pd.concat([df, created])
+    idx = pd.date_range("2025-01-01", "2026-03-31", freq="D")
+    txns, new = pd.Series(1000.0, index=idx), pd.Series(80.0, index=idx)
+    txns[idx >= "2026-01-02"], new[idx >= "2026-01-02"] = 250.0, 10.0         # both step down on 2 January
+    s = population.largest_daily_fall(df, pd.DataFrame({"txns": txns, "new_accounts": new}, index=idx))
+    assert s["date"] == "2026-01-02" and s["new_accounts"]["before"] == 80 and s["new_accounts"]["after"] == 10
+    assert s["new_accounts"]["per_day_month_before"] == 80.0 and s["new_accounts"]["per_day_month_of"] == pytest.approx((80 + 30 * 10) / 31)
+    k = s["kaiching"]
+    assert (k["month_before"]["first_seen_accounts"], k["month_of"]["first_seen_accounts"]) == (700, 0)
+    assert "new_accounts" not in population.largest_daily_fall(df, pd.DataFrame({"txns": txns}, index=idx))
+    # the committed data: the aggregator's new accounts step down on the day of the fall, and so do KaiChing's in the census
+    from thesis import sources
+    real = population.largest_daily_fall(snapshot.census(), sources.load_daily(offline=True))
+    n, kc = real["new_accounts"], real["kaiching"]
+    assert n["after"] < 0.25 * n["before"] and n["per_day_month_of"] < 0.2 * n["per_day_month_before"]
+    assert kc["month_of"]["first_seen_accounts"] < 0.05 * kc["month_before"]["first_seen_accounts"]
+
+
+def test_deleted_accounts_are_set_next_to_the_bursts_by_rule():
+    """The aggregator's deletions in the months the census flags: a burst is ten times the median month, its days a tenth of its peak."""
+    df = table()                                                           # 2025-01 .. 2026-03; complete months 2025-02 .. 2026-02
+    extra = pd.DataFrame([("2025-11", "implicit", "ge2y", "not_returning", 500, 500, 0, 500),     # a burst of one-transaction accounts
+                          ("2026-02", "kaiching", "lt1y", "not_returning", 300, 300, 0, 300)],   # the app's one-off in the latest month
+                         columns=df.columns)
+    ps = population.summarize(pd.concat([df, extra]), "2026-03-11")
+    assert [b["month"] for b in ps["implicit_one_transaction_bursts"]["bursts"]] == ["2025-11"] and ps["latest_month"] == "2026-02"
+    idx = pd.date_range("2025-01-01", "2026-03-20", freq="D")
+    gone = pd.Series(2.0, index=idx)                                        # two deletions on an ordinary day
+    gone["2025-11-05":"2025-11-09"] = 1000.0                                # the burst: five days at a thousand
+    gone["2025-11-10"] = 50.0                                               # above an ordinary day, below a tenth of the peak
+    gone["2026-02-10":"2026-02-11"] = 150.0                                 # the app's month: more than usual, not ten times the median
+    d = population.deletions(ps, pd.DataFrame({"deleted_accounts": gone}, index=idx))
+    assert len(d["monthly"]) == 13 and d["median_month"] == 62 and d["months_above_ten_times_the_median"] == ["2025-11"]
+    nov, feb = d["months"]["2025-11"], d["months"]["2026-02"]
+    assert nov["census_one_transaction_accounts"] == {"implicit_one_transaction_burst": 540}
+    assert nov["deleted_accounts"] == 5000 + 50 + 24 * 2 and nov["per_day_month_before"] == 2.0
+    assert nov["burst_days"] == {"first": "2025-11-05", "last": "2025-11-09", "days": 5, "deleted_accounts": 5000,
+                                 "largest_day": {"date": "2025-11-05", "deleted_accounts": 1000}}
+    assert feb["census_one_transaction_accounts"] == {"kaiching_one_off": 300} and feb["deleted_accounts"] == 26 * 2 + 300
+    assert feb["burst_days"] is None and feb["times_the_median_month"] == pytest.approx(352 / 62)
+    # a month without all of its days is not counted, and a series without deletions gives nothing
+    short = population.deletions(ps, pd.DataFrame({"deleted_accounts": gone.drop(pd.Timestamp("2025-06-15"))}))
+    assert "2025-06" not in short["monthly"] and len(short["monthly"]) == 12
+    assert population.deletions(ps, pd.DataFrame({"txns": gone})) is None
+    # the committed data: February's burst and October's one-off are deletions on a few days, March and April are not
+    from thesis import sources
+    real = population.deletions(population.summarize(snapshot.census(), snapshot.SCAN_END), sources.load_daily(offline=True))
+    days = {m: (r["burst_days"] or {}) for m, r in real["months"].items()}
+    # (and every other month of mass deletions, which the census's burst rule does not ask about)
+    assert list(real["months"]) == ["2024-12", "2025-01", "2025-03", "2025-04", "2025-05", "2025-12", "2026-02", "2026-03", "2026-04", "2026-10"]
+    assert real["months_above_ten_times_the_median"] == [m for m in real["months"] if m not in ("2026-03", "2026-04")]
+    assert (days["2025-12"]["first"], days["2025-12"]["last"]) == ("2025-12-17", "2025-12-22")
+    # each deleted account signed its own deletion: the day's signers rise by about one for each, on the days of a burst
+    for m in ("2026-02", "2026-10", "2025-12"):
+        assert 0.9 < days[m]["signers_per_deleted_account"] < 1.05 and days[m]["correlation_of_signers_with_deletions"] > 0.99, m
+    assert (days["2026-02"]["first"], days["2026-02"]["last"], days["2026-10"]["first"], days["2026-10"]["last"]) == (
+        "2026-02-03", "2026-02-18", "2026-10-02", "2026-10-08")
+    assert days["2026-03"] == {} and days["2026-04"] == {}
 
 
 def test_the_app_is_at_most_what_it_sent_in_the_month_of_the_fall():

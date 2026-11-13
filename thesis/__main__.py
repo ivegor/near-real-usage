@@ -5,7 +5,9 @@ import argparse
 import json
 from pathlib import Path
 
-from . import census, charts, clients, dashboard, metrics, payers, population, predictions, segments, sources, value, wallets
+import pandas as pd
+
+from . import autumn, census, charts, clients, dashboard, metrics, payers, population, predictions, segments, sources, value, wallets
 
 ROOT = Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs"
@@ -39,12 +41,26 @@ def build(offline: bool, require_fresh: bool = False) -> None:
         fall = population.largest_daily_fall(pop, daily)  # the step other analyses see in the daily series, named
         if fall:
             summary["population"]["largest_daily_fall"] = fall
+        gone = population.deletions(summary["population"], daily)  # what the aggregator counted as deleted in the bursts
+        if gone:
+            summary["population"]["deleted_accounts"] = gone
+            for m, row in gone["months"].items():  # mass deletions the census's burst rule does not ask about
+                if not row["census_one_transaction_accounts"]:
+                    row["census_cell_that_left"] = population.cell_that_left(pop, m)
+        part = summary["population"].get("partial_month")
+        if part:
+            spike = population.signer_spike(daily, part["month"], part["through"])
+            if spike:
+                part["signer_spike"] = spike
     seg = segments.load()
     if seg is not None:
         summary["segments"] = segments.summarize(seg)
     pay = payers.load()
     if pay is not None:
         summary["sponsors"] = payers.summarize(pay)  # sponsored accounts named by the app whose relayer paid
+        rel = payers.relayers()
+        if rel is not None and len(rel):
+            summary["sponsors"]["hot_relayers_by_month"] = payers.relayers_by_month(rel, ".tg")  # when HOT changed relayers
     top = clients.load()
     if top:
         summary["clients"] = clients.summarize(top)
@@ -75,6 +91,9 @@ def build(offline: bool, require_fresh: bool = False) -> None:
             view = clients.sample_view(cs[0], cs[2].get("windows", {}), daily, seed=cs[2].get("seed", census.SEED))
             if view:
                 summary["clients"]["sample_view"] = view
+                # the same groups month by month, and cut at the step month of the predictions
+                view.update(clients.sampled_months(cs[0], {k: cs[2]["windows"][k] for k in ("prior", "recent")}, daily,
+                                                   seed=cs[2].get("seed", census.SEED), split=str(pd.Period(predictions.PLATEAU[1], "M") + 1)))
         if seg is not None and "segments" not in apart:
             # the accounts the game's relayer pays everything for: the other accounts acting through it can still be
             # counted as self-paying, so the game's players are taken out of both months (only while the months match)
@@ -98,10 +117,28 @@ def build(offline: bool, require_fresh: bool = False) -> None:
         pred["baselines"] = predictions.baselines(daily, fees, pop, seg)
         pred["step"] = predictions.step(daily, fees, pop, seg)  # what moved in the step month, the price included
         summary["predictions"] = pred
+    fall = summary.get("population", {}).get("largest_daily_fall", {}).get("date")
+    if pred:
+        census_per_day = None
+        if pop is not None:
+            pace = summary["population"].get("partial_month", {}).get("core_direct_txs", {})
+            census_per_day = pace.get("per_day_by_month")
+        a = autumn.summarize(daily, fees, predictions.PLATEAU, fall, pred["baselines"].get("intents_volume_plateau_top_usd"),
+                             sample=cs[0] if cs else None, windows=cs[2].get("windows") if cs else None,
+                             seed=cs[2].get("seed", census.SEED) if cs else 0, census_per_day=census_per_day)
+        if a:
+            summary["autumn"] = a
     if fees is not None:
         v = value.summarize(daily, fees)
         if v:
             summary["value_capture"] = v
+            a3 = next((p for p in (pred or {}).get("items", []) if p["metric"] == "buyback_month_usd"), None)
+            w = value.windows(daily, fees, step_day=summary.get("autumn", {}).get("intents_step", {}).get("day"),
+                              threshold_month_usd=a3["threshold"] if a3 else None,
+                              threshold_month=str(pd.Timestamp(a3["check_on"]).to_period("M")) if a3 else None,
+                              reference=predictions.BUYBACK_PLATEAU)
+            if w:
+                summary["value_capture"]["windows"] = w
             held = wallets.load()  # the same revenue measured from the wallets' balances on the chain
             w = wallets.summarize(held, daily, fees) if held else None
             if w:

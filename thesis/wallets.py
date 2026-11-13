@@ -126,6 +126,16 @@ def summarize(data: dict, daily: pd.DataFrame, fees: pd.DataFrame | None) -> dic
         "held_near_at_end_all_wallets": float(sum(held.values())),
         "buyback_wallet_share_of_held": float(held[BUYBACK_WALLET] / sum(held.values())) if sum(held.values()) else float("nan"),
     }
+    if fees is not None and "revenue" in fees:
+        # everything the series ever counted as captured revenue, in NEAR at each day's price, to the window's last day
+        end = pd.Timestamp(full["window"][1])
+        f = fees["revenue"].loc[:end].dropna()
+        f = f[f.index >= f[f > 0].index.min()] if (f > 0).any() else f
+        price = daily["price_usd"].reindex(f.index)
+        if len(f) and price.notna().all():
+            ever = float((f / price).sum())
+            out["defillama_revenue_near_all_time"] = {"from": str(f.index.min().date()), "through": str(end.date()), "near": ever,
+                                                      "held_at_end_over_it": float(sum(held.values()) / ever) if ever else float("nan")}
     if len(points) > 2:
         tail = _window(points[-2], last, daily, fees)
         if tail:

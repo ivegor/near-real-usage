@@ -135,6 +135,25 @@ def test_a_bad_api_reply_never_replaces_the_saved_copy(tmp_path, monkeypatch):
         sources._check_shape("defillama_intents", {"totalDataChart": []})
 
 
+def test_a_host_that_does_not_answer_is_given_up_on_quickly(monkeypatch):
+    """A silent host costs the short connect timeout on each attempt, not the minute a slow reply is given."""
+    import pytest
+    import requests
+    seen, slept = [], []
+
+    def silent(url, timeout, headers):
+        seen.append(timeout)
+        raise requests.ConnectTimeout("no answer")
+
+    monkeypatch.setattr(sources.requests, "get", silent)
+    monkeypatch.setattr(sources.time, "sleep", slept.append)
+    with pytest.raises(RuntimeError, match="no answer"):           # the same failure the build falls back on
+        sources._fetch_json("https://example.invalid/charts")
+    connect, read = sources.TIMEOUT
+    assert seen == [sources.TIMEOUT] * 3 and connect <= 10 < read
+    assert connect * len(seen) + sum(slept) < 60                     # under a minute per source, retries included
+
+
 def test_best_lead_reports_the_range_of_sample_sizes():
     """Each week of lag costs one week of data, so the text quotes the smallest and the largest n, not one of them."""
     d = daily()

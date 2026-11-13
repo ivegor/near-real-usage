@@ -23,6 +23,21 @@ SPONSORS = ["kaiching", "hot", "sweat", "ember", "meteor", "other"]
 COLUMNS = ["month", "family", "payer", "ret", "accounts", "txs", "self_paid_txs"]
 
 
+def relayers(path: Path | None = None) -> pd.DataFrame | None:
+    """The `relayers` section of the same result: the largest relayers of each month, their accounts and transactions."""
+    path = path or CSV
+    if not path.exists():
+        return None
+    rows = []
+    for m, sec, cells in pd.read_csv(path).itertuples(index=False):
+        if sec != "relayers":
+            continue
+        for cell in str(cells).split(";"):
+            relayer, accounts, txs = cell.split("|")
+            rows.append((str(m), relayer, int(accounts), int(txs)))
+    return pd.DataFrame(rows, columns=["month", "relayer", "accounts", "txs"])
+
+
 def load(path: Path | None = None) -> pd.DataFrame | None:
     path = path or CSV
     if not path.exists():
@@ -98,4 +113,15 @@ def summarize(df: pd.DataFrame) -> dict:
         for m in has_previous if m in ember.index and ember.loc[m].sum() > 0}
     # accounts each app fully sponsors, month by month: a step here is an app changing who pays, not users arriving
     out["sponsored_by_month"] = {s: {k: float(v) for k, v in g[f"sponsored_by_{s}"].items()} for s in SPONSORS}
+    # transactions per fully sponsored account of each app
+    sp = df[df["payer"].isin(SPONSORS)].groupby(["payer", "month"])[["accounts", "txs"]].sum()
+    out["txs_per_sponsored_account"] = {s: {k: float(sp.loc[(s, k), "txs"] / sp.loc[(s, k), "accounts"]) for k in (latest, prior)
+                                            if (s, k) in sp.index and sp.loc[(s, k), "accounts"]} for s in SPONSORS}
     return out
+
+
+def relayers_by_month(r: pd.DataFrame, suffix: str) -> dict:
+    """The relayers of one app (by the suffix of their names) month by month: accounts acted for and transactions."""
+    hit = r[r["relayer"].str.endswith(suffix)]
+    return {rel: {m: {"accounts": int(a), "txs": int(t)} for m, a, t in zip(g["month"], g["accounts"], g["txs"])}
+            for rel, g in hit.groupby("relayer")}

@@ -12,7 +12,8 @@ are natural lines (rule 3), and each prediction answers a question someone runni
    and self-paid transactions outside reward apps. The NEAR price rose in the same month, from $1.92 to $4.89, so
    the step may be the rally itself. A year earlier Intents volume had a one-month spike (November 2025)
    and fell straight back. So the test is the same for all three: does the metric stay **above the highest month of
-   its range before the step** (December 2025 to August 2026)? Above it, the step is a new level; back inside the old
+   its range before the step** (December 2025 to August 2026 for Intents volume and self-paid transactions; March to
+   August 2026 for the buybacks, which began on 23 February)? Above it, the step is a new level; back inside the old
    range, it was a spike. (A1, A2, A3, B2)
 2. **Has the decline stopped?** Accounts that pay their own fees and act regularly slid for a year to a low in
    August 2026 and rebounded in September. The reference is **that low**: staying above it means a floor has been
@@ -35,7 +36,8 @@ SHA-256 of `predictions.csv`: `7ff48f00d7131ae4cf1e5b11ff817242844e6b8dd3a0681d9
 A hash in a repository proves nothing about dates: history can be rewritten. So the file also has a timestamp that
 does not depend on this repository. [`predictions.csv.ots`](predictions.csv.ots) is an
 [OpenTimestamps](https://opentimestamps.org) proof made on 2026-11-13 at 15:47 UTC: the digest above was sent to
-public calendar servers, which commit it to a Bitcoin block. `ots verify predictions.csv.ots` (from
+public calendar servers, which commit it to a Bitcoin block. The proof has since been completed (`ots upgrade`): it
+holds the attestation of Bitcoin block 975705. `ots verify predictions.csv.ots` (from
 `pip install opentimestamps-client`) or the form on opentimestamps.org checks it against the file; a test checks
 that the proof is for the file's current digest. The first prediction is scored four days after that timestamp.
 
@@ -51,6 +53,18 @@ that the proof is for the file's current digest. The first prediction is scored 
 | B3 | Does the chain still depend on a few dozen accounts? | In January 2027 fewer than a hundred accounts still send half of all transactions | < 100 | dozens rather than hundreds; 30 in October 2026 | 2027-02-01 | bigquery |
 | B4 | Which is the larger half of the chain: reward apps or financial use? | In January 2027 reward and wallet apps still send more transactions than the exchange, Intents, token contracts and bridges together | > 0 | the point where the two are equal; 43% vs 41% in October 2026 | 2027-02-01 | bigquery |
 
+Two notes on what the reference months turned out to hold.
+
+The step has two dates (see "Evidence against" in THESIS.md). Read by half-months, Intents volume and the buybacks
+stepped up on 19 August 2026, before the price rally, and the transactions on the chain only from 16 September to
+15 October. August, the reference month of A1, A2 and A3, therefore holds 13 days of the step: 58% of its Intents
+volume and 65% of its buybacks came after 19 August. That makes those thresholds higher, not lower: without August the
+top of Intents volume's range would be lower. A3 has a further weakness. Its threshold is in USD, and the buybacks
+are bought with revenue counted in USD, so it can be met by the price alone: at the pace in NEAR of the last 30 days
+before the file was frozen (13,548 NEAR a day), December's buybacks exceed $0.72M at any mean price above $1.72,
+and the price was $1.59 on the day of the step. A hold on A3 says little unless the buybacks in NEAR hold too;
+`docs/summary.json` publishes both under `value_capture.windows`.
+
 One reference level needs a note. B2's reference month, February 2026, turned out to hold a one-off burst: a third
 of its self-paid transactions came from dormant accounts that sent one transaction each (see "Limits" in THESIS.md).
 Without them the top of the range is 8.65M (June 2026). The file is frozen, so the threshold stays at 10.38M, which
@@ -58,12 +72,15 @@ is the harder of the two for the prediction to stay above; `docs/summary.json` p
 `predictions.baselines`. Months before the range were higher, 11.27M in November 2025 and 12.07M in December 2024:
 the range is the nine months before the step, the same for all the metrics of rule 1. The first 11 days of B2's
 window were in the census when the file was frozen: self-paid transactions ran at 356 thousand a day, a rate of
-10.68M a month, 3% above the threshold and 12% below October's rate. The margin is thin. The rate was worked out
+10.68M a month, 3% above the threshold and 12% below October's rate. Those days hold a one-off of dormant accounts on
+10 November of the kind taken out of February: with the same filter, 347 thousand a day and 10.41M a month, 0.3%
+above the threshold. The margin is thin. The rate was worked out
 after the file was frozen, so it played no part in the choice of the threshold.
 
 A second note, on B1. The accounts it counts turned out to include players of a reward game who paid their own fees:
-up to 15,162 of the 27,078 a year ago; the game's calls go through a relayer now (see "Who pays, and how often" in
-THESIS.md). That
+up to 15,162 of the 27,078 a year ago called the game themselves, and up to 9,110 acted through its relayer and paid
+for something else (how many are in both groups the tables do not say); the game's calls go through the relayer now
+(see "Who pays, and how often" in THESIS.md). That
 changes how the year before is read, not the threshold. The frozen statement of B1 leaves one thing unsaid: it
 counts accounts outside the reward apps' namespaces (`.kaiching`, `.tg`), as the 7,201 does. The move was over before the low: Meteor fully sponsored
 14,667 accounts in August 2026 and 15,409 in October, against 7,748 and 8,677 a year earlier, and in the keyless
@@ -75,8 +92,10 @@ A third note, on what the data already held when the file was frozen. It ran thr
 seven days to 17 November, so one of its seven days was known, and the first 11 days of November had averaged
 $129.7M a day, 45% above A1's threshold. B4 is about January, but the same eleven days of the census pointed its
 way: HOT's namespace was sending 196 thousand transactions a day against 100 thousand in October (see "Evidence
-against" in THESIS.md). Neither figure set a threshold: A1's is the top of the range before the September step,
-B4's is the point where the two groups are equal.
+against" in THESIS.md), and October was HOT's lowest month, with a new relayer taking over from September. The "43%
+vs 41%" B4 starts from is October too, a month in which the reward apps' share was close to its low (34% of
+transactions by namespace, against 45% to 56% a month from April to August). Neither figure set a threshold: A1's is
+the top of the range before the September step, B4's is the point where the two groups are equal.
 
 ## Scoring
 

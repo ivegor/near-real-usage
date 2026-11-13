@@ -26,13 +26,17 @@ SOURCES = {
     "nearblocks_charts": NEARBLOCKS_CHARTS_URL,
     "defillama_intents": DEFILLAMA_INTENTS_URL,
 }
+# Seconds to wait for a connection, then for each part of the reply. A host that does not answer at all is given up on
+# after the first, so the fall-back to the committed copies takes well under a minute per source instead of minutes;
+# a slow but working reply still gets the second.
+TIMEOUT = (10, 60)
 
 
 def _fetch_json(url: str, retries: int = 3) -> dict:
     last_err: Exception | None = None
     for attempt in range(retries):
         try:
-            r = requests.get(url, timeout=60, headers={"User-Agent": "near-real-usage-thesis"})
+            r = requests.get(url, timeout=TIMEOUT, headers={"User-Agent": "near-real-usage-thesis"})
             r.raise_for_status()
             return r.json()
         except Exception as e:  # network hiccups, rate limits
@@ -99,6 +103,7 @@ NUMERIC_FIELDS = {
     "deleted_accounts": "deleted_accounts",
     "new_contracts": "new_contracts",
     "active_contracts": "active_contracts",
+    "gas_used": "gas_used",
 }
 
 

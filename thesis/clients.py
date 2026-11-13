@@ -5,6 +5,7 @@ BigQuery console: columns m, sec, cells). Everything here is a full count for a 
 """
 from __future__ import annotations
 
+import zlib
 from pathlib import Path
 
 import numpy as np
@@ -44,6 +45,11 @@ EXCHANGE = "Ref Finance / Rhea (DEX, lending)"
 # its only caller). They are not in the exchange's list, which is frozen with prediction B4 like the groups, so the
 # figures with them filed under the exchange are published next to the frozen ones.
 EXCHANGE_BOT_TARGETS = ("pyth-oracle.near", "acc.toalice.near")
+# The same kind of contract in this year's "Other" row: aggregate-oracle.near, called by 8 implicit accounts with
+# report_pyth_pro_prices. Its owner is not named in the tables; the keyless sample has one call of the same method to
+# agg-oracle.stg.ref-dev-team.near, the exchange's staging copy, so the link to the exchange is read from a contract's
+# name and is weaker than for the two above. The figures with it are a further variant, not a replacement.
+EXCHANGE_BOT_TARGETS_BY_NAME = ("aggregate-oracle.near",)
 # Meteor's reward game, Harvest Moon. A year ago its players called the game contract themselves and paid the fee; now
 # Meteor's relayer submits those calls. A player who is still there moved from "self-paying" to "sponsored", so the fall
 # of regular self-paying accounts cannot be read as users leaving (see segments.add_reward_game_bound). How many of
@@ -86,6 +92,13 @@ def load(path: Path | None = None) -> dict | None:
             keys = ["txs", "actors", "heavy_actors", "heavy_txs", "top10_txs", "top25_txs", "top100_txs", "n50", "n80"]
             month["conc"] = dict(zip(keys, map(int, parts[0])))
     return out
+
+
+def via_row_of(month: dict, via: str) -> dict | None:
+    """One row of a month's "via" table: transactions received and the distinct accounts behind them."""
+    v = month["via"]
+    hit = v[v["via"] == via]
+    return {"transactions": int(hit["txs"].iloc[0]), "accounts": int(hit["actors"].iloc[0])} if len(hit) else None
 
 
 def by_app(month: dict) -> pd.Series:
@@ -164,6 +177,25 @@ def summarize(data: dict) -> dict:
         if ex["prior"] + bots["prior"] else float("nan"),
         "finance_pct_change_with_them": ((fin["latest"] + bots["latest"]) / (fin["prior"] + bots["prior"]) - 1) * 100
         if fin["prior"] + bots["prior"] else float("nan")}
+    both_years = EXCHANGE_BOT_TARGETS + EXCHANGE_BOT_TARGETS_BY_NAME
+    named_bots = {k: int(data[m]["via"].loc[data[m]["via"]["via"].isin(both_years), "txs"].sum()) for k, m in both}
+    out["exchange_bot_targets_with_the_oracle_by_name"] = {
+        "contracts": list(both_years), **named_bots,
+        "exchange_pct_change_with_them": ((ex["latest"] + named_bots["latest"]) / (ex["prior"] + named_bots["prior"]) - 1) * 100
+        if ex["prior"] + named_bots["prior"] else float("nan"),
+        "finance_pct_change_with_them": ((fin["latest"] + named_bots["latest"]) / (fin["prior"] + named_bots["prior"]) - 1) * 100
+        if fin["prior"] + named_bots["prior"] else float("nan")}
+    # Callers of the financial group's contracts that are in both months' lists: the accounts behind the transactions.
+    # A contract's callers cannot be added to another's (one account calls several), so they are given one by one.
+    rows = []
+    for v in [x for app in FINANCE_APPS for x in APPS[app]]:
+        a, b = via_row_of(data[prior], v), via_row_of(data[latest], v)
+        if a and b:
+            rows.append({"contract": v, "callers": {"prior": a["accounts"], "latest": b["accounts"]},
+                         "transactions": {"prior": a["transactions"], "latest": b["transactions"]},
+                         "callers_pct_change": (b["accounts"] / a["accounts"] - 1) * 100 if a["accounts"] else float("nan"),
+                         "transactions_pct_change": (b["transactions"] / a["transactions"] - 1) * 100 if a["transactions"] else float("nan")})
+    out["finance_contract_callers"] = sorted(rows, key=lambda r: -r["callers"]["prior"])
     # The "Other contracts in the top 40" row without Ember, contract by contract: is it the same activity in both months?
     named = set(_APP_OF) | set(EMBER)
     rest = {k: data[m]["via"][~data[m]["via"]["via"].isin(named)] for k, m in both}
@@ -174,6 +206,9 @@ def summarize(data: dict) -> dict:
     side = {k: data[m]["via"][data[m]["via"]["via"].isin(REWARD_SIDE_CONTRACTS_OUTSIDE_NAMESPACES)] for k, m in both}
     out["reward_side_direct_calls"] = {
         "contracts": list(REWARD_SIDE_CONTRACTS_OUTSIDE_NAMESPACES),
+        "outside_the_40": {k: {"contracts": len(set(REWARD_SIDE_CONTRACTS_OUTSIDE_NAMESPACES) - set(data[m]["via"]["via"])),
+                               "transactions_at_most": len(set(REWARD_SIDE_CONTRACTS_OUTSIDE_NAMESPACES) - set(data[m]["via"]["via"]))
+                               * int(data[m]["via"]["txs"].min())} for k, m in both},
         **{k: {"transactions": int(side[k]["txs"].sum()),
                "by_contract": {r.via: {"transactions": int(r.txs), "accounts": int(r.actors)} for r in side[k].itertuples()}}
            for k, _ in both}}
@@ -280,6 +315,9 @@ def add_three_parts(cl: dict, kaiching_namespace_txs_prior: float) -> None:
         "rest": change({k: other[k] + tail[k] for k in keys}),
         # the same without the two contracts the exchange's own bots called (see EXCHANGE_BOT_TARGETS)
         "rest_without_exchange_bot_targets": change({k: other[k] + tail[k] - bots.get(k, 0) for k in keys}),
+        # and without this year's oracle as well (EXCHANGE_BOT_TARGETS_BY_NAME)
+        "rest_without_exchange_bot_targets_and_the_oracle_by_name": change(
+            {k: other[k] + tail[k] - (cl.get("exchange_bot_targets_with_the_oracle_by_name") or {}).get(k, 0) for k in keys}),
         "other_top_40_without_ember": change(other),
         "outside_top_40_without_kaiching": change(tail),
     }
@@ -333,7 +371,88 @@ def add_failing_senders(cl: dict, data: dict, window: tuple[str, str] | None = N
         # and with the two contracts the exchange's own bots called a year earlier filed with the exchange as well
         "finance_pct_change_without_them_and_with_the_exchange_bot_targets": change(
             fin["latest"] - total + bots.get("latest", 0), fin["prior"] + bots.get("prior", 0)),
+        "finance_pct_change_without_them_and_with_the_oracle_by_name": change(
+            fin["latest"] - total + (cl.get("exchange_bot_targets_with_the_oracle_by_name") or {}).get("latest", 0),
+            fin["prior"] + (cl.get("exchange_bot_targets_with_the_oracle_by_name") or {}).get("prior", 0)),
     }
+
+
+def sampled_per_day(rows: pd.DataFrame, hit: pd.Series, per_day: float, rng: np.random.Generator, n_boot: int = 4000) -> dict:
+    """Transactions a day of the sampled transactions marked by `hit`, with a 95% interval that resamples whole blocks.
+
+    The share of the sample times the aggregator's transactions a day for the same days estimates the count; blocks
+    are resampled, not transactions, because the transactions of one block are not independent. The figures are
+    rounded to whole transactions: they are estimates from a few hundred transactions at most.
+    """
+    blocks = rows.groupby("height").size()
+    num = hit.groupby(rows["height"]).sum().reindex(blocks.index).to_numpy(float)
+    den = blocks.to_numpy(float)
+    pick = rng.integers(0, len(den), size=(n_boot, len(den)))
+    lo, hi = np.percentile(num[pick].sum(axis=1) / den[pick].sum(axis=1), [2.5, 97.5])
+    return {"per_day": int(round(float(hit.mean()) * per_day)), "per_day_ci95": [int(round(lo * per_day)), int(round(hi * per_day))],
+            "sampled": int(hit.sum())}
+
+
+SAMPLE_PARTS = {"finance": FINANCE_APPS, "reward_apps": REWARD_APPS,
+                # the finance group in two parts: what moves with trading and what moves with cross-chain flows
+                "exchange_and_tokens": (EXCHANGE, "Token contracts (wNEAR, USDC, USDT)"),
+                "intents_and_bridges": ("NEAR Intents", "Bridges, Aurora, chain signatures")}
+
+
+def sampled_periods(sample: pd.DataFrame, label: str, periods: list[tuple[pd.Timestamp, pd.Timestamp]], daily: pd.DataFrame,
+                    groups: dict[str, set], seed: int, extra: dict[str, pd.Series] | None = None) -> list[dict]:
+    """The groups of one window of the keyless sample over the given periods (first and last day of each).
+
+    `extra` holds further marks of the sampled transactions (True or False for each row), estimated the same way. The
+    resampling of each estimate is seeded by the period and the group's name, so that the same group over the same
+    days gets the same interval wherever it is published.
+    """
+    via = pd.Series(np.where(sample["relayed"], "relayer:" + sample["signer"], sample["target"]), index=sample.index)
+    day = pd.to_datetime(sample["ts"], unit="ns").dt.normalize()
+    rows_all = sample[sample["window"] == label]
+    out = []
+    for a, b in periods:
+        rows = rows_all[(day[rows_all.index] >= a) & (day[rows_all.index] <= b)]
+        span = daily.loc[a:b, "txns"].dropna()
+        if rows.empty or span.empty:
+            continue
+        per_day = float(span.mean())
+        cell = {"from": str(a.date()), "through": str(b.date()), "days": int(len(span)), "sample_transactions": int(len(rows)),
+                "blocks": int(rows["height"].nunique()), "all_transactions_per_day": int(round(per_day))}
+        def rng(name: str) -> np.random.Generator:
+            return np.random.default_rng([seed, a.toordinal(), b.toordinal(), zlib.crc32(name.encode())])
+
+        for name, vias in groups.items():
+            cell[name] = sampled_per_day(rows, via[rows.index].isin(vias), per_day, rng(name))
+        for name, mark in (extra or {}).items():
+            cell[name] = sampled_per_day(rows, mark[rows.index].astype(bool), per_day, rng(name))
+        out.append(cell)
+    return out
+
+
+def sampled_months(sample: pd.DataFrame, windows: dict, daily: pd.DataFrame, seed: int = 0, split: str | None = None) -> dict:
+    """The groups of the keyless sample month by month inside each window: a calendar month cut to the window's days.
+
+    A 90-day window that starts in mid-August holds the second half of that month, so the sample says something about
+    the weeks before the price rally of September 2026, and about the same weeks a year earlier. With `split` (a month,
+    the step month of the predictions), each window is also cut in two there: the days before it and the days from it.
+    """
+    groups = {name: {v for app in group for v in APPS[app]} for name, group in SAMPLE_PARTS.items()}
+    out: dict = {"by_month": {}, "split": {}}
+    for label, w in sorted(windows.items()):
+        start, end = pd.Timestamp(w["start"]), pd.Timestamp(w["end"])
+        months = list(pd.period_range(start, end, freq="M"))
+        cells = sampled_periods(sample, label, [(max(start, m.start_time), min(end, m.end_time.normalize())) for m in months],
+                                daily, groups, seed)
+        out["by_month"][label] = {c["from"][:7]: c for c in cells}
+        if split:
+            cut = pd.Period(split, "M").start_time - pd.DateOffset(years=0 if label == "recent" else 1)
+            if start < cut <= end:
+                before, after = sampled_periods(sample, label, [(start, cut - pd.Timedelta(days=1)), (cut, end)], daily, groups, seed)
+                out["split"][label] = {"before": before, "from": after,
+                                       "pct_change": {name: (after[name]["per_day"] / before[name]["per_day"] - 1) * 100
+                                                      if before[name]["per_day"] else float("nan") for name in groups}}
+    return out
 
 
 def sample_view(sample: pd.DataFrame, windows: dict, daily: pd.DataFrame, seed: int = 0, n_boot: int = 4000) -> dict | None:

@@ -116,3 +116,90 @@ def monthly(daily: pd.DataFrame, fees: pd.DataFrame, months: int = 12) -> pd.Dat
     price.index = price.index.to_period("M")
     m["new_supply_value"] = eom.diff().reindex(m.index) * price.reindex(m.index)
     return m.loc[:last].tail(months)
+
+
+def windows(daily: pd.DataFrame, fees: pd.DataFrame, step_day: str | None = None, days: int = 90,
+            threshold_month_usd: float | None = None, threshold_month: str | None = None,
+            reference: tuple[str, str] | None = None) -> dict | None:
+    """How much the buyback coverage depends on the window, and the buybacks in NEAR as well as in USD.
+
+    The coverage quoted in THESIS.md is one 90-day window ending on the last day both series cover. Here it is set
+    against every 90-day window since the buybacks began, against other lengths ending on the same day and against
+    calendar months, all by the method of summarize (annualised buybacks over the annualised value of net new supply
+    at the window's mean price). The captured share of gross fees is given for the same windows.
+
+    `step_day` (autumn.intents_step) splits the programme in two for the buybacks per day. A buyback threshold in USD
+    can be met by the price alone, so for `threshold_month_usd` the mean price at which the last 30 days' buybacks in
+    NEAR, over the days of `threshold_month`, reach the threshold is published too.
+    """
+    last_fee_day = covered_through(fees)
+    if last_fee_day is None or "total_supply_yocto" not in daily:
+        return None
+    end = min(daily.index.max(), last_fee_day)
+    supply = daily["total_supply_yocto"].dropna() / YOCTO
+    price = daily["price_usd"].where(daily["price_usd"] > 0)
+    nonzero = fees["holders_revenue"][fees["holders_revenue"] > 0]
+    if nonzero.empty:
+        return None
+    start = nonzero.index.min()
+
+    def cover(a: pd.Timestamp, b: pd.Timestamp) -> float:
+        bought = float(fees["holders_revenue"].loc[a:b].sum())
+        new = float(supply.asof(b) - supply.asof(a - pd.Timedelta(days=1))) * float(price.loc[a:b].mean())
+        return bought / new if new else float("nan")
+
+    def captured(a: pd.Timestamp, b: pd.Timestamp) -> float:
+        f = fees.loc[a:b]
+        return float(f["revenue"].sum() / f["fees"].sum()) if f["fees"].sum() else float("nan")
+
+    rolling = pd.Series({b: cover(b - pd.Timedelta(days=days - 1), b)
+                         for b in pd.date_range(start + pd.Timedelta(days=days - 1), end, freq="D")}, dtype=float)
+    latest = float(rolling.iloc[-1])
+    out: dict = {"window_days": days, "end": str(end.date()), "programme_start": str(start.date()),
+                 f"rolling_{days}d": {"windows": int(len(rolling)), "latest": latest,
+                                      "rank_of_the_latest": int((rolling > latest).sum()) + 1,
+                                      "median": float(rolling.median()), "min": float(rolling.min()), "max": float(rolling.max())}}
+    if step_day:
+        before = rolling[rolling.index < pd.Timestamp(step_day)]
+        if len(before):
+            out[f"rolling_{days}d"]["ending_before_the_step"] = {"windows": int(len(before)), "min": float(before.min()),
+                                                                  "max": float(before.max())}
+    lengths = {}
+    for n in (7, 30, 60, 90, 180):
+        a = end - pd.Timedelta(days=n - 1)
+        if a >= start:
+            lengths[str(n)] = {"coverage": cover(a, end), "captured_share": captured(a, end),
+                               "buyback_usd_annualized": float(fees["holders_revenue"].loc[a:end].sum() * 365 / n)}
+    n_all = int((end - start).days) + 1
+    lengths["programme"] = {"days": n_all, "coverage": cover(start, end), "captured_share": captured(start, end),
+                            "buyback_usd_annualized": float(fees["holders_revenue"].loc[start:end].sum() * 365 / n_all)}
+    out["by_length"] = lengths
+    months = {}
+    for m in pd.period_range(start, end, freq="M"):
+        a, b = max(start, m.start_time), min(end, m.end_time.normalize())
+        bb = fees["holders_revenue"].loc[a:b]
+        months[str(m)] = {"from": str(a.date()), "through": str(b.date()), "coverage": cover(a, b), "captured_share": captured(a, b),
+                          "buyback_usd_per_day": float(bb.mean()), "buyback_near_per_day": float((bb / price.reindex(bb.index)).mean()),
+                          "price_usd": float(price.loc[a:b].mean())}
+    out["by_month"] = months
+    if step_day:
+        day = pd.Timestamp(step_day)
+        bb = fees["holders_revenue"].loc[start:end]
+        near = bb / price.reindex(bb.index)
+        a_usd, b_usd = float(bb.loc[:day - pd.Timedelta(days=1)].mean()), float(bb.loc[day:].mean())
+        a_near, b_near = float(near.loc[:day - pd.Timedelta(days=1)].mean()), float(near.loc[day:].mean())
+        out["buybacks_per_day_before_and_from_the_step"] = {
+            "step_day": step_day, "usd": [a_usd, b_usd], "near": [a_near, b_near],
+            "usd_ratio": b_usd / a_usd if a_usd else float("nan"), "near_ratio": b_near / a_near if a_near else float("nan"),
+            "last_30_days_near": float(near.loc[end - pd.Timedelta(days=29):end].mean())}
+        if threshold_month_usd and threshold_month:
+            d = pd.Period(threshold_month, "M").days_in_month
+            pace = out["buybacks_per_day_before_and_from_the_step"]["last_30_days_near"]
+            out["threshold_price"] = {"month": threshold_month, "threshold_usd": float(threshold_month_usd),
+                                      "near_per_day": pace, "mean_price_that_meets_it": float(threshold_month_usd / (pace * d)),
+                                      "price_on_the_step_day": float(price[day])}
+    if reference:
+        a, b = pd.Period(reference[0], "M").start_time, pd.Period(reference[1], "M").end_time.normalize()
+        out["reference_months"] = {"from": reference[0], "through": reference[1], "captured_share": captured(a, b),
+                                   "coverage": cover(a, b)}
+    return out

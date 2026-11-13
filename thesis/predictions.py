@@ -124,6 +124,24 @@ def step(daily: pd.DataFrame, fees: pd.DataFrame | None = None, census: pd.DataF
                 # an average below the year before is not every month below it: the months that were above, by how much
                 "range_months_above_a_year_earlier": {m: float((now[m] / then[e] - 1) * 100)
                                                       for m, e in zip(months, earlier) if now[m] > then[e]}})
+            # the same comparison by account family: which family the change of the whole series comes from
+            core_rows = census[~census["family"].isin(["kaiching", "tg", "sweat"])]
+            fam = (core_rows.assign(d=core_rows["txs"] - core_rows["relayed_txs"])
+                   .pivot_table(index="month", columns="family", values="d", aggfunc="sum").fillna(0))
+            woke_fam = (population.dormant_implicit(core_rows).assign(d=lambda x: x["txs"] - x["relayed_txs"])
+                        .groupby("month")["d"].sum().reindex(fam.index).fillna(0))
+            by_family = {}
+            for f in fam.columns:
+                a_, b_ = fam.loc[months, f], fam.loc[earlier, f]
+                by_family[f] = {"range_pct_change": float((a_.mean() / b_.mean() - 1) * 100) if b_.mean() else float("nan"),
+                                "range_change_txs": int(a_.sum() - b_.sum()),
+                                "range_months_below_a_year_earlier": int((a_.to_numpy() < b_.to_numpy()).sum())}
+            if "implicit" in fam.columns:
+                a_, b_ = (fam["implicit"] - woke_fam)[months], (fam["implicit"] - woke_fam)[earlier]
+                by_family["implicit"]["range_pct_change_without_dormant_implicit"] = (
+                    float((a_.mean() / b_.mean() - 1) * 100) if b_.mean() else float("nan"))
+            out["core_self_paid_txs"]["range_by_family"] = by_family
+            out["core_self_paid_txs"]["range_change_txs"] = int(now.sum() - then.sum())
     if seg is not None:
         s = segments.series(seg)
         out["regular_self_paying_accounts"] = pair(s["regular_accounts"])

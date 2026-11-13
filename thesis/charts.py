@@ -131,7 +131,8 @@ def _population_chart(pop: pd.DataFrame, summary: dict, out: Path) -> Chart:
     if quota and quota["months_within_a_thousandth_of_it"]:  # the same number of transactions every day is a job, not a crowd
         quota_note = (f" Its relayer submitted {quota['median_month_to_the_nearest_thousand']:,.0f} transactions a day, to within a "
                       f"thousandth, in {len(quota['months_within_a_thousandth_of_it'])} of its "
-                      f"{quota['months_with_relayed_transactions']} months in the census: a job with a daily quota.")
+                      f"{quota['months_with_relayed_transactions']} months in the census ({quota['first_month']} to "
+                      f"{quota['last_month']}): a job with a daily quota.")
     check, checked = ps.get("totals_check"), ""
     if check:  # the same transactions counted by a second, independent source
         short = [abs(v["share"]) * 100 for v in check["differ"].values()]
@@ -175,7 +176,9 @@ def _population_chart(pop: pd.DataFrame, summary: dict, out: Path) -> Chart:
         f"({_pct(n['three_month_mean']['accounts']['pct_change'])} on three-month means).",
         "sql/account_age.sql on the NEAR BigQuery public dataset (all transactions, 482.64 GB scanned, result in "
         "data/bq/account_age.csv). The actor of a relayed transaction is the user, not the relayer. Core = accounts outside "
-        f"the kaiching, .tg and .sweat namespaces. The scan ends on {ps['query_end']}, so the last month shown is {lm}. "
+        f"the kaiching, .tg and .sweat namespaces. The scan ends on {ps['query_end']}, so the last month shown is {lm}; the "
+        f"table starts in {ps.get('table_first_month', ps['first_month'])}, which has no month before it to say which accounts "
+        f"returned, so every series starts in {ps['first_month']}. "
         "In February and March 2026 millions of existing implicit accounts sent one transaction each; those two months "
         "are off the scale in the middle panel." + checked,
     )
@@ -248,13 +251,20 @@ def _segments_chart(seg: pd.DataFrame, sg: dict, out: Path) -> Chart:
     game, game_note = sg.get("regular_accounts_reward_game_bound"), ""
     if game:  # part of that fall is one game changing who pays, not accounts leaving
         game_note = (f" That fall is not a clean count of users leaving: up to {game['game_players_prior']:,} of last year's accounts "
-                     f"were players of the Meteor wallet's reward game, who paid their own fees then; its relayer submits the "
-                     f"game's calls now.")
+                     f"called the Meteor wallet's reward game themselves and paid the fees; its relayer submits the game's calls now.")
         clean = game.get("without_the_game")
-        if clean:  # the same players can still be inside this year's count, so the bound is applied to both months
-            game_note += (f" Up to {clean['players_still_self_paying_latest_at_most']:,} of this year's accounts still act through "
-                          f"that relayer and pay for a transaction of their own. Without the game's players the change lies "
-                          f"between {_pct(clean['pct_change_low'])} and {_pct(clean['pct_change_high'])}.")
+        if clean:  # players are inside the self-paying count of both years, so one rule takes them out of both
+            then, now = (clean["players"][k]["paying_through_the_relayer"] for k in ("prior", "latest"))
+            high, both_years = clean["pct_change_high"], clean.get("relayer_term_only")
+            game_note += (f" In either year an account that acts through that relayer and pays for a transaction of its own can "
+                          f"be a player too: up to {then:,} a year ago and {now:,} now.")
+            if both_years:  # the one term counted in both years, then what the direct callers of last year add
+                game_note += (f" Without those, the players counted in both years, the change lies between "
+                              f"{_pct(both_years['pct_change_low'])} and {_pct(both_years['pct_change_high'])}.")
+            game_note += (f" The direct callers are counted a year ago only: with them out as well the high end is "
+                          f"{_pct(high[segments.OVERLAP[0]])} or more ({_pct(high[segments.OVERLAP[1]])} if none of last year's "
+                          f"{then:,} called the game directly), and the low end, {_pct(clean['pct_change_low'])}, is open below, "
+                          f"because who calls the game directly now the tables do not say.")
         else:
             game_note += (f" With all of them taken out of last year's count the change would be "
                           f"{_pct(game['pct_change_if_all_of_them_were_regular'])}.")
@@ -380,6 +390,12 @@ def _takeaway(slug: str, s: dict) -> str:
         if slug == "value_capture":
             v = s["value_capture"]
             first = f"Buybacks funded by NEAR Intents cover {v['buyback_coverage_of_new_supply'] * 100:.0f}% of the new NEAR issued."
+            lengths = (v.get("windows") or {}).get("by_length")
+            if lengths:  # one window is not the figure: the range over windows of other lengths ending on the same day
+                cov = [x["coverage"] for x in lengths.values()]
+                first = (f"Buybacks funded by NEAR Intents cover {v['buyback_coverage_of_new_supply'] * 100:.0f}% of the new NEAR "
+                         f"issued over the last 90 days, and {min(cov) * 100:.0f}% to {max(cov) * 100:.0f}% over windows from a "
+                         f"week to the whole programme.")
             w = v.get("wallets")
             if not w:
                 return first
@@ -620,6 +636,12 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
                 was, rng = v["month_before_range"], st["reference_range"]
                 rally += (f" A year earlier the base was still rising: {was['month']} already averaged ${was['value'] / 1e6:,.1f}M "
                           f"a day, and from {rng['first']} to {rng['last']} volume averaged ${v['range_mean'] / 1e6:,.1f}M.")
+        step_day = (summary.get("autumn") or {}).get("intents_step")
+        if step_day:  # by day the step came before the rally, not in the same month
+            rally += (f" By day it came earlier: volume went from ${step_day['volume']['day_before'] / 1e6:,.0f}M to "
+                      f"${step_day['volume']['day'] / 1e6:,.0f}M on {step_day['day']}, at a price of "
+                      f"${step_day['price_usd']['day']:.2f}, and its 7-day mean has stayed above ${step_day['line'] / 1e6:,.1f}M since "
+                      f"{step_day['weekly_mean_above_it_since']}.")
         so_far = (summary.get("month_to_date_yoy") or {}).get("intents_volume_usd")
         if so_far:  # the days of the current month already in hand, against the same days a year earlier
             rally += (f" From {so_far['from']} to {so_far['through']} it averaged ${so_far['recent'] / 1e6:,.1f}M a day against "

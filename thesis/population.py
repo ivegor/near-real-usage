@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 BQ_DIR = Path(__file__).resolve().parent.parent / "data" / "bq"
@@ -158,6 +159,8 @@ def summarize(df: pd.DataFrame, query_end: str | None = None) -> dict:
     prior3 = [(pd.Period(m, "M") - 12).strftime("%Y-%m") for m in last3]
     out: dict = {"source": "sql/account_age.sql on bigquery-public-data.crypto_near_mainnet_us (482.64 GB scanned)",
                  "query_end": query_end, "latest_month": latest, "prior_month": prior, "first_month": months[0],
+                 # the table starts a month earlier: that month has no month before it, so every series leaves it out
+                 "table_first_month": str(sorted(df["month"].unique())[0]),
                  "three_months": {"latest": last3, "prior": prior3}, "segments": {}}
     for name in ("all", "all_ex_kaiching", "core", "near", "implicit", "kaiching", "tg", "sweat"):
         full = monthly(segment(df, name))
@@ -190,6 +193,23 @@ def summarize(df: pd.DataFrame, query_end: str | None = None) -> dict:
         for col in ("accounts", "txs")
     }
     out["near_share_of_all_txs"] = {k: seg["near"]["txs"][k] / seg["all"]["txs"][k] for k in ("latest", "prior")}
+    # The reward apps' namespaces as a share of all transactions, month by month (the unfinished month too: a share of
+    # the same days is a share): one month's share is read against the months around it.
+    every_month = sorted(df["month"].unique())[1:]
+    all_t = df.groupby("month")["txs"].sum().reindex(every_month)
+    core_t = segment(df, "core").groupby("month")["txs"].sum().reindex(every_month).fillna(0)
+    by_month = (1 - core_t / all_t)
+    out["reward_namespaces_share_of_txs_by_month"] = {m: float(v) for m, v in by_month.items()}
+    # Transactions a day of each reward app's namespace, month by month (the unfinished month over the days scanned): a
+    # rise measured from one month is read against the months before it.
+    scan_end = pd.Timestamp(query_end)
+    days_in = {m: (int(scan_end.day) if pd.Period(m, "M") == scan_end.to_period("M") else pd.Period(m, "M").days_in_month)
+               for m in every_month}
+    out["reward_namespace_txs_per_day_by_month"] = {
+        f: {m: float(v / days_in[m]) for m, v in df[df["family"] == f].groupby("month")["txs"].sum().reindex(every_month).fillna(0).items()}
+        for f in REWARD_FAMILIES}
+    out["reward_namespaces_share_of_txs_windows"] = {
+        str(n): float(1 - core_t[months[-n:]].sum() / all_t[months[-n:]].sum()) for n in (1, 3, 6)}
     out["sweat_share_of_all_txs"] = seg["sweat"]["txs"]["latest"] / seg["all"]["txs"]["latest"]
     core_m = monthly(segment(df, "core")).reindex(months)
     out["core_accounts_last_4_months"] = {m: float(v) for m, v in core_m["accounts"].tail(4).items()}
@@ -213,6 +233,43 @@ def summarize(df: pd.DataFrame, query_end: str | None = None) -> dict:
         "change_by_window_without_them": _change_by_window(series - woke),
     }
 
+    # The window of twelve months needs the table's first month as the year-earlier base. That month is left out of the
+    # series because it has no month before it, which matters for returning accounts, not for transactions.
+    every = monthly(segment(df, "core"))["direct_txs"]
+    twelve_now = months[-12:]
+    twelve_then = [(pd.Period(x, "M") - 12).strftime("%Y-%m") for x in twelve_now]
+    if len(twelve_now) == 12 and all(x in every.index for x in twelve_then):
+        out["core_direct_txs_change_12_months_with_the_tables_first_month"] = {
+            "months": [twelve_now[0], twelve_now[-1]], "base": [twelve_then[0], twelve_then[-1]],
+            "pct_change": float((every[twelve_now].mean() / every[twelve_then].mean() - 1) * 100)}
+
+    # Self-paid core transactions by account family: which family a change of the whole series comes from.
+    fam_direct = segment(df, "core").assign(direct=lambda x: x["txs"] - x["relayed_txs"]).pivot_table(
+        index="month", columns="family", values="direct", aggfunc="sum").reindex(months).fillna(0)
+    out["core_direct_txs_by_family"] = {
+        f: {"monthly": {m: int(v) for m, v in fam_direct[f].items()}, "change_by_window": _change_by_window(fam_direct[f])}
+        for f in fam_direct.columns}
+
+    # Who sends the core's transactions, by payer: the share of accounts older than a year among self-paid and among
+    # relayed transactions, and the overall share at last year's mix of the two. An overall share can fall because the
+    # mix changed while the share inside each part rose.
+    core_rows = segment(df, "core")
+    old_rows = core_rows[core_rows["age"].isin(OLDER_THAN_1Y)]
+
+    def shares(ms: list[str]) -> dict:
+        t, o = core_rows[core_rows["month"].isin(ms)], old_rows[old_rows["month"].isin(ms)]
+        txs, rel, otx, orel = t["txs"].sum(), t["relayed_txs"].sum(), o["txs"].sum(), o["relayed_txs"].sum()
+        return {"all": float(otx / txs) if txs else float("nan"),
+                "self_paid": float((otx - orel) / (txs - rel)) if txs - rel else float("nan"),
+                "relayed": float(orel / rel) if rel else float("nan"),
+                "relayed_part_of_core_txs": float(rel / txs) if txs else float("nan")}
+
+    if prior in df["month"].values and all(x in df["month"].values for x in prior3):
+        by = {"latest": shares([latest]), "prior": shares([prior]), "three_months_latest": shares(last3), "three_months_prior": shares(prior3)}
+        mix = by["prior"]["relayed_part_of_core_txs"]
+        by["latest_at_prior_mix"] = by["latest"]["self_paid"] * (1 - mix) + by["latest"]["relayed"] * mix
+        out["old_tx_share_by_payer"] = by
+
     # One-off bursts of accounts: implicit accounts that already existed, were not active the month before and sent
     # exactly one transaction. An ordinary month has about a hundred thousand of them. A burst is a month with more
     # than ten times the median month: an order of magnitude, not a tuned line.
@@ -221,11 +278,35 @@ def summarize(df: pd.DataFrame, query_end: str | None = None) -> dict:
     usual, bursts = float(one.median()), []
     for m in (one[one > 10 * usual].index if usual > 0 else []):
         rows = wake[wake["month"] == m]
+        # accounts first seen the month before that were active in it and sent one transaction now: the rule above
+        # counts only accounts that were not active the month before, so a second group of this kind passes it
+        young = df[(df["family"] == "implicit") & (df["age"] == "lt30") & (df["prev_month"] == "returning") & (df["month"] == m)]
         bursts.append({"month": m, "accounts": int(one[m]), "times_the_median_month": float(one[m] / usual),
                        "older_than_2y_share": float(rows.loc[rows["age"] == "ge2y", "single_tx_accounts"].sum() / one[m]),
-                       "relayed_tx_share": float(rows["relayed_txs"].sum() / rows["txs"].sum())})
+                       "relayed_tx_share": float(rows["relayed_txs"].sum() / rows["txs"].sum()),
+                       "first_seen_the_month_before_single_tx_accounts": int(young["single_tx_accounts"].sum()),
+                       "first_seen_the_month_before_relayed_tx_share": float(young["relayed_txs"].sum() / young["txs"].sum())
+                       if young["txs"].sum() else float("nan")})
     out["implicit_one_transaction_bursts"] = {"median_month": usual, "bursts": bursts,
                                               "monthly": {m: int(v) for m, v in one.items()}}
+    # The same rule for named accounts. The filter of the self-paid series (dormant_implicit) has the shape of the
+    # February burst and does not take these out; what they change in the windows is published next to it.
+    named = df[(df["family"] == "near") & (df["age"] != "m0") & (df["prev_month"] == "not_returning")]
+    one_named = named.groupby("month")["single_tx_accounts"].sum().reindex(months).fillna(0)
+    usual_named = float(one_named.median())
+    hit = [m for m in one_named.index if usual_named > 0 and one_named[m] > 10 * usual_named]
+    named_direct = monthly(named).reindex(months).fillna(0)["direct_txs"]
+    excess = pd.Series(0.0, index=series.index)
+    for m in hit:  # the self-paid transactions of that group above its median month
+        excess[m] = max(0.0, float(named_direct[m] - named_direct.median()))
+    out["named_one_transaction_bursts"] = {
+        "median_month": usual_named, "months": {m: int(one_named[m]) for m in hit},
+        "relayed_tx_share": {m: float(named[named["month"] == m]["relayed_txs"].sum() / named[named["month"] == m]["txs"].sum()) for m in hit},
+        "self_paid_txs_above_the_median_month": {m: int(excess[m]) for m in hit},
+        "change_by_window_without_them_and_the_dormant_implicit": _change_by_window(series - woke - excess)}
+    out["core_direct_txs_without_bursts_monthly"] = {
+        "without_dormant_implicit": {m: int(v) for m, v in (series - woke).items()},
+        "without_both": {m: int(v) for m, v in (series - woke - excess).items()}}
 
     # Is "more transactions per core account" a change in behaviour or in who is left? Hold the mix of account
     # types at last year's shares and apply this year's per-account rates.
@@ -246,12 +327,14 @@ def summarize(df: pd.DataFrame, query_end: str | None = None) -> dict:
 
     # KaiChing's relayed transactions per day of the month. People do not arrive in the same round number every day;
     # a job with a daily quota does. The level is the median month rounded to the nearest thousand, not a typed number.
+    # The months are those of every other series: the table's first month has no month before it and is left out.
     relayed = df[df["family"] == "kaiching"].groupby("month")["relayed_txs"].sum().reindex(months).fillna(0)
     per_day = pd.Series({m: v / pd.Period(m, "M").days_in_month for m, v in relayed.items() if v > 0}, dtype=float)
     if len(per_day):
         level = round(float(per_day.median()), -3)
         out["kaiching_relayed_txs_per_day"] = {
             "median_month_to_the_nearest_thousand": level, "months_with_relayed_transactions": int(len(per_day)),
+            "first_month": str(per_day.index[0]), "last_month": str(per_day.index[-1]),
             "months_within_a_thousandth_of_it": [m for m, v in per_day.items() if level and abs(v / level - 1) < 0.001],
             "per_day": {m: float(v) for m, v in per_day.items()},
             "in_the_month": {m: int(relayed[m]) for m in per_day.index}}
@@ -264,6 +347,15 @@ def summarize(df: pd.DataFrame, query_end: str | None = None) -> dict:
         out["partial_month"] = {"month": all_months[-1], "through": query_end,
                                 "accounts": {f: int(v) for f, v in part.items()},
                                 "latest_complete_accounts": {f: int(v) for f, v in full.items()}}
+        # what kind of accounts each reward app's namespace holds in those days: new or old, many or few transactions
+        rows = df[df["month"] == all_months[-1]]
+        out["partial_month"]["reward_namespaces"] = {
+            f: {"accounts": int(r["accounts"].sum()), "txs": int(r["txs"].sum()),
+                "txs_per_account": float(r["txs"].sum() / r["accounts"].sum()) if r["accounts"].sum() else float("nan"),
+                "older_than_1y_account_share": float(r[r["age"].isin(OLDER_THAN_1Y)]["accounts"].sum() / r["accounts"].sum())
+                if r["accounts"].sum() else float("nan"),
+                "single_tx_account_share": float(r["single_tx_accounts"].sum() / r["accounts"].sum()) if r["accounts"].sum() else float("nan")}
+            for f, r in ((f, rows[rows["family"] == f]) for f in REWARD_FAMILIES)}
         pace = _pace_so_far(df, months, all_months[-1], query_end)
         if pace:
             out["partial_month"]["core_direct_txs"] = pace
@@ -321,7 +413,38 @@ def _pace_so_far(df: pd.DataFrame, months: list[str], partial: str, query_end: s
     for key, m in (("latest_complete_month", months[-1]), ("same_month_a_year_earlier", (month - 12).strftime("%Y-%m"))):
         if m in per_day:
             out[key] = {"month": m, "per_day": per_day[m], "pct_change": (rate / per_day[m] - 1) * 100 if per_day[m] else float("nan")}
+    # The filter applied to February (dormant_implicit) applied to these days and to the months they are set against:
+    # a one-off of dormant accounts inside the days in hand would otherwise read as a pace.
+    core = segment(df, "core")
+    woke = monthly(dormant_implicit(core))
+    calm = (direct - woke["direct_txs"].reindex(direct.index).fillna(0))
+    calm_rate = float(calm[partial] / days)
+    calm_day = {m: float(calm[m] / pd.Period(m, "M").days_in_month) for m in months}
+    single = dormant_implicit(core).groupby("month")["single_tx_accounts"].sum()
+    out["without_dormant_implicit"] = {
+        "per_day": calm_rate, "whole_month_at_that_rate": calm_rate * month.days_in_month,
+        "dormant_implicit_single_tx_accounts": {partial: int(single.get(partial, 0)), months[-1]: int(single.get(months[-1], 0))},
+        **{key: {"month": m, "per_day": calm_day[m], "pct_change": (calm_rate / calm_day[m] - 1) * 100 if calm_day[m] else float("nan")}
+           for key, m in (("latest_complete_month", months[-1]), ("same_month_a_year_earlier", (month - 12).strftime("%Y-%m")))
+           if m in calm_day}}
     return out
+
+
+def signer_spike(daily: pd.DataFrame, partial: str, query_end: str) -> dict | None:
+    """The day of the unfinished month with the most signers, against the median day of the rest of those days.
+
+    A one-off of accounts that each sign one transaction shows in the aggregator's daily count of signers on the day it
+    happens; the census, being monthly, cannot date it.
+    """
+    if "active_accounts" not in daily:
+        return None
+    a = daily["active_accounts"].loc[pd.Period(partial, "M").start_time:pd.Timestamp(query_end)].dropna()
+    if len(a) < 3:
+        return None
+    day = a.idxmax()
+    rest = a.drop(day)
+    return {"date": str(day.date()), "signers": int(a[day]), "median_other_day": float(rest.median()),
+            "above_the_median_day": float(a[day] - rest.median())}
 
 
 def largest_daily_fall(df: pd.DataFrame, daily: pd.DataFrame) -> dict | None:
@@ -342,11 +465,13 @@ def largest_daily_fall(df: pd.DataFrame, daily: pd.DataFrame) -> dict | None:
     day = rel.idxmin()
     before = day - pd.Timedelta(days=1)
     k = df[df["family"] == "kaiching"].groupby("month")[["accounts", "txs", "relayed_txs"]].sum()
+    # accounts that appear in a transaction for the first time that month: for KaiChing, the accounts it created
+    first_seen = df[(df["family"] == "kaiching") & (df["age"] == "m0")].groupby("month")["accounts"].sum()
 
     def month(m: pd.Period) -> dict:
         row = k.loc[str(m)] if str(m) in k.index else pd.Series({"accounts": 0, "txs": 0, "relayed_txs": 0})
         return {"month": str(m), "accounts": int(row["accounts"]), "txs": int(row["txs"]), "relayed_txs": int(row["relayed_txs"]),
-                "txs_per_day": float(row["txs"] / m.days_in_month)}
+                "txs_per_day": float(row["txs"] / m.days_in_month), "first_seen_accounts": int(first_seen.get(str(m), 0))}
 
     out = {"date": str(day.date()), "day_before": str(before.date()),
            "txns": {"before": int(x[before]), "after": int(x[day])}, "pct_change": float(rel[day] * 100),
@@ -363,7 +488,7 @@ def largest_daily_fall(df: pd.DataFrame, daily: pd.DataFrame) -> dict | None:
     # after (a median is not moved by a burst of a few days), next to what KaiChing sent per day in the same two months.
     by_month = x.groupby(x.index.to_period("M")).median()
     lb, la = day.to_period("M") - 1, day.to_period("M") + 1
-    if lb in by_month.index and la in by_month.index:
+    if lb in by_month.index and la in by_month.index:  # (lb, la are used for the fees below as well)
         app = out["kaiching"]
         drop, less = float(by_month[lb] - by_month[la]), app["month_before"]["txs_per_day"] - app["month_after"]["txs_per_day"]
         out["median_day"] = {"month_before": float(by_month[lb]), "month_after": float(by_month[la]), "fall": drop,
@@ -371,7 +496,121 @@ def largest_daily_fall(df: pd.DataFrame, daily: pd.DataFrame) -> dict | None:
     if "active_accounts" in daily:
         a = daily["active_accounts"]
         out["active_accounts"] = {"before": int(a[before]), "after": int(a[day]), "pct_change": float((a[day] / a[before] - 1) * 100)}
+    if "active_contracts" in daily:
+        # NearBlocks' column `active_contracts` is not defined in the API's reply. On the one day the census has by action
+        # kind it is within a fraction of a percent of the users behind relayers, so it is read as tracking them, no
+        # more. Its fall over the two days is set against KaiChing's relayed transactions in the month of the fall: if
+        # they match, the relayer's last day is the day before the fall.
+        ac = daily["active_contracts"]
+        drop = int(ac[before] - ac[day])
+        k_rel = out["kaiching"]["month_of"]["relayed_txs"]
+        out["active_contracts"] = {"before": int(ac[before]), "after": int(ac[day]), "fall": drop,
+                                   "kaiching_relayed_txs_in_the_month_of": int(k_rel),
+                                   "fall_over_kaiching_relayed": drop / k_rel if k_rel else float("nan")}
+        if pd.Timestamp(ONE_DAY) in ac.index and ONE_DAY_CSV.exists():
+            users = one_day()["relayed_users"]
+            out["active_contracts"]["one_day"] = {"date": ONE_DAY, "value": int(ac[pd.Timestamp(ONE_DAY)]), "relayed_users": int(users),
+                                                  "ratio": float(ac[pd.Timestamp(ONE_DAY)] / users)}
+        # If the relayer's transactions all fell on the day before the fall, KaiChing is between its relayed
+        # transactions of that month and everything it sent in that month: a share of the one-day fall.
+        out["kaiching_share_of_the_fall_at_least"] = min(1.0, k_rel / fall) if fall > 0 else float("nan")
+        # The burst of sponsored accounts of the month before, dated: the run of days at the end of that month above its
+        # median day, and their transactions above the median of the days before the run. The column tracking relayed
+        # users is given over the same days.
+        prev = x[(x.index >= (day.to_period("M") - 1).start_time) & (x.index <= before)]  # the month before, to the day before
+        above = prev > prev.median()
+        run_start = None
+        for d_ in reversed(prev.index):
+            if not above[d_]:
+                break
+            run_start = d_
+        if run_start is not None and run_start > prev.index.min():
+            run = prev.loc[run_start:]
+            base = prev.loc[:run_start - pd.Timedelta(days=1)].median()
+            in_month = run[run.index.to_period("M") == day.to_period("M") - 1]
+            out["run_before_the_fall"] = {
+                "first": str(run_start.date()), "last": str(run.index.max().date()), "days": int(len(run)),
+                "median_day_before_it": float(base), "transactions_above_it": int((run - base).sum()),
+                "transactions_above_it_in_the_month_before": int((in_month - base).sum()),
+                "active_contracts_range": [int(ac.loc[run.index].min()), int(ac.loc[run.index].max())],
+                "active_contracts_range_before": [int(ac.loc[prev.index.min():run_start - pd.Timedelta(days=1)].min()),
+                                                  int(ac.loc[prev.index.min():run_start - pd.Timedelta(days=1)].max())]}
+    if "fees_usd" in daily and "price_usd" in daily:
+        # network fees in NEAR on the two days and on the median day of the months either side, as for transactions
+        f = (daily["fees_usd"] / daily["price_usd"].where(daily["price_usd"] > 0)).dropna()
+        med = f.groupby(f.index.to_period("M")).median()
+        out["fees_near"] = {"before": float(f[before]), "after": float(f[day])}
+        if lb in med.index and la in med.index:
+            out["fees_near"]["median_day"] = {"month_before": float(med[lb]), "month_after": float(med[la]),
+                                              "fall": float(med[lb] - med[la])}
+    if "new_accounts" in daily:
+        # the accounts created each day, on the two days and as a mean per day of the two months
+        n = daily["new_accounts"].dropna()
+        mean = {p: n[n.index.to_period("M") == p].mean() for p in (day.to_period("M") - 1, day.to_period("M"))}
+        out["new_accounts"] = {"before": int(n[before]), "after": int(n[day]),
+                               "per_day_month_before": float(mean[day.to_period("M") - 1]),
+                               "per_day_month_of": float(mean[day.to_period("M")])}
     return out
+
+
+def deletions(ps: dict, daily: pd.DataFrame) -> dict | None:
+    """The aggregator's count of deleted accounts in the months where the census finds accounts sending one transaction.
+
+    The census sees one-off bursts of accounts that send exactly one transaction in a month (the bursts of implicit
+    accounts in summarize, and KaiChing's one-off in the latest month) but not what that transaction did. NearBlocks
+    counts the accounts deleted on each day. The two are different measurements of different things, so they are set
+    side by side and not equated: where they agree in size and in date, that is all the figure says.
+
+    A month counts as a burst of deletions when it has more than ten times the median month of the census, as for the
+    bursts of the census itself, and the days of the burst are the days with at least a tenth of its largest day: an
+    order of magnitude each time, not a tuned line. The month before is given as deletions per day.
+    """
+    if "deleted_accounts" not in daily:
+        return None
+    x = daily["deleted_accounts"].dropna()
+    per_month = x.groupby(x.index.to_period("M")).agg(["sum", "size"])
+    full = [p for p in pd.period_range(ps["first_month"], ps["latest_month"], freq="M")
+            if p in per_month.index and per_month.loc[p, "size"] == p.days_in_month]  # a month counts only if every day is there
+    if not full:
+        return None
+    monthly = {str(p): int(per_month.loc[p, "sum"]) for p in full}
+    usual = float(pd.Series(monthly).median())
+    # the months the census asks about, each with what it found there: accounts that sent one transaction
+    asked: dict[str, dict] = {}
+    for b in ps["implicit_one_transaction_bursts"]["bursts"]:
+        asked.setdefault(b["month"], {})["implicit_one_transaction_burst"] = int(b["accounts"])
+    one_off = (ps.get("kaiching_one_off") or {}).get("single_tx_accounts")
+    if one_off:
+        asked.setdefault(ps["latest_month"], {})["kaiching_one_off"] = int(one_off)
+    months = {}
+    # the months the census asks about, and every other month of deletions above ten times the median month
+    for m in sorted(set(asked) | {m for m, v in monthly.items() if v > 10 * usual}):
+        census = asked.get(m, {})
+        p = pd.Period(m, "M")
+        if m not in monthly:
+            continue
+        days = x[x.index.to_period("M") == p]
+        prev = x[x.index.to_period("M") == p - 1]
+        row = {"census_one_transaction_accounts": census, "deleted_accounts": monthly[m],
+               "times_the_median_month": monthly[m] / usual if usual else float("nan"),
+               "per_day_month_before": float(prev.mean()) if len(prev) else None, "burst_days": None}
+        if monthly[m] > 10 * usual:
+            top = days.max()
+            hit = days[days >= top / 10]
+            row["burst_days"] = {"first": str(hit.index.min().date()), "last": str(hit.index.max().date()), "days": int(len(hit)),
+                                 "deleted_accounts": int(hit.sum()),
+                                 "largest_day": {"date": str(days.idxmax().date()), "deleted_accounts": int(top)}}
+            if "active_accounts" in daily and len(hit) > 2:
+                # Who signed the deletions: if each deleted account signed its own, the day's signers rise by one for
+                # each of them. The slope of signers on deletions over the days of the burst, and how close the fit is.
+                sig = daily["active_accounts"].reindex(hit.index).astype(float)
+                slope = float(np.polyfit(hit.astype(float).to_numpy(), sig.to_numpy(), 1)[0])
+                row["burst_days"]["signers_per_deleted_account"] = round(slope, 4)
+                row["burst_days"]["correlation_of_signers_with_deletions"] = round(float(np.corrcoef(hit.astype(float), sig)[0, 1]), 4)
+        months[m] = row
+    return {"source": "NearBlocks daily charts (deleted_accounts)", "median_month": usual,
+            "months_above_ten_times_the_median": [m for m, v in monthly.items() if v > 10 * usual],
+            "monthly": monthly, "months": months}
 
 
 def totals_check(df: pd.DataFrame, daily: pd.DataFrame, query_end: str | None = None) -> dict | None:
@@ -429,4 +668,29 @@ def cross_check(sample: dict, df: pd.DataFrame, top: dict | None = None) -> dict
             row["top10_tx_share"] = {"sample": w["top10_accounts_tx_share"], "bigquery_month": hit[-1],
                                      "bigquery": top["months"][hit[-1]]["top10_share"]}
         out[label] = row
+    return out
+
+
+def cell_that_left(df: pd.DataFrame, month: str) -> dict | None:
+    """For a month of mass deletions that the census's burst rule does not catch: the cell of the core (family, age,
+    active the month before) that lost the most accounts from that month to the next, with the months either side.
+
+    A deleted account signs one last transaction and is not seen again, so a cell that held them shrinks the month
+    after. Accounts that were active the month before are not "dormant", and the rule of
+    implicit_one_transaction_bursts does not see them; this says where in the census they are.
+    """
+    core = segment(df, "core")
+    p = pd.Period(month, "M")
+    keys = ["family", "age", "prev_month"]
+    now = core[core["month"] == month].groupby(keys)["accounts"].sum()
+    after = core[core["month"] == str(p + 1)].groupby(keys)["accounts"].sum().reindex(now.index).fillna(0)
+    if now.empty:
+        return None
+    family, age, prev_month = (now - after).idxmax()
+    cell = core[(core["family"] == family) & (core["age"] == age) & (core["prev_month"] == prev_month)]
+    out = {"family": str(family), "age": str(age), "prev_month": str(prev_month)}
+    for key, m in (("month_before", p - 1), ("month", p), ("month_after", p + 1)):
+        r = cell[cell["month"] == str(m)]
+        out[key] = {"month": str(m), "accounts": int(r["accounts"].sum()), "single_tx_accounts": int(r["single_tx_accounts"].sum()),
+                    "txs": int(r["txs"].sum()), "relayed_txs": int(r["relayed_txs"].sum())}
     return out

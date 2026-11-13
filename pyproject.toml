@@ -1,0 +1,22 @@
+[project]
+name = "near-real-usage"
+version = "0.1.0"
+description = "Counts who actually acts on NEAR, account by account, and tests whether usage leads the NEAR price"
+readme = "README.md"
+license = "MIT"
+# The one Python version the project is checked on is the one in .python-version; the Docker image uses the same.
+requires-python = "==3.12.*"
+# Exact versions: the committed charts in docs/ were rendered with these, and matplotlib writes its version into every
+# PNG. uv.lock pins everything they pull in as well.
+dependencies = [
+    "pandas==3.1.1",
+    "numpy==2.5.4",
+    "matplotlib==3.11.2",
+    "requests==2.34.2",
+]
+
+[dependency-groups]
+dev = ["pytest==9.2.0"]
+
+[tool.uv]
+package = false  # a pipeline run as `python -m thesis` from the repository, not a library to install

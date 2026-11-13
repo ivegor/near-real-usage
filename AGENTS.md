@@ -7,16 +7,28 @@ edit both.
 
 ## Build and test
 
+Everything runs in one Docker image (`Dockerfile`): Python 3.12.12 from `.python-version` and the libraries pinned in
+`uv.lock` (declared in `pyproject.toml`; change them with `uv add` / `uv lock`, never by hand). The `make` targets run
+each command in that image on the repository mounted at `/app`, as the current user.
+
 ```bash
-python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
-python -m pytest -q                  # 111 tests, no network
-python -m thesis build --offline     # rebuilds docs/ from the committed data, no network
-python -m thesis build               # same, after refreshing data/raw/ from the public APIs
+make serve      # builds the image (tests + offline build inside), serves the dashboard on :8000
+make test       # 125 tests, no network
+make offline    # rebuilds docs/ from the committed data, no network
+make build      # same, after refreshing data/raw/ from the public APIs
+make snapshot   # freezes docs/summary.json as data/snapshot/thesis_summary.json
 ```
 
-`docs/` (charts, `index.html`, `summary.json`) is build output and is committed; an offline build in a clean clone
-reproduces the numbers exactly; the PNG files are byte-identical only with the library versions pinned in
-`requirements.txt`.
+Without Docker, `uv run pytest -q` and `uv run python -m thesis ...` run the same environment (uv installs Python
+3.12.12 itself); `uv run python -m thesis video` is the one command that needs this, because it needs ffmpeg. A test
+checks that `.python-version`, the `Dockerfile`, `pyproject.toml` and the README name the same version.
+`docs/` (charts, `index.html`, `summary.json`) and `data/snapshot/` are build output, committed as built in the image
+(`make offline`, `make snapshot`). Checked on 2026-11-13: an offline build in the image on arm64 (Apple Silicon) and
+on x86-64 (the same image built for `linux/amd64`, run under emulation) gives the same bytes for every file of `docs/`
+and `data/snapshot/`. Built outside it with uv on macOS, `summary.json` and `index.html` are the same bytes too, and the
+PNG files differ in their bytes, not in what they show; commit only what the image builds. The lag statistics are
+rounded to 12 significant digits when they are computed (`thesis/metrics.py`), because processors sum the weekly
+changes in another order and their last digits differ; nothing else in `summary.json` did.
 
 ## Rules that are easy to break
 
@@ -35,9 +47,12 @@ reproduces the numbers exactly; the PNG files are byte-identical only with the l
   `tests/snapshot.py`, which cuts them at the snapshot's months, and `tests/test_rerun.py` runs the whole build on
   tables extended this way. The days of the unfinished month are used only as rates per day of transactions, and
   for every namespace (`partial_month.txs_per_day` in the summary), not only where the month suits the argument.
-* **A correction is applied to both periods.** The players of Meteor's game were first taken out of last year's
-  regular accounts only; a player who still pays for one transaction is inside this year's count too, because a
-  frequency class counts relayed transactions. A bound on one side of a comparison is not a range.
+* **A correction is applied to both periods, by one rule.** The players of Meteor's game were first taken out of
+  last year's regular accounts only; then the players who act through its relayer and pay for one transaction were
+  taken out of this year's count but not out of last year's, which held such accounts too (a frequency class counts
+  relayed transactions in both years). A bound on one side of a comparison is not a range, and where the tables leave
+  something open (here: how many accounts are in two groups at once), publish both ends and do not call the nearer
+  one a bound.
 * **THESIS.md is a snapshot.** `tests/test_thesis_numbers.py` checks its key numbers, and the README's, against the
   frozen copy of the summary in `data/snapshot/` (`python -m thesis snapshot` refreshes it after an offline build).
   Change them together, and do not type numbers by hand: take them from `summary.json`.

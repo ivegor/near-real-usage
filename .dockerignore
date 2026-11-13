@@ -1,0 +1,11 @@
+# Left out of the image: what a clean clone does not have (see .gitignore) and what the pipeline does not read.
+# Everything the tests read stays in: the data, docs/, the texts, predictions.csv and its proof, .github/.
+.git
+.venv
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.env
+POST_DRAFT.md
+data/census_cache
+demo

@@ -71,8 +71,11 @@ def test_the_notes_quote_the_frozen_snapshot():
             f"${so_far['recent'] / 1e6:.1f}M a day, {over_a1:.0f}% above A1's threshold") in text
     assert (f"HOT's namespace was sending {hot['partial'] / 1e3:.0f} thousand transactions a day against "
             f"{hot['latest_complete'] / 1e3:.0f} thousand in October") in text
-    still = s["segments"]["regular_accounts_reward_game_bound"]["without_the_game"]["players_still_self_paying_latest_at_most"]
-    assert f"up to {still:,} such accounts in October 2026" in text
+    clean = s["segments"]["regular_accounts_reward_game_bound"]["without_the_game"]
+    assert f"up to {clean['players_still_self_paying_latest_at_most']:,} such accounts in October 2026" in text
+    # the same rule a year ago: accounts that acted through the game's relayer and paid for something of their own
+    assert (f"and up to {clean['players']['prior']['paying_through_the_relayer']:,} acted through its relayer and paid for "
+            f"something else (how many are in both groups the tables do not say)") in text
 
 
 def test_baselines_are_computed_from_data_not_typed():
@@ -274,13 +277,9 @@ def test_every_prediction_in_the_frozen_file_can_be_scored(tmp_path, monkeypatch
         else:
             assert row.scoring == "automatic" and row.metric in predictions.AUTOMATIC, row.metric
     # the committed daily series carried forward past the last check date, with supply still growing
-    daily, fees = sources.load_daily(offline=True), value.load()
-    until = pd.Timestamp(frozen["check_on"].max()) + pd.Timedelta(days=3)
-    more = pd.date_range(daily.index.max() + pd.Timedelta(days=1), until, freq="D")
-    tail = pd.DataFrame([daily.iloc[-1]] * len(more), index=more)
-    tail["total_supply_yocto"] = daily["total_supply_yocto"].iloc[-1] + np.arange(1, len(more) + 1) * 8.8e28
-    more_fees = pd.date_range(fees.index.max() + pd.Timedelta(days=1), until, freq="D")
-    daily, fees = pd.concat([daily, tail]), pd.concat([fees, pd.DataFrame([fees.iloc[-1]] * len(more_fees), index=more_fees)])
+    # (cut first at the last day every source covers: DefiLlama can end a day before NearBlocks, see tests/test_rerun.py)
+    from .test_rerun import carried_forward
+    daily, fees = carried_forward(str((pd.Timestamp(frozen["check_on"].max()) + pd.Timedelta(days=3)).date()))
     january = (daily.index >= "2027-01-01") & (daily.index <= "2027-01-31")
     daily.loc[january, "txns"] = JANUARY_TXS / 31          # the aggregator's January: the month the two tables below hold in full
     census, seg, top = bq_results(tmp_path)
@@ -390,3 +389,26 @@ def test_the_timestamp_proof_is_for_this_predictions_file():
     proof = (root / "predictions.csv.ots").read_bytes()
     assert proof.startswith(b"\x00OpenTimestamps\x00\x00Proof\x00\xbf\x89\xe2\xe8\x84\xe8\x92\x94")
     assert digest in proof[:80]
+
+
+def test_the_timestamp_proof_names_the_bitcoin_block_quoted_in_the_notes():
+    """After `ots upgrade` the proof carries a Bitcoin block header attestation; PREDICTIONS.md names its block."""
+    root = Path(__file__).resolve().parent.parent
+    proof = (root / "predictions.csv.ots").read_bytes()
+    tag = bytes.fromhex("0588960d73d71901")          # BitcoinBlockHeaderAttestation in the OpenTimestamps format
+    assert tag in proof
+
+    def varuint(buf: bytes, i: int) -> tuple[int, int]:
+        value, shift = 0, 0
+        while True:
+            b = buf[i]
+            value |= (b & 0x7F) << shift
+            i, shift = i + 1, shift + 7
+            if not b & 0x80:
+                return value, i
+
+    i = proof.index(tag) + len(tag)
+    _, i = varuint(proof, i)                         # the length of the attestation's payload
+    height, _ = varuint(proof, i)
+    notes = " ".join((root / "PREDICTIONS.md").read_text(encoding="utf-8").split())
+    assert f"it holds the attestation of Bitcoin block {height}" in notes

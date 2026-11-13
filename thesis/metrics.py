@@ -58,6 +58,18 @@ def weekly_log_diff(series: pd.Series) -> pd.Series:
     return np.log(w).diff().dropna()
 
 
+# Significant digits kept for the lag statistics. A correlation over a few hundred weekly changes comes out a few units
+# in the 14th digit apart on different processors (arm64 and x86-64 sum in another order), and erfc and atanh in
+# another C library can differ in the last digit too. Rounded to 12 digits, the same data gives the same summary.json
+# on every machine; no figure the text quotes has more than four.
+DIGITS = 12
+
+
+def _sig(v: float) -> float:
+    """v rounded to DIGITS significant digits, so that the summary does not depend on the processor that built it."""
+    return float(f"{v:.{DIGITS}g}") if pd.notna(v) and math.isfinite(v) else v
+
+
 def lead_lag(x: pd.Series, price: pd.Series, max_lag: int = 8) -> pd.DataFrame:
     """Correlation of weekly log-changes of x with price shifted by k weeks.
 
@@ -71,8 +83,8 @@ def lead_lag(x: pd.Series, price: pd.Series, max_lag: int = 8) -> pd.DataFrame:
         pair = pd.concat([dx, dp.shift(-k)], axis=1, keys=["x", "p"], sort=True).dropna()
         n = len(pair)
         corr = pair["x"].corr(pair["p"]) if n > 5 else np.nan
-        rows.append({"lag_weeks": k, "corr": corr, "n": n, "band": 2 / np.sqrt(n) if n else np.nan,
-                     "p": _p_value(corr, n)})
+        rows.append({"lag_weeks": k, "corr": _sig(corr), "n": n, "band": 2 / np.sqrt(n) if n else np.nan,
+                     "p": _sig(_p_value(corr, n))})
     return pd.DataFrame(rows)
 
 

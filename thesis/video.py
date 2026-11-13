@@ -30,6 +30,8 @@ def slides(s: dict) -> list[dict]:
     sg = s["segments"]["metrics"]
     latest = c["months"][c["latest_month"]]
     cc = s.get("cross_check", {}).get("recent")
+    # the coverage of the new supply over windows from a week to the whole programme: one window is not the figure
+    cov = [x["coverage"] for x in ((v.get("windows") or {}).get("by_length") or {}).values()]
     out = [
         {"head": f"NEAR lost {abs(al['accounts']['pct_change']):.0f}% of its active accounts in a year.",
          "line": "We counted every one. Built at NEAR HACKATHON, track Investment Thesis.", "chart": None, "sec": 6},
@@ -48,7 +50,8 @@ def slides(s: dict) -> list[dict]:
          "line": f"Reward and wallet apps are still {c['reward_apps_share']['latest'] * 100:.0f}% of them; trading, Intents, tokens and "
                  f"bridges are {c['finance_share']['latest'] * 100:.0f}% and grew {c['finance_txs']['pct_change']:+.0f}% in a year.",
          "chart": "clients", "sec": 12},
-        {"head": f"Buybacks cover {v['buyback_coverage_of_new_supply'] * 100:.0f}% of the new NEAR issued.",
+        {"head": (f"Buybacks cover {min(cov) * 100:.0f}-{max(cov) * 100:.0f}% of the new NEAR issued." if cov
+                  else f"Buybacks cover {v['buyback_coverage_of_new_supply'] * 100:.0f}% of the new NEAR issued."),
          "line": f"Intents fees are {v['intents_fees_vs_l1_fees']:.0f}x the network's own fees; NEAR keeps "
                  f"{v['captured_share_of_gross_fees'] * 100:.0f}% of them and buys NEAR with it: ${v['buyback_usd_annualized'] / 1e6:.1f}M a year.",
          "chart": "value_capture", "sec": 10},

@@ -7,6 +7,7 @@ compares the latest month with the one a year earlier, and that figures combinin
 only one of the queries has been run again.
 """
 import json
+import re
 
 import numpy as np
 import pandas as pd
@@ -40,9 +41,21 @@ def later_tables(tmp_path, census=True, frequency=True, top=True):
     return paths
 
 
-def carried_forward(until="2027-02-12"):
+def complete_rows(daily, fees):
+    """The two series cut at the last day on which every source has a value.
+
+    The daily table follows NearBlocks; DefiLlama can end a day or more earlier (predictions._window), and a fresh
+    `make build` can leave it so. Carrying forward a row whose Intents volume is empty would leave A1 and A2 open on
+    data that merely ends early, so the row carried forward is the last complete one.
+    """
+    full = daily[["txns", "price_usd", "total_supply_yocto", "intents_volume_usd"]].dropna().index.max()
+    return daily.loc[:full], fees.loc[:fees.dropna().index.max()]
+
+
+def carried_forward(until="2027-02-12", daily=None, fees=None):
     """The committed daily series and fee series carried forward to a later day, with supply still growing."""
-    daily, fees = sources.load_daily(offline=True), value.load()
+    daily, fees = complete_rows(sources.load_daily(offline=True) if daily is None else daily,
+                                value.load() if fees is None else fees)
     more = pd.date_range(daily.index.max() + pd.Timedelta(days=1), until, freq="D")
     tail = pd.DataFrame([daily.iloc[-1]] * len(more), index=more)
     tail["total_supply_yocto"] = daily["total_supply_yocto"].iloc[-1] + np.arange(1, len(more) + 1) * 8.8e28
@@ -53,6 +66,18 @@ def carried_forward(until="2027-02-12"):
     january = (daily.index >= "2027-01-01") & (daily.index <= "2027-01-31")
     daily.loc[january, "txns"] = clients.load()["2026-10"]["conc"]["txs"] / 31
     return daily, pd.concat([fees, pd.DataFrame([fees.iloc[-1]] * len(more_fees), index=more_fees)])
+
+
+def test_a_source_that_ends_early_is_cut_before_it_is_carried_forward():
+    """DefiLlama a day behind NearBlocks, as after a refresh on a day it updates late: the carried rows are still complete."""
+    daily, fees = sources.load_daily(offline=True), value.load()
+    short = daily.copy()
+    short.loc[short.index[-1], "intents_volume_usd"] = np.nan
+    late = fees.copy()
+    late.loc[late.index[-1], "revenue"] = np.nan
+    longer, more = carried_forward(daily=short, fees=late)
+    assert longer.loc[short.index[-1]:, "intents_volume_usd"].notna().all() and more.notna().all().all()
+    assert longer.loc[short.index[-1], "intents_volume_usd"] == short["intents_volume_usd"].dropna().iloc[-1]
 
 
 @pytest.fixture
@@ -82,7 +107,9 @@ def test_a_later_run_of_all_three_queries_scores_the_four_predictions(later, cap
     s = later(scan_end="2027-02-05")
     printed = capsys.readouterr().out
     # the build prints a digest a reader can take in at once: one sentence per chart and the nine statuses, not the summary
-    assert "Predictions: A1 held" in printed and "B4 held" in printed and "Dashboard: " in printed
+    # the statuses, whatever they are: A1 is scored on the days carried forward, and the data that ends the committed
+    # series decides whether it holds; that it is scored at all is what this test is about
+    assert re.search(r"Predictions: A1 (held|failed), ", printed) and "B4 held" in printed and "Dashboard: " in printed
     assert len(printed) < 4000 and '"yoy_90d"' not in printed and printed.count("\n- ") == 11
     status = {p["id"]: (p["status"], p["measured"]) for p in s["predictions"]["items"]}
     assert len(status) == 9 and all(st in ("held", "failed") and v is not None for st, v in status.values()), status
