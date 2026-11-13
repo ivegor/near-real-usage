@@ -1,12 +1,28 @@
-"""Static dashboard: docs/index.html (GitHub Pages-ready). Each chart shows its method and one sentence."""
+"""Static dashboard: docs/index.html (GitHub Pages-ready).
+
+Each card shows the chart, one plain sentence, the method, and the query behind it printed on the page itself
+(the SQL text, or the API request for charts built from the daily aggregates), so nothing depends on a link.
+"""
 from __future__ import annotations
 
 import html
 import json
+import re
 from pathlib import Path
 
+from . import census, value
 from .charts import Chart
 from .sources import SOURCES
+
+ROOT = Path(__file__).resolve().parent.parent
+NEARBLOCKS, DEFILLAMA = SOURCES["nearblocks_charts"], SOURCES["defillama_intents"]
+# Charts that are not built from a SQL file: the requests they are computed from.
+REQUESTS = {
+    "accounts": [NEARBLOCKS], "usage_vs_price": [NEARBLOCKS], "tx_per_active": [NEARBLOCKS], "fees_per_active": [NEARBLOCKS],
+    "intents": [DEFILLAMA, NEARBLOCKS], "lead_lag": [NEARBLOCKS, DEFILLAMA],
+    "value_capture": [*value.URLS.values(), NEARBLOCKS],
+    "signer_census": [census.BLOCK_URL, f"{census.RPC_URL}  (JSON-RPC query view_account at a past block)"],
+}
 
 
 REPO_URL = "https://github.com/ivegor/near-real-usage"
@@ -17,16 +33,39 @@ def _repo_link(path: str) -> str:
     return f'<a href="{REPO_URL}/blob/main/{html.escape(path)}"><code>{html.escape(path)}</code></a>'
 
 
+def split_sentence(text: str) -> tuple[str, str]:
+    """The first sentence (shown as the card's one plain sentence) and the rest (folded under "More numbers")."""
+    parts = re.split(r"(?<=[.!?])\s+(?=[A-Z0-9$])", text.strip(), maxsplit=1)
+    return parts[0], (parts[1] if len(parts) > 1 else "")
+
+
+def query_block(c: Chart) -> str:
+    """The query behind a chart, printed on the page: SQL text for BigQuery charts, the API requests otherwise."""
+    path = ROOT / c.source if c.source else None
+    if path and path.suffix == ".sql" and path.exists():
+        return (f'<details><summary>The query behind this chart: {_repo_link(c.source)}</summary>'
+                f'<pre>{html.escape(path.read_text())}</pre></details>')
+    requests = REQUESTS.get(c.slug, [])
+    if not requests and not c.source:
+        return ""
+    lines = "\n".join(f"GET {u}" if u.startswith("http") and " " not in u else u for u in requests)
+    code = f" Computed by {_repo_link(c.source)}." if c.source else ""
+    return f'<details><summary>The requests behind this chart</summary><pre>{html.escape(lines)}</pre>{code}</details>'
+
+
 def render(charts: list[Chart], summary: dict, out: Path) -> Path:
     cards = []
     for c in charts:
-        query = f'<br><b>Query / code:</b> {_repo_link(c.source)}' if c.source else ""
+        lead, rest = split_sentence(c.sentence)
+        more = f'<details><summary>More numbers</summary><p>{html.escape(rest)}</p></details>' if rest else ""
         cards.append(f"""
 <section class="card">
   <h2>{html.escape(c.title)}</h2>
-  <p class="lead">{html.escape(c.sentence)}</p>
+  <p class="lead">{html.escape(lead)}</p>
   <img src="{c.slug}.png" alt="{html.escape(c.title)}">
-  <p class="method"><b>Method:</b> {html.escape(c.method)}{query}</p>
+  {more}
+  <p class="method"><b>Method:</b> {html.escape(c.method)}</p>
+  {query_block(c)}
 </section>""")
     pred = summary.get("predictions")
     pred_card = ""
@@ -52,6 +91,8 @@ h1{{font-size:24px;margin:0 0 4px}} .sub{{color:#57606a;margin:0 0 24px}}
 .card h2{{font-size:17px;margin:0 0 6px}} .lead{{margin:0 0 10px}}
 img{{width:100%;height:auto}} .method{{color:#57606a;font-size:13px;margin:8px 0 0}}
 code{{background:#f6f8fa;padding:1px 4px;border-radius:4px}}
+details{{margin:8px 0 0;font-size:13px;color:#57606a}} summary{{cursor:pointer}}
+pre{{background:#f6f8fa;border-radius:6px;padding:10px 12px;overflow-x:auto;font-size:12px;line-height:1.4;color:#1f2328}}
 table{{border-collapse:collapse;font-size:13px;width:100%}} td,th{{border-top:1px solid #e6e8eb;padding:5px 8px;text-align:left;vertical-align:top}}
 </style></head><body>
 <h1>NEAR Real Usage</h1>
@@ -62,7 +103,7 @@ Code and data: <a href="{REPO_URL}">{REPO_URL.split('//')[1]}</a>.</p>
 {''.join(cards)}
 {pred_card}
 <section class="card"><h2>Sources</h2><ul>{src}
-<li><code>bigquery</code>: NEAR public dataset <code>bigquery-public-data.crypto_near_mainnet_us</code>, queries in {_repo_link('sql/account_age.sql')}, {_repo_link('sql/top_accounts.sql')} and {_repo_link('sql/one_day_actions.sql')}; results in <code>data/bq/</code></li></ul>
+<li><code>bigquery</code>: NEAR public dataset <code>bigquery-public-data.crypto_near_mainnet_us</code>, queries: {", ".join(_repo_link(f"sql/{q.name}") for q in sorted((ROOT / "sql").glob("*.sql")))}; results in <code>data/bq/</code></li></ul>
 <p class="method">Raw API responses are committed in <code>data/raw/</code>; every number on this page is in {_repo_link('docs/summary.json')}.</p></section>
 </body></html>"""
     out.mkdir(parents=True, exist_ok=True)

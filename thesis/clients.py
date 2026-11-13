@@ -106,3 +106,17 @@ def summarize(data: dict) -> dict:
                              "top2_share": float(signed["txs"].sum() / total) if total else float("nan")}
     out["top_actors_latest"] = data[latest]["actors"].head(10).to_dict("records")
     return out
+
+
+def add_namespace_view(cl: dict, kaiching_namespace_txs: float) -> None:
+    """Reward apps counted by where the accounts come from, not only by the contract or relayer used.
+
+    In October 2026 old KaiChing accounts sent one transaction each to contracts outside the top 40, so the app table
+    files them under "everything else". Counting them by namespace raises the reward apps' share.
+    """
+    total = cl["months"][cl["latest_month"]]["transactions"]
+    in_table = cl["apps"]["KaiChing (reward app)"]["latest"]
+    extra = max(0.0, float(kaiching_namespace_txs) - in_table)
+    cl["kaiching_txs_outside_its_contracts"] = extra
+    cl["kaiching_share_by_namespace"] = float(kaiching_namespace_txs) / total
+    cl["reward_apps_share_incl_kaiching_namespace"] = cl["reward_apps_share"]["latest"] + extra / total

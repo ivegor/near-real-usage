@@ -5,10 +5,13 @@ import argparse
 import json
 from pathlib import Path
 
-from . import census, charts, clients, dashboard, metrics, population, predictions, sources, value
+from . import census, charts, clients, dashboard, metrics, payers, population, predictions, segments, sources, value
 
 ROOT = Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs"
+# THESIS.md quotes this copy of the summary. `build` never writes it, so a rebuild on newer data cannot make the
+# text and its test disagree; refresh it on purpose with `python -m thesis snapshot` when the text is rewritten.
+SNAPSHOT = ROOT / "data" / "snapshot" / "thesis_summary.json"
 
 
 def build(offline: bool) -> None:
@@ -24,9 +27,17 @@ def build(offline: bool) -> None:
         day = population.one_day(daily)
         if day:
             summary["population"]["one_day"] = day
+    seg = segments.load()
+    if seg is not None:
+        summary["segments"] = segments.summarize(seg)
+    pay = payers.load()
+    if pay is not None:
+        summary["sponsors"] = payers.summarize(pay)  # sponsored accounts named by the app whose relayer paid
     top = clients.load()
     if top:
         summary["clients"] = clients.summarize(top)
+        if pop is not None:
+            clients.add_namespace_view(summary["clients"], summary["population"]["segments"]["kaiching"]["txs"]["latest"])
     if not offline:
         try:
             value.fetch()  # keep the fee and buyback series current; fall back to the saved copies on an outage
@@ -35,6 +46,7 @@ def build(offline: bool) -> None:
     fees = value.load()
     pred = predictions.evaluate(daily, fees)
     if pred:
+        pred["baselines"] = predictions.baselines(daily, fees, pop, seg)
         summary["predictions"] = pred
     if fees is not None:
         v = value.summarize(daily, fees)
@@ -57,15 +69,17 @@ def main() -> None:
     b.add_argument("--offline", action="store_true", help="use cached data/raw/*.json")
     c = sub.add_parser("census", help="sample blocks from the chain and measure account ages (network, ~1.5 h, resumable)")
     c.add_argument("--seed", type=int, default=census.SEED, help="another seed draws an independent sample")
-    pn = sub.add_parser("panel", help="the same census for every month (network, hours, resumable)")
-    pn.add_argument("--first-month", default="2025-07")
-    pn.add_argument("--seed", type=int, default=census.SEED)
-    sub.add_parser("firstseen", help="look up the first transaction of every sampled account (network, resumable)")
     ba = sub.add_parser("bq-age", help="unpack a BigQuery result of sql/account_age.sql into data/bq/account_age.csv")
     ba.add_argument("result_csv", help="the result saved from the BigQuery console as CSV (columns m, cells)")
+    sub.add_parser("snapshot", help="freeze docs/summary.json as the copy THESIS.md is checked against")
     sub.add_parser("video", help="render demo/near-real-usage.mp4 from the build outputs (needs ffmpeg)")
     sub.add_parser("fetch-value", help="download the NEAR Intents fee and buyback series from DefiLlama into data/raw/")
     args = ap.parse_args()
+    if args.cmd == "snapshot":
+        SNAPSHOT.parent.mkdir(parents=True, exist_ok=True)
+        SNAPSHOT.write_text((DOCS / "summary.json").read_text())
+        print(SNAPSHOT)
+        return
     if args.cmd == "video":
         from . import video
         print(video.build())
@@ -76,13 +90,6 @@ def main() -> None:
     if args.cmd == "bq-age":
         df = population.unpack(Path(args.result_csv))
         print(f"{len(df)} rows, months {df['month'].min()} .. {df['month'].max()} -> {population.CSV}")
-        return
-    if args.cmd == "firstseen":
-        census.fetch_first_seen()
-        return
-    if args.cmd == "panel":
-        last_date = str(sources.load_daily(offline=True).index.max().date())
-        census.fetch_panel(args.first_month, last_date, seed=args.seed)
         return
     if args.cmd == "build":
         build(args.offline)

@@ -28,5 +28,18 @@ def test_full_build(tmp_path, monkeypatch):
         assert "nan" not in c.sentence.lower()
     html = page.read_text()
     assert "NEAR Real Usage" in html and "lead_lag.png" in html
-    # every chart links the query or code behind it, and the page links the thesis
-    assert html.count("Query / code:") == len(built) and "blob/main/THESIS.md" in html and "sql/account_age.sql" in html
+    # every card prints the request or query behind its chart on the page itself, and the page links the thesis
+    assert html.count("behind this chart") == len(built) and "GET https://api.nearblocks.io/v1/charts" in html
+    assert html.count('<p class="lead">') == len(built) and "blob/main/THESIS.md" in html and "sql/account_age.sql" in html
+
+
+def test_dashboard_card_shows_one_sentence_and_prints_the_query(tmp_path):
+    lead, rest = dashboard.split_sentence("In 2026-10, 1.38M accounts acted on NEAR (-97%). 560K of them are old. Third one.")
+    assert lead == "In 2026-10, 1.38M accounts acted on NEAR (-97%)." and rest.startswith("560K of them")
+    assert dashboard.split_sentence("Only one sentence at $3.58 here.") == ("Only one sentence at $3.58 here.", "")
+    sql = charts.Chart("population", "t", "One. Two.", "m", source="sql/account_age.sql")
+    api = charts.Chart("intents", "t", "One.", "m")
+    page = dashboard.render([sql, api], {"first_date": "a", "last_date": "b", "days": 1}, tmp_path).read_text()
+    assert "FROM `bigquery-public-data.crypto_near_mainnet_us.transactions`" in page      # the SQL itself is on the page
+    assert "GET https://api.llama.fi/summary/dexs/near-intents" in page                   # and the API request
+    assert '<p class="lead">One.</p>' in page and "<summary>More numbers</summary><p>Two.</p>" in page

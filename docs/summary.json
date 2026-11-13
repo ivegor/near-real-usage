@@ -1318,6 +1318,13 @@
       "2026-09": 13104300,
       "2026-10": 12485623
     },
+    "core_direct_txs_change_by_window": {
+      "1": 28.044118817372365,
+      "3": 35.495779511231376,
+      "6": 23.62272741489182,
+      "9": 5.818243135931023,
+      "11": -4.767485332800902
+    },
     "core_direct_txs_top3_months": {
       "2026-09": 13104300,
       "2026-10": 12485623,
@@ -1372,6 +1379,392 @@
         "active_accounts": 288151,
         "new_accounts": 267015
       }
+    }
+  },
+  "segments": {
+    "source": "sql/payer_frequency.sql on bigquery-public-data.crypto_near_mainnet_us (91.28 GB scanned)",
+    "latest_month": "2026-10",
+    "prior_month": "2025-10",
+    "first_month": "2025-08",
+    "metrics": {
+      "sponsored_accounts": {
+        "latest": 552826.0,
+        "prior": 43049960.0,
+        "pct_change": -98.71585014248562,
+        "three_month_mean": {
+          "latest": 718736.6666666666,
+          "prior": 48797759.666666664,
+          "pct_change": -98.52711134368403
+        }
+      },
+      "sponsored_accounts_outside_app_namespaces": {
+        "latest": 484257.0,
+        "prior": 1680016.0,
+        "pct_change": -71.17545309092294,
+        "three_month_mean": {
+          "latest": 654962.0,
+          "prior": 1590797.6666666667,
+          "pct_change": -58.82807639689356
+        }
+      },
+      "app_namespace_self_paying_accounts": {
+        "latest": 129677.0,
+        "prior": 458286.0,
+        "pct_change": -71.70391414967946,
+        "three_month_mean": {
+          "latest": 158596.0,
+          "prior": 490291.3333333333,
+          "pct_change": -67.6527017270004
+        }
+      },
+      "independent_accounts": {
+        "latest": 136920.0,
+        "prior": 134743.0,
+        "pct_change": 1.615668346407606,
+        "three_month_mean": {
+          "latest": 102890.66666666667,
+          "prior": 168148.66666666666,
+          "pct_change": -38.80970411104458
+        }
+      },
+      "independent_self_paid_txs": {
+        "latest": 12492294.0,
+        "prior": 9772533.0,
+        "pct_change": 27.830665805886756,
+        "three_month_mean": {
+          "latest": 11149258.0,
+          "prior": 8235303.666666667,
+          "pct_change": 35.38369016224496
+        }
+      },
+      "occasional_accounts": {
+        "latest": 119340.0,
+        "prior": 107295.0,
+        "pct_change": 11.226058996225351,
+        "three_month_mean": {
+          "latest": 88356.33333333333,
+          "prior": 139295.0,
+          "pct_change": -36.568912499850434
+        }
+      },
+      "occasional_self_paid_txs": {
+        "latest": 289308.0,
+        "prior": 181992.0,
+        "pct_change": 58.96742713965448,
+        "three_month_mean": {
+          "latest": 181884.0,
+          "prior": 237897.0,
+          "pct_change": -23.545063619969987
+        }
+      },
+      "regular_accounts": {
+        "latest": 17105.0,
+        "prior": 27078.0,
+        "pct_change": -36.83063741782997,
+        "three_month_mean": {
+          "latest": 14228.333333333334,
+          "prior": 28548.666666666668,
+          "pct_change": -50.16112836559793
+        }
+      },
+      "regular_self_paid_txs": {
+        "latest": 824276.0,
+        "prior": 1289194.0,
+        "pct_change": -36.06268722938518,
+        "three_month_mean": {
+          "latest": 642939.6666666666,
+          "prior": 1365826.0,
+          "pct_change": -52.92667831285489
+        }
+      },
+      "heavy_accounts": {
+        "latest": 475.0,
+        "prior": 370.0,
+        "pct_change": 28.37837837837838,
+        "three_month_mean": {
+          "latest": 306.0,
+          "prior": 305.0,
+          "pct_change": 0.3278688524590123
+        }
+      },
+      "heavy_self_paid_txs": {
+        "latest": 11378710.0,
+        "prior": 8301347.0,
+        "pct_change": 37.070646486648485,
+        "three_month_mean": {
+          "latest": 10324434.333333334,
+          "prior": 6631580.666666667,
+          "pct_change": 55.68587418726014
+        }
+      },
+      "accounts_outside_app_namespaces": {
+        "latest": 621177.0,
+        "prior": 1814759.0,
+        "pct_change": -65.77082687012435,
+        "three_month_mean": {
+          "latest": 757852.6666666666,
+          "prior": 1758946.3333333333,
+          "pct_change": -56.91439515209768
+        }
+      }
+    },
+    "heavy_share_of_independent_self_paid_txs": {
+      "latest": 0.910858325940776,
+      "prior": 0.8494570445553881
+    },
+    "sponsored_share_of_accounts_outside_app_namespaces": {
+      "latest": 0.7795797333127273,
+      "prior": 0.9257515736249277
+    },
+    "regular_accounts_low": {
+      "month": "2026-08",
+      "value": 7201.0
+    },
+    "independent_accounts_range": {
+      "min": 49954.0,
+      "max": 3497840.0
+    }
+  },
+  "sponsors": {
+    "source": "sql/payers.sql on bigquery-public-data.crypto_near_mainnet_us (53.23 GB scanned)",
+    "latest_month": "2026-10",
+    "prior_month": "2025-10",
+    "three_months": [
+      "2026-08",
+      "2026-10"
+    ],
+    "month": {
+      "all_accounts": {
+        "latest": 1379518.0,
+        "prior": 43642992.0,
+        "pct_change": -96.8390847263634
+      },
+      "sponsored_accounts": {
+        "latest": 552826.0,
+        "prior": 43049960.0,
+        "pct_change": -98.71585014248562
+      },
+      "self_paying_accounts": {
+        "latest": 826692.0,
+        "prior": 593032.0,
+        "pct_change": 39.40090922580906
+      },
+      "independent_accounts": {
+        "latest": 136913.0,
+        "prior": 134730.0,
+        "pct_change": 1.6202775922214752
+      },
+      "independent_regular_accounts": {
+        "latest": 31452.0,
+        "prior": 40759.0,
+        "pct_change": -22.83422066292107
+      },
+      "independent_self_paid_txs": {
+        "latest": 12485623.0,
+        "prior": 9751032.0,
+        "pct_change": 28.044118817372365
+      },
+      "independent_regular_self_paid_txs": {
+        "latest": 9600020.0,
+        "prior": 8179786.0,
+        "pct_change": 17.362728071370093
+      },
+      "old_core_accounts": {
+        "latest": 621166.0,
+        "prior": 1814743.0,
+        "pct_change": -65.77113122905006
+      },
+      "sponsored_by_kaiching": {
+        "latest": 0.0,
+        "prior": 40388019.0,
+        "pct_change": -100.0
+      },
+      "old_core_sponsored_by_kaiching": {
+        "latest": 0.0,
+        "prior": 0.0,
+        "pct_change": NaN
+      },
+      "sponsored_by_hot": {
+        "latest": 70432.0,
+        "prior": 1006146.0,
+        "pct_change": -92.99982308730542
+      },
+      "old_core_sponsored_by_hot": {
+        "latest": 4792.0,
+        "prior": 25310.0,
+        "pct_change": -81.06677202686686
+      },
+      "sponsored_by_sweat": {
+        "latest": 410890.0,
+        "prior": 1246366.0,
+        "pct_change": -67.03295821612592
+      },
+      "old_core_sponsored_by_sweat": {
+        "latest": 410871.0,
+        "prior": 1246363.0,
+        "pct_change": -67.03440329984122
+      },
+      "sponsored_by_ember": {
+        "latest": 0.0,
+        "prior": 387762.0,
+        "pct_change": -100.0
+      },
+      "old_core_sponsored_by_ember": {
+        "latest": 0.0,
+        "prior": 387762.0,
+        "pct_change": -100.0
+      },
+      "sponsored_by_meteor": {
+        "latest": 15409.0,
+        "prior": 8677.0,
+        "pct_change": 77.58441857784948
+      },
+      "old_core_sponsored_by_meteor": {
+        "latest": 12499.0,
+        "prior": 7589.0,
+        "pct_change": 64.69890631176702
+      },
+      "sponsored_by_other": {
+        "latest": 56095.0,
+        "prior": 12990.0,
+        "pct_change": 331.8321785989222
+      },
+      "old_core_sponsored_by_other": {
+        "latest": 56091.0,
+        "prior": 12989.0,
+        "pct_change": 331.83462930171686
+      }
+    },
+    "three_month_mean": {
+      "all_accounts": {
+        "latest": 1166922.6666666667,
+        "prior": 49456204.0,
+        "pct_change": -97.64049285572611
+      },
+      "sponsored_accounts": {
+        "latest": 718736.6666666666,
+        "prior": 48797759.666666664,
+        "pct_change": -98.52711134368403
+      },
+      "self_paying_accounts": {
+        "latest": 448186.0,
+        "prior": 658444.3333333334,
+        "pct_change": -31.932590606242094
+      },
+      "independent_accounts": {
+        "latest": 102883.0,
+        "prior": 168139.0,
+        "pct_change": -38.81074587097581
+      },
+      "independent_regular_accounts": {
+        "latest": 20587.333333333332,
+        "prior": 42726.0,
+        "pct_change": -51.815444147981715
+      },
+      "independent_self_paid_txs": {
+        "latest": 11143986.333333334,
+        "prior": 8224600.333333333,
+        "pct_change": 35.495779511231376
+      },
+      "independent_regular_self_paid_txs": {
+        "latest": 9204570.666666666,
+        "prior": 7245582.666666667,
+        "pct_change": 27.03699743862329
+      },
+      "old_core_accounts": {
+        "latest": 757841.0,
+        "prior": 1758934.3333333333,
+        "pct_change": -56.91476448902868
+      },
+      "sponsored_by_kaiching": {
+        "latest": 0.0,
+        "prior": 45977993.0,
+        "pct_change": -100.0
+      },
+      "old_core_sponsored_by_kaiching": {
+        "latest": 0.0,
+        "prior": 0.0,
+        "pct_change": NaN
+      },
+      "sponsored_by_hot": {
+        "latest": 64461.0,
+        "prior": 1245484.3333333333,
+        "pct_change": -94.82442305576974
+      },
+      "old_core_sponsored_by_hot": {
+        "latest": 3160.6666666666665,
+        "prior": 28711.666666666668,
+        "pct_change": -88.99169907703023
+      },
+      "sponsored_by_sweat": {
+        "latest": 582120.0,
+        "prior": 1156073.0,
+        "pct_change": -49.64677836088206
+      },
+      "old_core_sponsored_by_sweat": {
+        "latest": 582100.0,
+        "prior": 1156070.6666666667,
+        "pct_change": -49.648406729461755
+      },
+      "sponsored_by_ember": {
+        "latest": 0.0,
+        "prior": 387775.6666666667,
+        "pct_change": -100.0
+      },
+      "old_core_sponsored_by_ember": {
+        "latest": 0.0,
+        "prior": 387775.6666666667,
+        "pct_change": -100.0
+      },
+      "sponsored_by_meteor": {
+        "latest": 14916.333333333334,
+        "prior": 8145.333333333333,
+        "pct_change": 83.12735308561142
+      },
+      "old_core_sponsored_by_meteor": {
+        "latest": 12460.0,
+        "prior": 7172.333333333333,
+        "pct_change": 73.72310266301065
+      },
+      "sponsored_by_other": {
+        "latest": 57239.333333333336,
+        "prior": 22288.333333333332,
+        "pct_change": 156.81298138039335
+      },
+      "old_core_sponsored_by_other": {
+        "latest": 57237.333333333336,
+        "prior": 11065.0,
+        "pct_change": 417.28272330170205
+      }
+    },
+    "old_core_fall_explained_by": {
+      "sweat": 0.699990029968741,
+      "ember": 0.3248738874827514
+    },
+    "old_core_sponsored_share": {
+      "latest": 0.7795870991007234,
+      "prior": 0.9257580825494298
+    },
+    "reward_apps_share_of_lost_accounts": 1.0010715635917673,
+    "independent_accounts_by_month": {
+      "2025-07": 188847.0,
+      "2025-08": 231869.0,
+      "2025-09": 137818.0,
+      "2025-10": 134730.0,
+      "2026-07": 60998.0,
+      "2026-08": 49944.0,
+      "2026-09": 121792.0,
+      "2026-10": 136913.0
+    },
+    "independent_regular_accounts_by_month": {
+      "2025-07": 0.0,
+      "2025-08": 43901.0,
+      "2025-09": 43518.0,
+      "2025-10": 40759.0,
+      "2026-07": 0.0,
+      "2026-08": 13625.0,
+      "2026-09": 16685.0,
+      "2026-10": 31452.0
     }
   },
   "clients": {
@@ -1564,10 +1957,13 @@
         "txs": 443859,
         "top_via": "omft.near"
       }
-    ]
+    ],
+    "kaiching_txs_outside_its_contracts": 560106.0,
+    "kaiching_share_by_namespace": 0.028407397722350607,
+    "reward_apps_share_incl_kaiching_namespace": 0.4504417223133087
   },
   "predictions": {
-    "sha256": "592db44ad9f2012fd17641339c223a40464608629ed6b093d39a48d255d4ca49",
+    "sha256": "7ff48f00d7131ae4cf1e5b11ff817242844e6b8dd3a0681d98e1fcbaac65d15a",
     "data_through": "2026-11-11",
     "items": [
       {
@@ -1637,14 +2033,14 @@
       },
       {
         "id": "B1",
-        "question": "Has the account base outside reward apps found a floor?",
+        "question": "Has the base of regular self-paying accounts found a floor?",
         "check_on": "2027-02-01",
-        "metric": "core_accounts_2027_01",
-        "operator": "<",
-        "threshold": 621166.0,
-        "baseline": "October 2026",
+        "metric": "regular_self_paying_accounts_2027_01",
+        "operator": ">",
+        "threshold": 7201.0,
+        "baseline": "their lowest month before the September step (August 2026)",
         "scoring": "bigquery",
-        "statement": "Accounts outside the reward apps in January 2027 are below their October 2026 count: no floor yet",
+        "statement": "In January 2027 accounts that pay their own fees and act 10 to 999 times a month stay above their August 2026 low: the rebound holds",
         "status": "open",
         "measured": null
       },
@@ -1687,7 +2083,13 @@
         "status": "open",
         "measured": null
       }
-    ]
+    ],
+    "baselines": {
+      "intents_volume_plateau_top_usd": 89591201.70967741,
+      "buyback_plateau_top_usd": 723262.0,
+      "core_self_paid_txs_plateau_top": 10380688.0,
+      "regular_self_paying_accounts_low": 7201.0
+    }
   },
   "value_capture": {
     "window": [

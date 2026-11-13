@@ -7,13 +7,14 @@ Start with `README.md` (what it is, how to run it) and `THESIS.md` (the argument
 
 ```bash
 python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
-python -m pytest -q                  # 35 tests, no network
+python -m pytest -q                  # 44 tests, no network
 python -m thesis build --offline     # rebuilds docs/ from the committed data, no network
 python -m thesis build               # same, after refreshing data/raw/ from the public APIs
 ```
 
 `docs/` (charts, `index.html`, `summary.json`) is build output and is committed; an offline build in a clean clone
-reproduces it exactly.
+reproduces the numbers exactly; the PNG files are byte-identical only with the library versions pinned in
+`requirements.txt`.
 
 ## Rules that are easy to break
 

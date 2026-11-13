@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from thesis import population, predictions, value
+from thesis import predictions
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -15,14 +15,23 @@ def test_predictions_file_matches_the_published_hash():
     assert predictions.sha256() == quoted
 
 
-def test_thresholds_are_the_reference_levels_in_the_committed_data():
-    daily = pd.read_csv(ROOT / "data" / "daily.csv", index_col=0, parse_dates=True)
-    base = predictions.baselines(daily, value.load(), population.load())
+def test_thresholds_are_the_reference_levels_in_the_frozen_snapshot():
+    import json
+    base = json.loads((ROOT / "data" / "snapshot" / "thesis_summary.json").read_text())["predictions"]["baselines"]
     p = pd.read_csv(ROOT / "predictions.csv").set_index("id")["threshold"]
     assert p["A1"] == p["A2"] == base["intents_volume_plateau_top_usd"]
     assert p["A3"] == base["buyback_plateau_top_usd"]
-    assert p["B1"] == base["core_accounts_2026_10"]
+    assert p["B1"] == base["regular_self_paying_accounts_low"]
     assert p["B2"] == base["core_self_paid_txs_plateau_top"]
+
+
+def test_baselines_are_computed_from_data_not_typed():
+    idx = pd.date_range("2025-10-01", "2026-10-31", freq="D")
+    daily = pd.DataFrame({"intents_volume_usd": 50.0}, index=idx)
+    daily.loc["2025-11", "intents_volume_usd"] = 500.0      # a spike before the reference range must be ignored
+    daily.loc["2026-08", "intents_volume_usd"] = 90.0
+    daily.loc["2026-09":, "intents_volume_usd"] = 300.0     # the step itself is not part of the range either
+    assert predictions.baselines(daily, None, None) == {"intents_volume_plateau_top_usd": 90.0}
 
 
 def test_adjacent_positive_leads_counts_only_neighbouring_positive_lags():

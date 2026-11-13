@@ -159,6 +159,14 @@ def summarize(df: pd.DataFrame, query_end: str | None = None) -> dict:
     out["core_accounts_last_4_months"] = {m: float(v) for m, v in core_m["accounts"].tail(4).items()}
     # self-paid core transactions month by month: the series is volatile, so the whole of it is published
     out["core_direct_txs_monthly"] = {m: int(v) for m, v in core_m["direct_txs"].items()}
+    # how much the year-on-year change depends on the window: the last n months against the same n a year earlier
+    series = core_m["direct_txs"]
+    out["core_direct_txs_change_by_window"] = {}
+    for n in (1, 3, 6, 9, 11):
+        now_m = list(series.index[-n:])
+        then_m = [(pd.Period(x, "M") - 12).strftime("%Y-%m") for x in now_m]
+        if all(x in series.index for x in then_m):
+            out["core_direct_txs_change_by_window"][str(n)] = float((series.loc[now_m].mean() / series.loc[then_m].mean() - 1) * 100)
     best = core_m["direct_txs"].nlargest(3)
     out["core_direct_txs_top3_months"] = {m: int(v) for m, v in best.items()}
 

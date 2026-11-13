@@ -13,7 +13,7 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 from matplotlib.ticker import FuncFormatter, LogLocator, NullFormatter  # noqa: E402
 
-from . import clients, metrics, population, value  # noqa: E402
+from . import clients, metrics, population, segments, value  # noqa: E402
 
 INK, ACCENT, MUTED, GRID = "#1f2328", "#00a27a", "#8c959f", "#e6e8eb"
 
@@ -106,7 +106,7 @@ def _population_chart(pop: pd.DataFrame, summary: dict, out: Path) -> Chart:
     ax.plot(x, core["returning_accounts"] / 1e6, color=ACCENT, label="also active the month before")
     ax.plot(x, core["old_accounts"] / 1e6, color=INK, linewidth=0.9, label="older than 1 year")
     ax.set_ylim(0, 3)  # Feb-Mar 2026: millions of existing accounts sent one transaction each and run off the scale
-    _style(ax, "Core accounts, millions (no reward apps)")
+    _style(ax, "Accounts outside the reward namespaces, millions")
     ax.legend(frameon=False, fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=2)
 
     ax = axes[2]
@@ -135,12 +135,13 @@ def _population_chart(pop: pd.DataFrame, summary: dict, out: Path) -> Chart:
         f"({_pct(al['accounts']['pct_change'])}). {M(one['accounts'])} of them are old accounts of the reward app KaiChing "
         f"that sent one transaction each in a single sweep; the app itself had {M(k['accounts']['prior'])} accounts a year "
         f"earlier and stopped in spring 2026. Without KaiChing: {M(ex['accounts']['prior'])} to {M(ex['accounts']['latest'])} "
-        f"({_pct(ex['accounts']['pct_change'])}). Outside the reward apps, core accounts went {M(c['accounts']['prior'])} to "
+        f"({_pct(ex['accounts']['pct_change'])}). Accounts outside the reward namespaces went {M(c['accounts']['prior'])} to "
         f"{M(c['accounts']['latest'])} ({_pct(c['accounts']['pct_change'])}; {_pct(c3['accounts']['pct_change'])} on three-month "
         f"means) and those also active the month before {M(c['returning_accounts']['prior'])} to "
-        f"{M(c['returning_accounts']['latest'])} ({_pct(c['returning_accounts']['pct_change'])}). Core transactions paid by the "
+        f"{M(c['returning_accounts']['latest'])} ({_pct(c['returning_accounts']['pct_change'])}); most of those accounts were "
+        f"sponsored users of other apps, see the next chart. Their transactions paid by the "
         f"sender grew {_pct(c['direct_txs']['pct_change'])} ({_pct(c3['direct_txs']['pct_change'])} on three-month means) "
-        f"while those sponsored through relayers fell {_pct(c['relayed_txs']['pct_change'])}. Transactions per core account "
+        f"while those sponsored through relayers fell {_pct(c['relayed_txs']['pct_change'])}. Transactions per account in that group "
         f"rose from {c['txs_per_account']['prior']:.1f} to {c['txs_per_account']['latest']:.1f} a month, but with last year's "
         f"mix of account types it would be {ps['core_txs_per_account_at_prior_mix']:.1f}: low-activity accounts left, "
         f"the rest did not get busier. Named .near accounts: {_pct(n['accounts']['pct_change'])} "
@@ -178,6 +179,57 @@ def _value_chart(d: pd.DataFrame, fees: pd.DataFrame, vc: dict, out: Path) -> Ch
         "DefiLlama fee series for NEAR Intents (dailyFees, dailyRevenue, dailyHoldersRevenue); net new supply = change in "
         "NearBlocks' daily total supply (already net of burned fees) valued at the mean price of the period. Bought NEAR is "
         "held, not burned, so supply itself does not shrink.",
+    )
+
+
+def _segments_chart(seg: pd.DataFrame, sg: dict, out: Path) -> Chart:
+    """Accounts by who pays the fee and how often they act."""
+    s = segments.series(seg)
+    x = pd.to_datetime(s.index)
+    fig, axes = plt.subplots(1, 2, figsize=(11, 3.8))
+    ax = axes[0]
+    for col, label, color, style in (
+            ("sponsored_accounts", "an app pays for them (sponsored)", MUTED, "--"),
+            ("app_namespace_self_paying_accounts", "HOT wallet users paying their own fees", "#c9a227", "--"),
+            ("regular_accounts", "independent, regular (10 to 999 tx a month)", ACCENT, "-"),
+            ("heavy_accounts", "independent, heavy (1,000+ tx a month)", INK, "-")):
+        ax.plot(x, _pos(s[col]), color=color, linestyle=style, label=label)
+    ax.set_yscale("log")
+    _plain(ax)
+    _style(ax, "Accounts active in the month, by who pays (log scale)")
+    ax.legend(frameon=False, fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=2)
+    ax = axes[1]
+    bottom = np.zeros(len(s))
+    for col, label, color in (("heavy_self_paid_txs", "heavy accounts", INK), ("regular_self_paid_txs", "regular", ACCENT),
+                              ("occasional_self_paid_txs", "occasional (under 10 a month)", "#9bd8c6")):
+        ax.bar(x, s[col] / 1e6, bottom=bottom, width=20, color=color, label=label)
+        bottom += (s[col] / 1e6).to_numpy()
+    _style(ax, "Self-paid transactions of independent accounts, millions")
+    ax.legend(frameon=False, fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=3)
+    for a in axes:
+        a.xaxis.set_major_locator(mdates.MonthLocator(bymonth=[1, 4, 7, 10]))
+        a.xaxis.set_major_formatter(mdates.DateFormatter("%b %Y"))
+        a.tick_params(axis="x", labelsize=7)
+    _save(fig, out, "segments")
+    m = sg["metrics"]
+
+    def both(k: str) -> str:
+        return f"{_pct(m[k]['pct_change'])} ({_pct(m[k]['three_month_mean']['pct_change'])} on three-month means)"
+
+    return Chart(
+        "segments", "Who pays, and how often",
+        f"Accounts whose fees an app paid: {m['sponsored_accounts']['prior'] / 1e6:.1f}M in {sg['prior_month']}, "
+        f"{m['sponsored_accounts']['latest'] / 1e6:.2f}M in {sg['latest_month']}. Accounts that pay for themselves and are not in a "
+        f"reward app's namespace, acting 10 to 999 times a month: {m['regular_accounts']['prior']:,.0f} to "
+        f"{m['regular_accounts']['latest']:,.0f}, {both('regular_accounts')}; their low was {sg['regular_accounts_low']['value']:,.0f} in "
+        f"{sg['regular_accounts_low']['month']}. Accounts sending 1,000 or more a month: {m['heavy_accounts']['prior']:,.0f} to "
+        f"{m['heavy_accounts']['latest']:,.0f}, and they send {sg['heavy_share_of_independent_self_paid_txs']['latest'] * 100:.0f}% of "
+        f"those self-paid transactions, which changed {both('independent_self_paid_txs')}.",
+        "sql/payer_frequency.sql on the NEAR BigQuery public dataset (91.28 GB), result in data/bq/payer_frequency.csv. "
+        "Sponsored = every transaction of the account that month was submitted by a relayer. Frequency classes are powers "
+        "of ten of the monthly transaction count; 1,000 a month is more than 30 a day. Occasional accounts (under 10 a "
+        "month) swing with one-off events and are not read as a trend.",
+        source="sql/payer_frequency.sql",
     )
 
 
@@ -223,6 +275,54 @@ def _clients_chart(cl: dict, out: Path) -> Chart:
         "grouped into apps by the table in thesis/clients.py. Intents users sign off-chain, so its on-chain signers are "
         "relayers, not users.",
     )
+
+
+CHART_SOURCE = {
+    "population": "sql/account_age.sql", "segments": "sql/payer_frequency.sql", "clients": "sql/top_accounts.sql",
+    "value_capture": "thesis/value.py", "signer_census": "thesis/census.py", "accounts": "thesis/metrics.py",
+    "usage_vs_price": "thesis/metrics.py", "tx_per_active": "thesis/metrics.py", "fees_per_active": "thesis/metrics.py",
+    "intents": "thesis/sources.py", "lead_lag": "thesis/metrics.py",
+}
+
+
+def _takeaway(slug: str, s: dict) -> str:
+    """One plain sentence per chart, built from the same summary as the detailed caption. Empty if the data is absent."""
+    try:
+        if slug == "population":
+            return f"NEAR lost {abs(s['population']['segments']['all']['accounts']['pct_change']):.0f}% of its active accounts in a year."
+        if slug == "segments":
+            m = s["segments"]["metrics"]
+            return (f"Almost all of the lost accounts were users an app was paying for; regular accounts that pay their own "
+                    f"fees fell {abs(m['regular_accounts']['pct_change']):.0f}%.")
+        if slug == "clients":
+            c = s["clients"]
+            return f"{c['months'][c['latest_month']]['accounts_for_half_of_txs']} accounts send half of all NEAR transactions."
+        if slug == "value_capture":
+            return (f"Buybacks funded by NEAR Intents cover {s['value_capture']['buyback_coverage_of_new_supply'] * 100:.0f}% "
+                    "of the new NEAR issued.")
+        if slug == "accounts":
+            return ("The usual proxy for returning accounts points the wrong way." if "population" in s
+                    else "Returning accounts are estimated as active minus new accounts.")
+        if slug == "usage_vs_price":
+            y = s["yoy_90d"]
+            return (f"Over a year the NEAR price changed {_pct(y['price_usd']['pct_change'])} and daily transactions "
+                    f"{_pct(y['txns']['pct_change'])}.")
+        if slug == "tx_per_active":
+            return "Transactions per active account mostly show which apps are on the chain, not how people behave."
+        if slug == "fees_per_active":
+            return f"Total network fees changed {_pct(s['yoy_90d']['fees_usd']['pct_change'])} in a year."
+        if slug == "intents":
+            mi = s["month_yoy"]["intents_volume_usd"]
+            return f"NEAR Intents volume changed {_pct(mi['pct_change'])} against the same month a year earlier."
+        if slug == "signer_census":
+            return "A sample of random blocks, taken without any API key, agrees with the full count."
+        if slug == "lead_lag":
+            from . import predictions
+            return ("Usage does not lead price." if predictions.adjacent_positive_leads(s["lead_vs_price"]) == 0
+                    else "Some usage metrics move before price; see the lags.")
+    except (KeyError, TypeError):
+        return ""
+    return ""
 
 
 AGE_LABELS = {"365d+": "older than 1 year", "30-365d": "30 days to 1 year", "new": "newer than 30 days"}
@@ -416,6 +516,9 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
     if pop is not None and "population" in summary:
         charts.append(_population_chart(pop, summary, out))
 
+    seg = segments.load()
+    if seg is not None and "segments" in summary:
+        charts.append(_segments_chart(seg, summary["segments"], out))
     if "clients" in summary:
         charts.append(_clients_chart(summary["clients"], out))
 
@@ -459,7 +562,12 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
             "corr(Δlog metric_t, Δlog price_{t+k}), k in weeks, positive k = metric moves first (green bars); "
             "dotted lines = ±2/√n noise band.",
         ))
-    lead = ["population", "clients", "value_capture"]  # the full-chain counts lead the dashboard
+    for c in charts:  # the dashboard shows the first sentence on its own: make it the plain takeaway
+        first = _takeaway(c.slug, summary)
+        if first:
+            c.sentence = f"{first} {c.sentence}"
+        c.source = c.source or CHART_SOURCE.get(c.slug, "")
+    lead = ["population", "segments", "clients", "value_capture"]  # the full-chain counts lead the dashboard
     charts.sort(key=lambda c: lead.index(c.slug) if c.slug in lead else len(lead))
     for c in charts:
         c.source = SOURCE_OF.get(c.slug, "")

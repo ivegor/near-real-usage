@@ -39,6 +39,17 @@ def _fetch_json(url: str, retries: int = 3) -> dict:
     raise RuntimeError(f"Failed to fetch {url}: {last_err}")
 
 
+REQUIRED_KEY = {"nearblocks_charts": "charts", "defillama_intents": "totalDataChart"}
+
+
+def _check_shape(name: str, data: object) -> None:
+    """Raise if a response does not carry the series we read from it (an API change, a rate-limit page, ...)."""
+    key = REQUIRED_KEY.get(name)
+    rows = data.get(key) if isinstance(data, dict) and key else None
+    if key and (not isinstance(rows, list) or len(rows) < 30):
+        raise RuntimeError(f"unexpected response for {name}: no usable '{key}' series")
+
+
 def fetch_all(offline: bool = False) -> dict[str, dict]:
     """Return raw JSON for every source, downloading unless offline."""
     RAW_DIR.mkdir(parents=True, exist_ok=True)
@@ -53,6 +64,7 @@ def fetch_all(offline: bool = False) -> dict[str, dict]:
         else:
             try:
                 data = _fetch_json(url)
+                _check_shape(name, data)  # never overwrite the committed copy with an error page or an empty reply
                 path.write_text(json.dumps(data))
             except RuntimeError as e:
                 # An API outage must not break the build or a judge's reproduction: fall back to the committed copy.

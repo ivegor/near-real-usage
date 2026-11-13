@@ -35,7 +35,8 @@ def adjacent_positive_leads(lead_vs_price: dict) -> int:
     return n
 
 
-def baselines(daily: pd.DataFrame, fees: pd.DataFrame | None, census: pd.DataFrame | None) -> dict:
+def baselines(daily: pd.DataFrame, fees: pd.DataFrame | None, census: pd.DataFrame | None,
+              seg: pd.DataFrame | None = None) -> dict:
     """The reference levels the thresholds in predictions.csv are taken from. Nothing here is a chosen number."""
     out = {"intents_volume_plateau_top_usd": float(daily["intents_volume_usd"].resample("ME").mean().loc[PLATEAU[0]:PLATEAU[1]].max())}
     if fees is not None:
@@ -44,7 +45,9 @@ def baselines(daily: pd.DataFrame, fees: pd.DataFrame | None, census: pd.DataFra
         core = census[~census["family"].isin(["kaiching", "tg", "sweat"])]
         g = core.groupby("month")[["txs", "relayed_txs", "accounts"]].sum()
         out["core_self_paid_txs_plateau_top"] = float((g["txs"] - g["relayed_txs"]).loc[PLATEAU[0]:PLATEAU[1]].max())
-        out["core_accounts_2026_10"] = float(g["accounts"].loc["2026-10"])
+    if seg is not None:
+        from . import segments
+        out["regular_self_paying_accounts_low"] = float(segments.series(seg)["regular_accounts"].loc[PLATEAU[0]:PLATEAU[1]].min())
     return out
 
 

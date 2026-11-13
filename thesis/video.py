@@ -25,16 +25,21 @@ INK, ACCENT, MUTED = "#1f2328", "#00a27a", "#57606a"
 def slides(s: dict) -> list[dict]:
     """What each slide says: headline, one supporting line, the chart it shows, seconds on screen."""
     p, c, v = s["population"]["segments"], s["clients"], s["value_capture"]
-    core, al = p["core"], p["all"]
+    al = p["all"]
+    sg = s["segments"]["metrics"]
     latest = c["months"][c["latest_month"]]
     cc = s.get("cross_check", {}).get("recent")
     out = [
         {"head": f"NEAR lost {abs(al['accounts']['pct_change']):.0f}% of its active accounts in a year.",
          "line": "We counted every one. Built at NEAR HACKATHON, track Investment Thesis.", "chart": None, "sec": 6},
         {"head": f"{s['population']['reward_apps_share_of_lost']['accounts'] * 100:.0f}% of the accounts that left belonged to reward apps.",
-         "line": f"Outside them the base also fell: {core['accounts']['prior'] / 1e6:.2f}M to {core['accounts']['latest'] / 1e6:.2f}M accounts "
-                 f"({core['accounts']['pct_change']:+.0f}%), returning accounts {core['returning_accounts']['pct_change']:+.0f}%.",
-         "chart": "population", "sec": 12},
+         "line": f"Accounts whose fees an app paid: {sg['sponsored_accounts']['prior'] / 1e6:.1f}M a year ago, "
+                 f"{sg['sponsored_accounts']['latest'] / 1e6:.2f}M now.",
+         "chart": "population", "sec": 10},
+        {"head": f"Regular accounts that pay their own fees: {sg['regular_accounts']['prior']:,.0f} to {sg['regular_accounts']['latest']:,.0f}.",
+         "line": f"{sg['heavy_accounts']['latest']:,.0f} heavy accounts (1,000+ transactions a month) send "
+                 f"{s['segments']['heavy_share_of_independent_self_paid_txs']['latest'] * 100:.0f}% of self-paid transactions.",
+         "chart": "segments", "sec": 11},
         {"head": f"{latest['accounts_for_half_of_txs']} accounts send half of all transactions.",
          "line": f"Reward and wallet apps are still {c['reward_apps_share']['latest'] * 100:.0f}% of them; trading, Intents, tokens and "
                  f"bridges are {c['finance_share']['latest'] * 100:.0f}% and grew {c['finance_txs']['pct_change']:+.0f}% in a year.",

@@ -1,7 +1,7 @@
 """Signer census: who signs NEAR transactions, measured from the chain itself.
 
-The daily aggregates only give `active - new` as a proxy for returning accounts, and that proxy is a
-lower bound (see THESIS.md). This module measures the thing directly, with no API key:
+The account counts in THESIS.md come from one source, BigQuery. This module is the independent check on
+them: it measures the same chain a second way, with no API key and no Google account:
 
 1. Draw random block heights (fixed seed) inside two 90-day windows: the latest one and the same
    window a year earlier.
@@ -33,7 +33,6 @@ import requests
 RAW_DIR = Path(__file__).resolve().parent.parent / "data" / "raw"
 BLOCK_URL = "https://mainnet.neardata.xyz/v0/block/{height}"
 RPC_URL = "https://archival-rpc.mainnet.fastnear.com"
-TX_API_URL = "https://tx.main.fastnear.com"  # FastNEAR transactions index: an account's history, oldest first
 
 SEED = 20261112
 WINDOW_DAYS = 90
@@ -43,7 +42,7 @@ MAX_TX_PER_WINDOW = 1200  # transactions whose accounts get an age check (random
 AGE_DAYS = (30, 365)
 # Seconds between requests per host. Without an API key both hosts answer HTTP 429 after short bursts and then
 # keep refusing for minutes, so the pace is slow on purpose and slows down further after every refusal.
-MIN_INTERVAL = {BLOCK_URL.split("/v0")[0]: 7.0, RPC_URL: 2.5, TX_API_URL: 2.5}
+MIN_INTERVAL = {BLOCK_URL.split("/v0")[0]: 7.0, RPC_URL: 2.5}
 COOL_DOWN = 240  # seconds to wait after an HTTP 429
 BOUND_TOLERANCE_NS = 5 * 60 * 10**9  # window edges are located to within 5 minutes
 
@@ -247,132 +246,6 @@ def fetch(last_date: str, seed: int = SEED, blocks: dict[str, int] | None = None
     pd.concat(samples).to_csv(RAW_DIR / SAMPLE_FILE, index=False)
     pd.DataFrame(exist_rows).to_csv(RAW_DIR / EXIST_FILE, index=False)
     (RAW_DIR / META_FILE).write_text(json.dumps(meta, indent=2))
-
-
-def first_seen(account: str) -> dict:
-    """Oldest transaction that involves the account (as signer or receiver) and its lifetime transaction count.
-
-    One request to the FastNEAR transactions index. For an account created by another account the oldest
-    transaction is the one that created it, so `first_ts` is the account's first appearance on chain.
-    """
-    def get():
-        res = _get_json(TX_API_URL + "/v0/account", method="POST", json={"account_id": account, "desc": False, "limit": 1})
-        rows = res.get("account_txs") or []
-        return {"first_ts": int(rows[0]["tx_block_timestamp"]) if rows else None,
-                "first_height": int(rows[0]["tx_block_height"]) if rows else None,
-                "txs_count": res.get("txs_count")}
-    return _cached(f"first_seen/{account}.json", get)
-
-
-def cached_actors() -> list[str]:
-    """Every account seen in the downloaded blocks, most recent blocks first."""
-    seen: dict[str, None] = {}
-    for path in sorted((CACHE_DIR / "blocks").glob("*.json"), key=lambda q: -int(q.stem)):
-        for r in json.loads(path.read_text())["rows"]:
-            seen.setdefault(r["actor"])
-    return list(seen)
-
-
-def fetch_first_seen(idle_rounds: int = 30) -> None:
-    """Look up `first_seen` for every account in the block cache; keeps going while new blocks arrive.
-
-    Runs next to `fetch` / `fetch_panel` (it uses a third host, so it does not slow them down) and stops after
-    `idle_rounds` minutes without new accounts. Writes data/raw/census_first_seen.csv as it goes.
-    """
-    idle = 0
-    while idle < idle_rounds:
-        todo = [a for a in cached_actors() if not (CACHE_DIR / "first_seen" / f"{a}.json").exists()]
-        if not todo:
-            idle += 1
-            time.sleep(60)
-            continue
-        idle = 0
-        print(f"[first-seen] {len(todo)} accounts to look up", flush=True)
-        for i, a in enumerate(todo[:500]):  # re-scan the cache every 500 lookups so the newest blocks stay first
-            first_seen(a)
-        export_first_seen()
-    export_first_seen()
-
-
-def export_first_seen() -> None:
-    rows = [{"actor": q.stem, **json.loads(q.read_text())} for q in sorted((CACHE_DIR / "first_seen").glob("*.json"))]
-    RAW_DIR.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(rows, columns=["actor", "first_ts", "first_height", "txs_count"]).to_csv(RAW_DIR / FIRST_SEEN_FILE, index=False)
-    print(f"[first-seen] {len(rows)} accounts written", flush=True)
-
-
-FIRST_SEEN_FILE = "census_first_seen.csv"
-PANEL_BLOCKS_PER_MONTH = 200
-PANEL_TX_PER_MONTH = 400
-PANEL_SAMPLE_FILE, PANEL_EXIST_FILE, PANEL_META_FILE = "census_panel_sample.csv", "census_panel_existence.csv", "census_panel_meta.json"
-
-
-def fetch_panel(first_month: str, last_date: str, seed: int = SEED, blocks_per_month: int = PANEL_BLOCKS_PER_MONTH,
-                tx_per_month: int = PANEL_TX_PER_MONTH) -> None:
-    """Monthly version of `fetch`: the same sample for every calendar month from first_month to last_date.
-
-    Long (hours at the keyless pace), so it works newest month first, writes the output files after every
-    finished month and resumes from the cache when restarted. Each month has its own seed, so adding
-    months later does not change the months already drawn.
-    """
-    RAW_DIR.mkdir(parents=True, exist_ok=True)
-    end = pd.Timestamp(last_date) + pd.Timedelta(days=1)
-    months = list(pd.period_range(first_month, last_date, freq="M"))[::-1]
-
-    def anchors() -> dict:
-        hd = _rpc("block", {"finality": "final"})["result"]["header"]
-        top = (int(hd["height"]), int(hd["timestamp"]))
-        return {"top": top, "floor": _block_header(top[0] - 140_000_000)}
-
-    anc = _cached(f"panel_anchors_{last_date}.json", anchors)
-    top, floor = tuple(anc["top"]), tuple(anc["floor"])
-
-    def bounds(m: pd.Period) -> dict:
-        start, stop = m.start_time, min(m.start_time + pd.offsets.MonthBegin(1), end)
-        return {
-            "start": str(start.date()), "end": str((stop - pd.Timedelta(days=1)).date()),
-            "height_start": height_at(int(start.value), floor, top), "height_end": height_at(int(stop.value), floor, top),
-            "ref_heights": {f"{d}d_before_start": height_at(int((start - pd.Timedelta(days=d)).value), floor, top)
-                            for d in AGE_DAYS},
-        }
-
-    def download(m: pd.Period) -> tuple[dict, pd.DataFrame]:
-        w = _cached(f"panel_bounds_{m}.json", lambda: bounds(m))
-        rng = np.random.default_rng([seed, m.year, m.month])
-        heights = sorted({int(h) for h in rng.integers(w["height_start"], w["height_end"], size=blocks_per_month)})
-        got = [_block_rows(h) for h in heights]
-        df = pd.DataFrame([r for g in got for r in g["rows"]],
-                          columns=["height", "ts", "actor", "signer", "target", "method", "relayed"])
-        w.update(blocks_requested=len(heights), blocks_found=sum(1 for g in got if g["found"]), transactions_sampled=len(df))
-        if len(df) > tx_per_month:
-            df = df.iloc[np.sort(rng.choice(len(df), tx_per_month, replace=False))]
-        df.insert(0, "window", str(m))
-        return w, df
-
-    samples, exist_rows, meta_windows = [], [], {}
-    with ThreadPoolExecutor(1) as pool:  # blocks download ahead while ages are checked on the other host
-        futures = [(m, pool.submit(download, m)) for m in months]
-        for m, fut in futures:
-            w, df = fut.result()
-            actors = sorted(df["actor"].unique())
-            print(f"[panel] {m}: {w['blocks_found']} blocks, {w['transactions_sampled']} transactions, keeping {len(df)}, "
-                  f"{len(actors)} accounts to check", flush=True)
-            start_ns = pd.Timestamp(w["start"]).value
-            for a in actors:
-                # one request gives the exact first appearance, so both age classes come from it
-                ts = first_seen(a)["first_ts"]
-                exist_rows.append({"window": str(m), "actor": a, "first_ts": ts,
-                                   **{f"existed_{d}d": bool(ts is not None and ts < start_ns - d * 86_400 * 10**9)
-                                      for d in AGE_DAYS}})
-            samples.append(df)
-            meta_windows[str(m)] = w
-            pd.concat(samples).to_csv(RAW_DIR / PANEL_SAMPLE_FILE, index=False)
-            pd.DataFrame(exist_rows).to_csv(RAW_DIR / PANEL_EXIST_FILE, index=False)
-            (RAW_DIR / PANEL_META_FILE).write_text(json.dumps({
-                "seed": seed, "blocks_per_month": blocks_per_month, "max_tx_per_month": tx_per_month,
-                "sources": {"blocks": BLOCK_URL, "rpc": RPC_URL},
-                "updated_at_utc": pd.Timestamp.now(tz="UTC").isoformat(), "windows": meta_windows}, indent=2))
-            print(f"[panel] {m}: done ({len(meta_windows)}/{len(months)} months written)", flush=True)
 
 
 # ---------------------------------------------------------------- pure metrics

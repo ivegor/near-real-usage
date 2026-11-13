@@ -116,3 +116,19 @@ def test_build_survives_an_api_outage(tmp_path, monkeypatch):
     raw = sources.fetch_all()                  # saved copies exist: they are used instead
     assert len(raw["nearblocks_charts"]["charts"]) == 60
     assert json.loads((tmp_path / "_meta.json").read_text())["not_refreshed"] == ["nearblocks_charts", "defillama_intents"]
+
+
+def test_a_bad_api_reply_never_replaces_the_saved_copy(tmp_path, monkeypatch):
+    import json
+
+    import pytest
+    nb, ll = synthetic_raw(days=60)
+    monkeypatch.setattr(sources, "RAW_DIR", tmp_path)
+    (tmp_path / "nearblocks_charts.json").write_text(json.dumps(nb))
+    (tmp_path / "defillama_intents.json").write_text(json.dumps(ll))
+    monkeypatch.setattr(sources, "_fetch_json", lambda url: {"message": "rate limited"})   # HTTP 200 with the wrong body
+    out = sources.fetch_all(offline=False)
+    assert out["nearblocks_charts"] == nb                                    # the build falls back to the saved copy
+    assert json.loads((tmp_path / "nearblocks_charts.json").read_text()) == nb          # and the file is untouched
+    with pytest.raises(RuntimeError):
+        sources._check_shape("defillama_intents", {"totalDataChart": []})
