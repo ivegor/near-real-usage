@@ -5,6 +5,8 @@ import pandas as pd
 
 from thesis import charts, clients
 
+from . import snapshot
+
 
 def write(tmp_path):
     p = tmp_path / "result.csv"
@@ -59,7 +61,7 @@ def test_group_contracts_outside_a_months_40_bound_the_change(tmp_path):
     gap = s["reward_minus_finance_share"]
     assert abs(gap["latest"] - (200 - 500) / 800) < 1e-12 and gap["latest_range"][0] < gap["latest"] < gap["latest_range"][1]
     # the committed result: neither the growth of the finance group nor the sign of the gap depends on what the 40 hide
-    real = clients.summarize(clients.load())
+    real = clients.summarize(snapshot.top())
     assert real["finance_txs_change_range"][0] > 0 and real["reward_minus_finance_share"]["latest_range"][0] > 0
     assert real["finance_txs"] == {k: real["finance_txs"][k] for k in ("latest", "prior", "pct_change")}   # the frozen figures keep their shape
 
@@ -83,9 +85,9 @@ def test_other_contracts_and_the_exchange_bot_targets_are_published(tmp_path):
     rest, alt = s["three_parts"]["rest"], s["three_parts"]["rest_without_exchange_bot_targets"]
     assert alt["prior"] == rest["prior"] - 60 and alt["latest"] == rest["latest"]
     # the committed result: of the unnamed contracts among the 40 largest, one is in both months
-    real = clients.summarize(clients.load())
+    real = clients.summarize(snapshot.top())
     assert real["other_top_40"]["in_both_months"] == ["near"] and real["exchange_bot_targets"]["latest"] == 0
-    callers = clients.load()["2025-10"]["actors"].set_index("actor")["top_via"]
+    callers = snapshot.top()[snapshot.YEAR_BEFORE]["actors"].set_index("actor")["top_via"]
     assert callers["pyth-bot.ref-labs.near"] == callers["pyth-bot-a.ref-labs.near"] == "pyth-oracle.near"
     assert callers["watcher05.ref-watchdog.near"] == "acc.toalice.near"
 
@@ -161,3 +163,77 @@ def test_summary_and_chart(tmp_path):
     assert s["sweat_users"] == {"latest": 30, "prior": 0}
     c = charts._clients_chart(s, tmp_path)
     assert (tmp_path / "clients.png").stat().st_size > 5_000 and "nan" not in c.sentence.lower()
+
+
+def test_the_latest_month_is_compared_with_the_same_month_a_year_earlier(tmp_path):
+    """A later run of the query adds its two months to the file: the comparison moves on, the earlier months stay readable."""
+    p = write(tmp_path)
+    more = ("2026-01,conc,900|400|2|500|500|500|500|2|2\n"
+            "2026-01,via,intents.near|500|9;relayer:sweat-relayer.near|300|40\n"
+            "2026-01,actors,intents.near|500|intents.near\n"
+            "2027-01,conc,700|50|2|500|500|500|500|1|2\n"
+            "2027-01,via,intents.near|400|11;relayer:sweat-relayer.near|200|20\n"
+            "2027-01,actors,intents.near|400|intents.near\n")
+    p.write_text(p.read_text(encoding="utf-8") + more)
+    data = clients.load(p)
+    assert clients.compared_months(data) == ("2027-01", "2026-01")
+    s = clients.summarize(data)
+    assert (s["latest_month"], s["prior_month"]) == ("2027-01", "2026-01")
+    assert list(s["months"]) == ["2027-01", "2026-01", "2025-10", "2026-10"]             # every month of the file, the compared ones first
+    assert s["months"]["2026-10"]["accounts_for_half_of_txs"] == 2          # an earlier month of the file can still be read
+    intents = s["apps"]["NEAR Intents"]
+    assert (intents["latest"], intents["prior"]) == (400, 500) and abs(intents["pct_change"] + 20) < 1e-9
+    assert (intents["latest_share"], intents["prior_share"]) == (400 / 700, 500 / 900)
+    # without the month a year earlier the earliest month is used, and the summary names it
+    alone = {m: v for m, v in data.items() if m != "2026-01"}
+    assert clients.compared_months(alone) == ("2027-01", "2025-10")
+    assert clients.compared_months(clients.load(write(tmp_path))) == ("2026-10", "2025-10")
+
+
+def test_reward_side_contracts_outside_the_namespaces_follow_from_the_groups(tmp_path):
+    """Direct calls to them are paid by their senders, so they sit in the self-paid series; the list is derived, not typed."""
+    assert clients.REWARD_SIDE_CONTRACTS_OUTSIDE_NAMESPACES == ("fast-auth.near", "aa-harvest-moon.near", "embr.playember_reserve.near")
+    assert clients._in_app_namespace("game.hot.tg") and clients._in_app_namespace("tg") and clients._in_app_namespace("wallet.kaiching")
+    assert not clients._in_app_namespace("sweat-relayer.near") and not clients._in_app_namespace("tgx.near")
+    p = write(tmp_path)
+    text = p.read_text(encoding="utf-8").replace("intents.near|100|9\n", "intents.near|100|9;aa-harvest-moon.near|70|20;game.hot.tg|90|30\n")
+    p.write_text(text.replace("mystery.near|40|1", "mystery.near|40|1;fast-auth.near|25|2;embr.playember_reserve.near|16|3;relayer:meteor-relayer.near|50|25"))
+    side = clients.summarize(clients.load(p))["reward_side_direct_calls"]
+    assert side["prior"] == {"transactions": 70, "by_contract": {"aa-harvest-moon.near": {"transactions": 70, "accounts": 20}}}
+    assert side["latest"]["transactions"] == 41 and set(side["latest"]["by_contract"]) == {"fast-auth.near", "embr.playember_reserve.near"}
+    # the committed result: the game a year ago; Sweat's fast-auth calls and Ember's contract now
+    real = clients.summarize(snapshot.top())["reward_side_direct_calls"]
+    assert list(real["prior"]["by_contract"]) == ["aa-harvest-moon.near"]
+    assert set(real["latest"]["by_contract"]) == {"fast-auth.near", "embr.playember_reserve.near"}
+    callers = snapshot.top()[snapshot.LAST_MONTH]["actors"].set_index("actor")
+    assert callers.loc["sweat-relayer.near", "top_via"] == "fast-auth.near"
+    assert callers.loc["sweat-relayer.near", "txs"] > 0.99 * real["latest"]["by_contract"]["fast-auth.near"]["transactions"]
+
+
+def test_a_sender_whose_sampled_calls_all_failed_is_taken_out_next_to_the_counted_figures(tmp_path):
+    """A failed transaction is counted like any other; where a sample shows one sender failing every time, both figures are published."""
+    data = clients.load(write(tmp_path))                        # intents.near received 300 now and 100 a year ago
+    ended = {"target": "intents.near", "window": "recent",
+             "senders": {"intents.near": {"transactions": 10, "failed": 1}, "escrow.ai.near": {"transactions": 4, "failed": 4}}}
+    s = clients.summarize(data)
+    s["intents_outcomes"] = ended
+    clients.add_failing_senders(s, data, ("2026-08-14", "2026-11-11"))
+    f = s["failing_senders"]
+    assert f["sampled"] == {"escrow.ai.near": {"transactions": 4, "failed": 4}} and f["transactions_latest_all"] == 50
+    assert f["transactions_prior"] == {"escrow.ai.near": None} and f["smallest_of_the_40_accounts_prior"] == 100
+    assert abs(f["share_of_target_txs_latest"] - 50 / 300) < 1e-12
+    assert abs(f["target_pct_change_without_them"] - (250 / 100 - 1) * 100) < 1e-9
+    assert abs(f["finance_pct_change_without_them"] - (450 / 400 - 1) * 100) < 1e-9
+    assert s["finance_txs"]["pct_change"] == 25.0               # the counted figure is left as it was
+    c = charts._clients_chart(s, tmp_path)
+    assert "all 4 sampled calls of escrow.ai.near to intents.near failed" in c.sentence and "changed +12%" in c.sentence
+    # the outcomes were sampled in another period than the month in the table: nothing is said
+    other = clients.summarize(data)
+    other["intents_outcomes"] = ended
+    clients.add_failing_senders(other, data, ("2026-11-14", "2027-02-11"))
+    assert "failing_senders" not in other
+    # a sender that fails only sometimes is not taken out
+    some = clients.summarize(data)
+    some["intents_outcomes"] = {**ended, "senders": {"escrow.ai.near": {"transactions": 4, "failed": 3}}}
+    clients.add_failing_senders(some, data, ("2026-08-14", "2026-11-11"))
+    assert "failing_senders" not in some

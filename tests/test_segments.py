@@ -3,6 +3,8 @@ import pandas as pd
 
 from thesis import charts, clients, population, segments
 
+from . import snapshot
+
 
 def table():
     rows = []
@@ -52,6 +54,8 @@ def test_reward_game_bound_gives_both_ends_of_the_range(tmp_path):
     assert abs(b["pct_change_if_all_of_them_were_regular"] - (54 / 72 - 1) * 100) < 1e-9
     c = charts._segments_chart(df, sg, tmp_path)   # the caption says the fall is not a clean count
     assert "up to 30 of last year's accounts" in c.sentence and "nan" not in c.sentence.lower()
+    assert "With all of them taken out of last year's count the change would be -25%" in c.sentence
+    assert "without_the_game" not in b             # nothing is known about this year's players without the relayer's accounts
     # more players than regular accounts: the bound is the whole class
     segments.add_reward_game_bound(sg, {"direct": {"prior": {"transactions": 9000, "accounts": 500}}})
     assert sg["regular_accounts_reward_game_bound"]["share_of_prior_regular_at_most"] == 1
@@ -59,6 +63,30 @@ def test_reward_game_bound_gives_both_ends_of_the_range(tmp_path):
     plain = segments.summarize(df)
     segments.add_reward_game_bound(plain, {"direct": {"latest": None, "prior": None}})
     assert "regular_accounts_reward_game_bound" not in plain
+
+
+def test_the_players_are_taken_out_of_both_months(tmp_path):
+    """A player who still pays for one transaction is inside this year's regular accounts too: relayed calls count towards the class."""
+    df = table()
+    sg = segments.summarize(df)                    # regular accounts: 102 a year ago, 54 now
+    game = {"direct": {"latest": None, "prior": {"transactions": 900, "accounts": 30}},
+            "relayed": {"latest": {"transactions": 500, "accounts": 40}, "prior": {"transactions": 100, "accounts": 10}}}
+    segments.add_reward_game_bound(sg, game, {"latest": 28.0, "prior": 4.0})      # the relayer pays everything for 28 of its 40 accounts
+    w = sg["regular_accounts_reward_game_bound"]["without_the_game"]
+    assert (w["relayer_accounts_latest"], w["fully_sponsored_latest"], w["players_still_self_paying_latest_at_most"]) == (40, 28, 12)
+    assert abs(w["pct_change_low"] - ((54 - 12) / 102 - 1) * 100) < 1e-9          # none were players last year, all 12 are regular now
+    assert abs(w["pct_change_high"] - (54 / 72 - 1) * 100) < 1e-9                 # all 30 were regular last year, none are now
+    assert abs(w["pct_change_with_the_most_out_of_both_months"] - (42 / 72 - 1) * 100) < 1e-9
+    assert w["pct_change_low"] < sg["regular_accounts_reward_game_bound"]["pct_change_as_counted"] < w["pct_change_high"]
+    c = charts._segments_chart(df, sg, tmp_path)   # the caption gives the range, not one end of it
+    assert "Up to 12 of this year's accounts still act through that relayer" in c.sentence
+    assert "Without the game's players the change lies between -59% and -25%" in c.sentence and "nan" not in c.sentence.lower()
+    # a relayer that pays everything for all of its accounts leaves no player in this year's count
+    segments.add_reward_game_bound(sg, game, {"latest": 40.0})
+    assert sg["regular_accounts_reward_game_bound"]["without_the_game"]["players_still_self_paying_latest_at_most"] == 0
+    # the committed tables: the name sql/payers.sql gives the relayer's accounts is one the build knows
+    from thesis import payers
+    assert clients.GAME_SPONSOR in payers.SPONSORS and clients.GAME_RELAYER.split(":", 1)[1].startswith(clients.GAME_SPONSOR)
 
 
 def test_reward_game_bound_covers_the_transactions_too():
@@ -83,8 +111,32 @@ def test_the_largest_monthly_fall_of_regular_accounts_is_published():
     assert sg["regular_accounts_by_month"]["2026-01"] == 90 and len(sg["regular_accounts_by_month"]) == 15
     # from 102 a year before the latest month to the low of 24: this one month is 34 of those 78
     assert abs(fall["share_of_fall_from_prior_month_to_low"] - 34 / 78) < 1e-12
-    real = segments.summarize(segments.load())["regular_accounts_largest_monthly_fall"]
+    real = segments.summarize(snapshot.frequency())["regular_accounts_largest_monthly_fall"]
     assert real["month"] == "2026-02" and 0.4 < real["share_of_fall_from_prior_month_to_low"] < 0.5
+
+
+def test_self_paid_transactions_are_also_published_without_what_is_not_independent_use(tmp_path):
+    """Reward-side direct calls sit in both months and a failing sender in the latest: the change without them, next to the counted one."""
+    df = table()
+    sg = segments.summarize(df)
+    txs = sg["metrics"]["independent_self_paid_txs"]                     # 56,840 a year ago, 68,840 now
+    cl = {"reward_side_direct_calls": {"prior": {"transactions": 6_840}, "latest": {"transactions": 3_840}},
+          "failing_senders": {"transactions_latest_all": 5_000}}
+    segments.add_self_paid_adjustments(sg, cl)
+    a = sg["self_paid_txs_adjustments"]
+    assert a["pct_change_as_counted"] == txs["pct_change"] and a["reward_side_direct_txs"] == {"latest": 3_840, "prior": 6_840}
+    assert abs(a["pct_change_without_reward_side_direct_txs"] - (65_000 / 50_000 - 1) * 100) < 1e-9
+    assert abs(a["pct_change_without_failing_senders"] - ((txs["latest"] - 5_000) / txs["prior"] - 1) * 100) < 1e-9
+    assert abs(a["pct_change_without_both"] - (60_000 / 50_000 - 1) * 100) < 1e-9
+    c = charts._segments_chart(df, sg, tmp_path)                         # and the caption says so
+    assert "Without them the change is +20%" in c.sentence and "nan" not in c.sentence.lower()
+    # no failing sender known: only the reward-side figure; no reward-side table: nothing at all
+    plain = segments.summarize(df)
+    segments.add_self_paid_adjustments(plain, {"reward_side_direct_calls": cl["reward_side_direct_calls"]})
+    assert set(plain["self_paid_txs_adjustments"]) == {"pct_change_as_counted", "reward_side_direct_txs", "pct_change_without_reward_side_direct_txs"}
+    none = segments.summarize(df)
+    segments.add_self_paid_adjustments(none, {})
+    assert "self_paid_txs_adjustments" not in none
 
 
 def test_unpack_reads_what_the_query_returns(tmp_path):
@@ -120,9 +172,25 @@ def test_unpack_rebuilds_the_committed_table_byte_for_byte(tmp_path):
 def test_the_committed_table_agrees_with_the_account_census():
     """Two separate BigQuery runs must count the same accounts and transactions in every month they share."""
     a, b = segments.load(), population.load()
-    left = a.groupby("month")[["accounts", "txs"]].sum()
+    # a month the census scan has not finished is not a month: one table may be run again before the other
+    shared = [m for m in sorted(a["month"].unique()) if m in population.complete_months(b)]
+    assert len(shared) >= 15
+    left = a[a["month"].isin(shared)].groupby("month")[["accounts", "txs"]].sum()
     right = b.groupby("month")[["accounts", "txs"]].sum().reindex(left.index)
     assert (left == right).all().all()
+
+
+def test_unpack_refuses_a_result_that_drops_months(tmp_path):
+    out = tmp_path / "out.csv"
+    first = tmp_path / "first.csv"
+    first.write_text("m,cells\n2026-09,rest|self|n10_99|3|90|80\n2026-10,rest|self|n1k_9k|2|5000|4900\n")
+    segments.unpack(first, out)
+    later = tmp_path / "later.csv"
+    later.write_text("m,cells\n2026-10,rest|self|n1k_9k|2|5000|4900\n2026-11,rest|self|n1|4|4|4\n")
+    import pytest
+    with pytest.raises(SystemExit, match="first date unchanged"):
+        segments.unpack(later, out)
+    assert list(segments.load(out)["month"]) == ["2026-09", "2026-10"]
 
 
 def test_namespace_view_adds_the_transactions_the_app_table_misses():

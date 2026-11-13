@@ -1,0 +1,116 @@
+"""A later run of the account queries, end to end: the whole build on tables that hold January 2027.
+
+Predictions B1 to B4 are scored from the committed query results once those hold the months they name. Nobody can
+run those queries before February 2027, so this test extends the committed tables the way a later run will (months
+are added, earlier months stay) and runs the build on them. It checks that the four are scored, that the build
+compares the latest month with the one a year earlier, and that figures combining two results are left out when
+only one of the queries has been run again.
+"""
+import json
+
+import numpy as np
+import pandas as pd
+import pytest
+
+from thesis import __main__ as cli
+from thesis import clients, population, segments, sources, value, video
+
+LATER = ["2026-11", "2026-12", "2027-01"]
+
+
+def later_tables(tmp_path, census=True, frequency=True, top=True):
+    """Copies of the committed tables with the months of a later run added: October's rows under the new months."""
+    paths = {}
+    age = population.load()
+    if census:
+        october = age[age["month"] == "2026-10"]
+        age = pd.concat([age[age["month"] != "2026-11"]] + [october.assign(month=m) for m in LATER + ["2027-02"]])   # February is unfinished
+    paths["census"] = tmp_path / "account_age.csv"
+    age.to_csv(paths["census"], index=False)
+    freq = segments.load()
+    if frequency:
+        freq = pd.concat([freq] + [freq[freq["month"] == "2026-10"].assign(month=m) for m in LATER])
+    paths["frequency"] = tmp_path / "payer_frequency.csv"
+    freq.to_csv(paths["frequency"], index=False)
+    result = pd.read_csv(clients.CSV)
+    if top:      # the query names two months a year apart; its rows are added to the file
+        result = pd.concat([result, result[result["m"] == "2025-10"].assign(m="2026-01"), result[result["m"] == "2026-10"].assign(m="2027-01")])
+    paths["top"] = tmp_path / "top_accounts_result.csv"
+    result.to_csv(paths["top"], index=False)
+    return paths
+
+
+def carried_forward(until="2027-02-12"):
+    """The committed daily series and fee series carried forward to a later day, with supply still growing."""
+    daily, fees = sources.load_daily(offline=True), value.load()
+    more = pd.date_range(daily.index.max() + pd.Timedelta(days=1), until, freq="D")
+    tail = pd.DataFrame([daily.iloc[-1]] * len(more), index=more)
+    tail["total_supply_yocto"] = daily["total_supply_yocto"].iloc[-1] + np.arange(1, len(more) + 1) * 8.8e28
+    more_fees = pd.date_range(fees.index.max() + pd.Timedelta(days=1), until, freq="D")
+    daily = pd.concat([daily, tail])
+    # The later tables repeat October under January 2027. The aggregator's January has to count the same transactions:
+    # a result that is short of the daily counts by a day or more is taken for a query run before the month ended.
+    january = (daily.index >= "2027-01-01") & (daily.index <= "2027-01-31")
+    daily.loc[january, "txns"] = clients.load()["2026-10"]["conc"]["txs"] / 31
+    return daily, pd.concat([fees, pd.DataFrame([fees.iloc[-1]] * len(more_fees), index=more_fees)])
+
+
+@pytest.fixture
+def later(tmp_path, monkeypatch):
+    """Point the build at a scratch directory and at the daily series of February 2027."""
+    daily, fees = carried_forward()
+    (tmp_path / "data").mkdir()
+    monkeypatch.setattr(cli, "ROOT", tmp_path)
+    monkeypatch.setattr(cli, "DOCS", tmp_path / "docs")
+    monkeypatch.setattr(sources, "load_daily", lambda offline=False: daily)
+    monkeypatch.setattr(value, "load", lambda: fees)
+
+    def build(scan_end=None, **which):
+        paths = later_tables(tmp_path, **which)
+        monkeypatch.setattr(population, "CSV", paths["census"])
+        monkeypatch.setattr(segments, "CSV", paths["frequency"])
+        monkeypatch.setattr(clients, "CSV", paths["top"])
+        if scan_end:
+            monkeypatch.setattr(population, "QUERY_END", scan_end)
+        cli.build(offline=True)
+        return json.loads((tmp_path / "docs" / "summary.json").read_text(encoding="utf-8"))
+
+    return build
+
+
+def test_a_later_run_of_all_three_queries_scores_the_four_predictions(later, capsys):
+    s = later(scan_end="2027-02-05")
+    printed = capsys.readouterr().out
+    # the build prints a digest a reader can take in at once: one sentence per chart and the nine statuses, not the summary
+    assert "Predictions: A1 held" in printed and "B4 held" in printed and "Dashboard: " in printed
+    assert len(printed) < 4000 and '"yoy_90d"' not in printed and printed.count("\n- ") == 11
+    status = {p["id"]: (p["status"], p["measured"]) for p in s["predictions"]["items"]}
+    assert len(status) == 9 and all(st in ("held", "failed") and v is not None for st, v in status.values()), status
+    # the tables repeat October, so the four are measured at October's values
+    assert status["B1"] == ("held", 17105.0) and status["B3"] == ("held", 30.0)
+    assert status["B2"][0] == "held" and status["B4"][0] == "held"
+    # every result compares January 2027 with January 2026, so they are still combined
+    for part in ("population", "segments", "clients"):
+        assert (s[part]["latest_month"], s[part]["prior_month"]) == ("2027-01", "2026-01"), part
+    assert "not_combined_with" not in s["clients"] and "three_parts" in s["clients"]
+    assert s["population"]["partial_month"]["month"] == "2027-02" and s["population"]["partial_month"]["core_direct_txs"]["days"] == 5
+    # the sample of autumn 2026 is still set against the months it covers: the file kept its October rows
+    assert s["cross_check"]["recent"]["top10_tx_share"]["bigquery_month"] == "2026-10"
+    assert list(s["clients"]["months"])[:2] == ["2027-01", "2026-01"] and "2026-10" in s["clients"]["months"]
+    # but what that sample says about one sender is not carried over to a month it did not cover
+    assert "failing_senders" not in s["clients"] and "failing_sender_txs_latest" not in s["segments"]["self_paid_txs_adjustments"]
+    assert len(video.slides(s)) >= 6
+
+
+def test_a_later_run_of_one_query_alone_is_not_mixed_with_the_others(later, capsys):
+    """Only the cheapest query has been run again: B3 and B4 are scored, and nothing combines January with October."""
+    s = later(census=False, frequency=False)
+    assert "[clients] months differ from population, segments" in capsys.readouterr().out
+    status = {p["id"]: p["status"] for p in s["predictions"]["items"]}
+    assert status["B3"] == status["B4"] == "held" and status["B1"] == status["B2"] == "open (needs the census query for that month)"
+    assert (s["clients"]["latest_month"], s["population"]["latest_month"], s["segments"]["latest_month"]) == ("2027-01", "2026-10", "2026-10")
+    assert s["clients"]["not_combined_with"] == ["population", "segments"]
+    for combined in ("three_parts", "kaiching_share_by_namespace", "reward_apps_share_incl_kaiching_namespace"):
+        assert combined not in s["clients"], combined
+    assert "regular_accounts_reward_game_bound" not in s["segments"] and "self_paid_txs_adjustments" not in s["segments"]
+    assert len(video.slides(s)) >= 6

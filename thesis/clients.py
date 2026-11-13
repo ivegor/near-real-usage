@@ -10,6 +10,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from .population import REWARD_FAMILIES
+
 CSV = Path(__file__).resolve().parent.parent / "data" / "bq" / "top_accounts_result.csv"
 USDC = "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
 
@@ -47,8 +49,24 @@ EXCHANGE_BOT_TARGETS = ("pyth-oracle.near", "acc.toalice.near")
 # of regular self-paying accounts cannot be read as users leaving (see segments.add_reward_game_bound). How many of
 # them are still there the tables do not say.
 GAME_CONTRACT, GAME_RELAYER = "aa-harvest-moon.near", "relayer:meteor-relayer.near"
+GAME_SPONSOR = "meteor"  # the name sql/payers.sql gives the accounts that relayer pays everything for (payers.SPONSORS)
 GAME_CLAIM = "claim_meteor_staking_reward"  # the game's reward claim; in the block sample it arrives in alphabetical batches
 INTENTS_CONTRACT = "intents.near"  # the keyless sample is asked how the transactions sent to it ended
+
+
+def _in_app_namespace(account: str) -> bool:
+    """True for an account inside a namespace the account census files with the reward apps (.kaiching, .tg, .sweat)."""
+    return any(account == ns or account.endswith("." + ns) for ns in REWARD_FAMILIES)
+
+
+# Reward-side contracts that sit outside those namespaces: Sweat's fast-auth.near, Meteor's game, Ember's contract. A
+# direct call to one of them is paid by its sender, and the census files an account by its namespace, so such calls are
+# inside "self-paid transactions outside the reward apps" although the app table files them with the reward side. The
+# list follows from the groups above by a rule, not by hand: every reward-side entry that is a contract (not a relayer)
+# and is not in an app namespace.
+REWARD_SIDE_CONTRACTS_OUTSIDE_NAMESPACES = tuple(
+    v for v in [via for app in REWARD_APPS for via in APPS[app]] + list(EMBER)
+    if not v.startswith("relayer:") and not _in_app_namespace(v))
 
 
 def load(path: Path | None = None) -> dict | None:
@@ -78,12 +96,24 @@ def by_app(month: dict) -> pd.Series:
     return s.sort_values(ascending=False)
 
 
+def compared_months(data: dict) -> tuple[str, str]:
+    """The latest month in the file and the month it is compared with: the same month a year earlier.
+
+    The query is run for two months a year apart, and a later run adds its two months to the file. The earliest month
+    is used only when the file does not hold the one a year earlier; the summary names both months either way.
+    """
+    latest = max(data)
+    a_year_earlier = (pd.Period(latest, "M") - 12).strftime("%Y-%m")
+    return latest, a_year_earlier if a_year_earlier in data else min(data)
+
+
 def summarize(data: dict) -> dict:
-    latest, prior = max(data), min(data)
+    latest, prior = compared_months(data)
     out: dict = {"source": "sql/top_accounts.sql on bigquery-public-data.crypto_near_mainnet_us (13.53 GB scanned)",
                  "latest_month": latest, "prior_month": prior, "months": {}}
     apps = {m: by_app(data[m]) for m in (latest, prior)}
-    for m in (latest, prior):
+    # concentration for every month the file holds: the two compared ones first, then any other (an earlier run)
+    for m in [latest, prior] + sorted(set(data) - {latest, prior}):
         c = data[m]["conc"]
         half_reached = c["heavy_txs"] >= 0.5 * c["txs"]
         out["months"][m] = {
@@ -140,6 +170,13 @@ def summarize(data: dict) -> dict:
     out["other_top_40"] = {
         **{k: [{"contract": r.via, "transactions": int(r.txs), "accounts": int(r.actors)} for r in rest[k].itertuples()] for k, _ in both},
         "in_both_months": sorted(set(rest["latest"]["via"]) & set(rest["prior"]["via"]))}
+    # Direct calls to the reward-side contracts outside the app namespaces, as far as each month's 40 largest show them.
+    side = {k: data[m]["via"][data[m]["via"]["via"].isin(REWARD_SIDE_CONTRACTS_OUTSIDE_NAMESPACES)] for k, m in both}
+    out["reward_side_direct_calls"] = {
+        "contracts": list(REWARD_SIDE_CONTRACTS_OUTSIDE_NAMESPACES),
+        **{k: {"transactions": int(side[k]["txs"].sum()),
+               "by_contract": {r.via: {"transactions": int(r.txs), "accounts": int(r.actors)} for r in side[k].itertuples()}}
+           for k, _ in both}}
     gap = groups["reward_apps_txs"]["latest"] - fin["latest"]  # what prediction B4 is scored on, as a share of all transactions
     out["reward_minus_finance_share"] = {
         "latest": gap / total,
@@ -245,6 +282,57 @@ def add_three_parts(cl: dict, kaiching_namespace_txs_prior: float) -> None:
         "rest_without_exchange_bot_targets": change({k: other[k] + tail[k] - bots.get(k, 0) for k in keys}),
         "other_top_40_without_ember": change(other),
         "outside_top_40_without_kaiching": change(tail),
+    }
+
+
+def add_failing_senders(cl: dict, data: dict, window: tuple[str, str] | None = None) -> None:
+    """A sender whose sampled calls to NEAR Intents all failed, taken out of the counts it sits in.
+
+    None of the queries here reads how a transaction ended: a failed one is counted like any other. The keyless sample
+    knows how the transactions sent to NEAR Intents ended (census.fetch_outcomes, in cl["intents_outcomes"]). A sender
+    named there whose sampled transactions all failed is taken out of the latest month. The query gives an account's
+    transactions of the month and its most frequent destination, not its count per destination, so all of them are
+    taken: at most that many went to NEAR Intents. Nothing is taken out of the month a year earlier: the sample says
+    nothing about it, and an account that is not among that month's 40 largest sent fewer than the smallest of them.
+
+    `window` is the first and last day the outcomes were sampled in; the latest month has to lie inside it, otherwise
+    nothing is said. The counted figures stay as they are: these are published next to them.
+    """
+    ended = cl.get("intents_outcomes") or {}
+    if ended.get("target") != INTENTS_CONTRACT:
+        return
+    latest, prior = cl["latest_month"], cl["prior_month"]
+    month = pd.Period(latest, "M")
+    if window and not (pd.Timestamp(window[0]) <= month.start_time and month.end_time.normalize() <= pd.Timestamp(window[1])):
+        return
+    failing = [s for s, v in (ended.get("senders") or {}).items() if v["transactions"] and v["failed"] == v["transactions"]]
+
+    def sent(m: str, account: str) -> int | None:
+        a = data[m]["actors"]
+        hit = a[(a["actor"] == account) & (a["top_via"] == INTENTS_CONTRACT)]
+        return int(hit["txs"].iloc[0]) if len(hit) else None
+
+    now = {s: sent(latest, s) for s in failing}
+    total = sum(v for v in now.values() if v)
+    if not total:
+        return
+
+    def change(a: float, b: float) -> float:
+        return (a / b - 1) * 100 if b else float("nan")
+
+    fin, received, bots = cl["finance_txs"], cl["intents"], cl.get("exchange_bot_targets") or {}
+    cl["failing_senders"] = {
+        "target": INTENTS_CONTRACT,
+        "sampled": {s: ended["senders"][s] for s in failing},
+        "transactions_latest": now, "transactions_latest_all": total,
+        "transactions_prior": {s: sent(prior, s) for s in failing},
+        "smallest_of_the_40_accounts_prior": int(data[prior]["actors"]["txs"].min()),
+        "share_of_target_txs_latest": total / received["latest"]["transactions"],
+        "target_pct_change_without_them": change(received["latest"]["transactions"] - total, received["prior"]["transactions"]),
+        "finance_pct_change_without_them": change(fin["latest"] - total, fin["prior"]),
+        # and with the two contracts the exchange's own bots called a year earlier filed with the exchange as well
+        "finance_pct_change_without_them_and_with_the_exchange_bot_targets": change(
+            fin["latest"] - total + bots.get("latest", 0), fin["prior"] + bots.get("prior", 0)),
     }
 
 

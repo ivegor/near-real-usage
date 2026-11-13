@@ -46,8 +46,24 @@ def unpack(result_csv: Path, out: Path | None = None) -> pd.DataFrame:
             rows.append((str(m)[:7], fam, age, "returning" if ret == "r" else "not_returning",
                          int(accounts), int(txs), int(rtx), int(single)))
     df = pd.DataFrame(rows, columns=["month", "family", "age", "prev_month", "accounts", "txs", "relayed_txs", "single_tx_accounts"])
+    keeps_months(out or CSV, df)
     df.to_csv(out or CSV, index=False)
     return df
+
+
+def keeps_months(path: Path, new: pd.DataFrame) -> None:
+    """Refuse to replace a committed table with a result that no longer holds some of its months.
+
+    A query is run again by moving its end date only: the new result then holds every earlier month too and replaces
+    the file. A result that starts later would drop the months THESIS.md quotes, and its first month would have no
+    "previous month" to compare with.
+    """
+    if not path.exists():
+        return
+    lost = sorted(set(pd.read_csv(path, usecols=["month"])["month"]) - set(new["month"]))
+    if lost:
+        raise SystemExit(f"{path.name} holds {lost[0]} .. {lost[-1]}, the new result does not: run the query again with "
+                         "its first date unchanged and only the last one moved.")
 
 
 def one_day(daily: pd.DataFrame | None = None) -> dict | None:
@@ -248,6 +264,63 @@ def summarize(df: pd.DataFrame, query_end: str | None = None) -> dict:
         out["partial_month"] = {"month": all_months[-1], "through": query_end,
                                 "accounts": {f: int(v) for f, v in part.items()},
                                 "latest_complete_accounts": {f: int(v) for f, v in full.items()}}
+        pace = _pace_so_far(df, months, all_months[-1], query_end)
+        if pace:
+            out["partial_month"]["core_direct_txs"] = pace
+        rates = _rates_so_far(df, latest, all_months[-1], query_end)
+        if rates:
+            out["partial_month"]["txs_per_day"] = rates
+    return out
+
+
+def _rates_so_far(df: pd.DataFrame, latest: str, partial: str, query_end: str) -> dict | None:
+    """Transactions per day of every part of the chain in the days of the unfinished month, next to the last complete one.
+
+    The rule of _pace_so_far (transactions add up day by day, so the rate of the days in hand can be set against the
+    rate of a whole month) applied to all of the chain, not only to the series the thesis leans on: if the unfinished
+    month is quoted where self-paid transactions slow down, it is quoted where a reward app speeds up too. The reward
+    apps' namespaces together are "all minus core", as in reward_apps_share_of_lost.
+    """
+    end, month = pd.Timestamp(query_end), pd.Period(partial, "M")
+    if not (month.start_time <= end < month.end_time.normalize()):
+        return None  # the scan did not stop inside that month
+    days = {partial: int(end.day), latest: pd.Period(latest, "M").days_in_month}
+
+    def rate(name: str, m: str, col: str) -> float:
+        rows = segment(df[df["month"] == m], name)
+        return float(rows[col].sum() / days[m])
+
+    out: dict = {"days": days[partial], "month": partial, "latest_complete_month": latest}
+    for name in ("all", "core", *REWARD_FAMILIES):
+        now, was = rate(name, partial, "txs"), rate(name, latest, "txs")
+        out[name] = {"partial": now, "latest_complete": was, "pct_change": (now / was - 1) * 100 if was else float("nan"),
+                     "relayed": {"partial": rate(name, partial, "relayed_txs"), "latest_complete": rate(name, latest, "relayed_txs")}}
+    out["reward_namespaces_share_of_txs"] = {
+        k: 1 - out["core"][k] / out["all"][k] if out["all"][k] else float("nan") for k in ("partial", "latest_complete")}
+    return out
+
+
+def _pace_so_far(df: pd.DataFrame, months: list[str], partial: str, query_end: str) -> dict | None:
+    """Self-paid core transactions in the days of the unfinished month that the scan covers, as a rate per day.
+
+    Accounts of a part of a month cannot be set against a whole month: the same account comes back on later days.
+    Transactions can, because they add up day by day. The census is monthly, so the same days of the year before are
+    not available; the rate of the days in hand is set against the rate of whole months. That says where the series
+    is heading, on few days: it is not a figure for the month.
+    """
+    end, month = pd.Timestamp(query_end), pd.Period(partial, "M")
+    if not (month.start_time <= end < month.end_time.normalize()):
+        return None  # the scan did not stop inside that month
+    direct = monthly(segment(df, "core"))["direct_txs"]
+    days = int(end.day)
+    rate = float(direct[partial] / days)
+    per_day = {m: float(direct[m] / pd.Period(m, "M").days_in_month) for m in months}
+    out = {"days": days, "transactions": int(direct[partial]), "per_day": rate,
+           "whole_month_at_that_rate": rate * month.days_in_month,
+           "per_day_by_month": per_day}
+    for key, m in (("latest_complete_month", months[-1]), ("same_month_a_year_earlier", (month - 12).strftime("%Y-%m"))):
+        if m in per_day:
+            out[key] = {"month": m, "per_day": per_day[m], "pct_change": (rate / per_day[m] - 1) * 100 if per_day[m] else float("nan")}
     return out
 
 
@@ -279,6 +352,22 @@ def largest_daily_fall(df: pd.DataFrame, daily: pd.DataFrame) -> dict | None:
            "txns": {"before": int(x[before]), "after": int(x[day])}, "pct_change": float(rel[day] * 100),
            "kaiching": {"month_before": month(day.to_period("M") - 1), "month_of": month(day.to_period("M")),
                         "month_after": month(day.to_period("M") + 1)}}
+    # How much of that one day can be KaiChing? The census is monthly, so the most its accounts can have stopped sending
+    # between the two days is everything they sent in the month the first of the two lies in. What is left of the fall
+    # was sent by other accounts that stopped on the same day.
+    fall, sent = int(x[before] - x[day]), month(before.to_period("M"))["txs"]
+    out["fall_txs"] = fall
+    out["kaiching_share_of_the_fall_at_most"] = min(1.0, sent / fall) if fall > 0 else float("nan")
+    out["other_accounts_in_the_fall_at_least"] = max(0, fall - sent)
+    # The level on either side of the fall is a different question: the median day of the month before and of the month
+    # after (a median is not moved by a burst of a few days), next to what KaiChing sent per day in the same two months.
+    by_month = x.groupby(x.index.to_period("M")).median()
+    lb, la = day.to_period("M") - 1, day.to_period("M") + 1
+    if lb in by_month.index and la in by_month.index:
+        app = out["kaiching"]
+        drop, less = float(by_month[lb] - by_month[la]), app["month_before"]["txs_per_day"] - app["month_after"]["txs_per_day"]
+        out["median_day"] = {"month_before": float(by_month[lb]), "month_after": float(by_month[la]), "fall": drop,
+                             "kaiching_share_of_it": less / drop if drop > 0 else float("nan")}
     if "active_accounts" in daily:
         a = daily["active_accounts"]
         out["active_accounts"] = {"before": int(a[before]), "after": int(a[day]), "pct_change": float((a[day] / a[before] - 1) * 100)}

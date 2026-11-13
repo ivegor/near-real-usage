@@ -101,6 +101,23 @@ def test_dashboard_reads_on_a_phone_and_names_what_was_measured(tmp_path):
         assert shown in page, shown
 
 
+def test_the_page_names_the_date_of_the_frozen_snapshot_and_every_source():
+    """The subtitle quotes the snapshot's date, and the Sources card lists what the hand-run commands read as well."""
+    from thesis import __main__ as cli
+    from thesis import census, value
+    root = Path(__file__).resolve().parent.parent
+    frozen = json.loads((root / "data" / "snapshot" / "thesis_summary.json").read_text(encoding="utf-8"))
+    assert dashboard.SNAPSHOT == frozen["last_date"]
+    page = (root / "docs" / "index.html").read_text(encoding="utf-8")
+    for url in (*sources.SOURCES.values(), *value.URLS.values(), census.RPC_URL, census.TX_URL, census.BLOCK_URL):
+        assert html.escape(url) in page, url
+    # figures that combine two query results are computed only while both compare the same months
+    a = {"latest_month": "2026-10", "prior_month": "2025-10"}
+    assert cli.same_months(a, dict(a)) and not cli.same_months(a, {"latest_month": "2027-01", "prior_month": "2026-01"})
+    assert not cli.same_months(a, {"latest_month": "2026-10", "prior_month": "2025-09"})
+    assert "not_combined_with" not in frozen["clients"]            # today all the results compare October with October
+
+
 def test_one_sentence_takeaways_follow_the_data():
     """The dashboard is rebuilt every day for months: a sentence that was true on the day it was written must not stay when it stops being true."""
     s = {"yoy_90d": {"returning_accounts": {"pct_change": 37.0}},

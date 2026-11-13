@@ -1,7 +1,10 @@
 """Full-population census: metrics on a small hand-made table (no BigQuery)."""
 import pandas as pd
+import pytest
 
 from thesis import charts, population
+
+from . import snapshot
 
 
 def table():
@@ -65,9 +68,46 @@ def test_last_month_depends_on_the_query_not_on_todays_date():
     """A dashboard rebuilt in December must not treat the half-scanned November as a full month."""
     df = population.load()
     assert df is not None
-    assert population.complete_months(df)[-1] == "2026-10"
-    s = population.summarize(df)
+    # the committed table read as it was when the scan stopped on 2026-11-11: October is its last complete month
+    cut = df[df["month"] <= "2026-11"]
+    assert population.complete_months(cut, "2026-11-11")[-1] == "2026-10"
+    s = population.summarize(cut, "2026-11-11")
     assert s["latest_month"] == "2026-10" and s["partial_month"]["month"] == "2026-11"
+    # and the day the build takes as the end of the scan lies in a month the table holds
+    assert population.QUERY_END[:7] in set(df["month"]) and population.QUERY_END >= snapshot.SCAN_END
+
+
+def test_the_days_of_an_unfinished_month_give_a_rate_not_a_month(tmp_path):
+    """Transactions add up day by day: the days the scan covers are published as a rate per day, next to whole months."""
+    s = population.summarize(table(), "2026-03-11")          # every month: 825 self-paid core transactions
+    pace = s["partial_month"]["core_direct_txs"]
+    assert (pace["days"], pace["transactions"]) == (11, 825) and pace["per_day"] == 825 / 11
+    assert pace["whole_month_at_that_rate"] == pytest.approx(825 / 11 * 31)
+    assert pace["latest_complete_month"] == {"month": "2026-02", "per_day": 825 / 28, "pct_change": pytest.approx((28 / 11 - 1) * 100)}
+    assert pace["same_month_a_year_earlier"]["month"] == "2025-03" and pace["same_month_a_year_earlier"]["per_day"] == 825 / 31
+    assert list(pace["per_day_by_month"])[-1] == "2026-02" and "2026-03" not in pace["per_day_by_month"]
+    # a scan that reaches the end of the month leaves no unfinished month to speak of
+    assert "partial_month" not in population.summarize(table(), "2026-03-31")
+    # the chart's caption says it in words: the rate of the days in hand against the last whole month and a year before
+    c = charts._population_chart(table(), {"last_date": "2026-03-11", "population": s}, tmp_path)
+    assert "In the first 11 days of 2026-03 those self-paid transactions ran at" in c.sentence
+    assert "a day in 2026-02 (+155%)" in c.sentence and "in 2025-03 (+182%)" in c.sentence
+
+
+def test_unpack_refuses_a_result_that_drops_months(tmp_path):
+    """A query is run again with only its last date moved; a result that starts later must not replace the table."""
+    out = tmp_path / "out.csv"
+    full = tmp_path / "full.csv"
+    full.write_text("m,cells\n2026-09-01,near|ge2y|r|10|900|5|1\n2026-10-01,tg|lt1y|n|3|4|2|2\n")
+    population.unpack(full, out)
+    later = tmp_path / "later.csv"
+    later.write_text("m,cells\n2026-10-01,tg|lt1y|n|3|4|2|2\n2026-11-01,tg|lt1y|n|5|6|2|2\n")
+    with pytest.raises(SystemExit, match="holds 2026-09 .. 2026-09"):
+        population.unpack(later, out)
+    assert set(population.load(out)["month"]) == {"2026-09", "2026-10"}          # the table is left as it was
+    longer = tmp_path / "longer.csv"
+    longer.write_text(full.read_text() + "2026-11-01,tg|lt1y|n|5|6|2|2\n")
+    assert set(population.unpack(longer, out)["month"]) == {"2026-09", "2026-10", "2026-11"}
 
 
 def test_summary_reports_robust_and_decomposed_figures():
@@ -93,7 +133,7 @@ def test_a_burst_of_dormant_accounts_is_split_out_of_the_self_paid_series():
     assert d["monthly"]["2026-01"] == 10 and d["monthly"]["2026-02"] == 510
     assert s["core_direct_txs_change_by_window"]["1"] > 60 and d["change_by_window_without_them"] == {"1": 0.0}
     # and the committed census: February 2026 is the only month where they are more than a few percent
-    real = population.summarize(population.load())["core_direct_txs_from_dormant_implicit"]
+    real = population.summarize(snapshot.census(), snapshot.SCAN_END)["core_direct_txs_from_dormant_implicit"]
     assert real["peak"]["month"] == "2026-02" and real["peak"]["share_of_month"] > 0.3 > 0.05 > real["largest_share_in_any_other_month"]
 
 
@@ -108,7 +148,7 @@ def test_one_transaction_bursts_are_the_months_ten_times_the_median():
     assert abs(b["older_than_2y_share"] - 500 / 540) < 1e-12 and abs(b["relayed_tx_share"] - 70 / 580) < 1e-12
     assert population.summarize(df, "2026-03-11")["implicit_one_transaction_bursts"]["bursts"] == []
     # the committed census: three months in a row, and no other month comes near
-    real = population.summarize(population.load())["implicit_one_transaction_bursts"]
+    real = population.summarize(snapshot.census(), snapshot.SCAN_END)["implicit_one_transaction_bursts"]
     assert [b["month"] for b in real["bursts"]] == ["2026-02", "2026-03", "2026-04"]
     rest = [v for m, v in real["monthly"].items() if m not in ("2026-02", "2026-03", "2026-04")]
     assert max(rest) < 5 * real["median_month"]
@@ -127,7 +167,7 @@ def test_a_relayer_with_a_daily_quota_is_visible_in_the_monthly_totals():
     assert "2025-07" not in q["months_within_a_thousandth_of_it"] and len(q["months_within_a_thousandth_of_it"]) == 13
     assert q["in_the_month"]["2025-02"] == 5_000 * 28 and abs(q["per_day"]["2025-07"] - 4_000) < 1e-9
     assert "kaiching_relayed_txs_per_day" not in population.summarize(table(), "2026-03-11")      # no relayed transactions: nothing to say
-    real = population.summarize(population.load())["kaiching_relayed_txs_per_day"]
+    real = population.summarize(snapshot.census(), snapshot.SCAN_END)["kaiching_relayed_txs_per_day"]
     assert real["median_month_to_the_nearest_thousand"] == 2_000_000 and len(real["months_within_a_thousandth_of_it"]) >= 8
 
 
@@ -177,3 +217,52 @@ def test_largest_daily_fall_is_found_by_rule_and_set_next_to_kaiching():
     k = s["kaiching"]
     assert (k["month_before"]["month"], k["month_before"]["txs"]) == ("2025-12", 1500)
     assert k["month_of"]["txs"] == 0 and k["month_before"]["txs_per_day"] == 1500 / 31
+    # the level on either side: the median day of the month before and after, and the app's part of the difference
+    level = s["median_day"]
+    assert (level["month_before"], level["month_after"], level["fall"]) == (1000.0, 250.0, 750.0)
+    assert level["kaiching_share_of_it"] == pytest.approx(1500 / 31 / 750)
+    # the one day: the app sent nothing in the month the day before the fall lies in, so none of that day's fall is its own
+    assert (s["fall_txs"], s["kaiching_share_of_the_fall_at_most"], s["other_accounts_in_the_fall_at_least"]) == (750, 0.0, 750)
+
+
+def test_the_app_is_at_most_what_it_sent_in_the_month_of_the_fall():
+    """A monthly census cannot date a transaction, but it bounds the app's part of one day's fall: all it sent that month."""
+    df = table()
+    late = (df["family"] == "kaiching") & (df["month"] == "2026-01")
+    df.loc[late, ["accounts", "txs"]] = [300, 300]                       # its last month: 300 transactions, then nothing
+    idx = pd.date_range("2025-01-01", "2026-03-31", freq="D")
+    txns = pd.Series(1000.0, index=idx)
+    txns[idx >= "2026-01-11"] = 200.0                                    # the chain loses 800 transactions a day on 11 January
+    s = population.largest_daily_fall(df, pd.DataFrame({"txns": txns}, index=idx))
+    assert (s["date"], s["fall_txs"]) == ("2026-01-11", 800)
+    assert s["kaiching_share_of_the_fall_at_most"] == 300 / 800 and s["other_accounts_in_the_fall_at_least"] == 500
+    # and the committed data: KaiChing's whole April is about half of what the chain lost between 1 and 2 April 2026
+    from thesis import sources
+    real = population.largest_daily_fall(snapshot.census(), sources.load_daily(offline=True))
+    assert real["date"] == "2026-04-02" and 0.45 < real["kaiching_share_of_the_fall_at_most"] < 0.55
+    assert 0.85 < real["median_day"]["kaiching_share_of_it"] < 0.95       # while the level on either side is its own
+
+
+def test_the_unfinished_month_is_given_for_every_part_of_the_chain(tmp_path):
+    """The days in hand as rates per day for each namespace: quoted where a reward app speeds up, not only where the core slows down."""
+    df = table()
+    hot = pd.DataFrame([("2026-02", "tg", "ge2y", "returning", 50, 280_000, 140_000, 0),
+                        ("2026-03", "tg", "ge2y", "returning", 90, 330_000, 220_000, 0)], columns=df.columns)
+    s = population.summarize(pd.concat([df, hot]), "2026-03-11")          # every month: 1,000 core transactions, 175 of them relayed
+    r = s["partial_month"]["txs_per_day"]
+    assert (r["days"], r["month"], r["latest_complete_month"]) == (11, "2026-03", "2026-02")
+    assert r["tg"]["partial"] == 30_000 and r["tg"]["latest_complete"] == 10_000 and r["tg"]["pct_change"] == pytest.approx(200)
+    assert r["tg"]["relayed"] == {"partial": 20_000.0, "latest_complete": 5_000.0}
+    assert r["core"]["partial"] == pytest.approx(1000 / 11) and r["core"]["latest_complete"] == pytest.approx(1000 / 28)
+    assert r["all"]["partial"] == pytest.approx(331_000 / 11) and r["kaiching"]["partial"] == 0
+    share = r["reward_namespaces_share_of_txs"]
+    assert share["partial"] == pytest.approx(330 / 331) and share["latest_complete"] == pytest.approx(280 / 281)
+    # the caption names the namespace next to the self-paid rate of the same days
+    c = charts._population_chart(pd.concat([df, hot]), {"last_date": "2026-03-11", "population": s}, tmp_path)
+    assert "HOT's namespace (.tg) sent 30K transactions a day against 10K in 2026-02 (+200%)" in c.sentence
+    assert "the reward apps' namespaces 100% of all transactions against 100%" in c.sentence
+    # without the namespace in the table the caption says nothing about it, and a scan that reached the month's end leaves no rates
+    plain = population.summarize(df, "2026-03-11")
+    assert plain["partial_month"]["txs_per_day"]["tg"]["partial"] == 0
+    assert "HOT's namespace" not in charts._population_chart(df, {"last_date": "2026-03-11", "population": plain}, tmp_path).sentence
+    assert "partial_month" not in population.summarize(df, "2026-03-31")

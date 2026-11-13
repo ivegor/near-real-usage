@@ -141,6 +141,21 @@ def _population_chart(pop: pd.DataFrame, summary: dict, out: Path) -> Chart:
             checked += (f"; in the other {len(short)} ({', '.join(check['differ'])}) BigQuery is lower by "
                         f"{min(short):.1f}% to {max(short):.1f}%")
         checked += "."
+    pace, so_far = (ps.get("partial_month") or {}).get("core_direct_txs"), ""
+    if pace and "latest_complete_month" in pace:  # the days of the unfinished month the scan covers: where the series is heading
+        was, year = pace["latest_complete_month"], pace.get("same_month_a_year_earlier")
+        so_far = (f" In the first {pace['days']} days of {ps['partial_month']['month']} those self-paid transactions ran at "
+                  f"{pace['per_day'] / 1e3:,.0f}K a day, against {was['per_day'] / 1e3:,.0f}K a day in {was['month']} "
+                  f"({_pct(was['pct_change'])})"
+                  + (f" and {year['per_day'] / 1e3:,.0f}K in {year['month']} ({_pct(year['pct_change'])})" if year else "") + ".")
+    rates = (ps.get("partial_month") or {}).get("txs_per_day") or {}
+    hot = rates.get("tg") or {}
+    if hot.get("partial") and hot.get("latest_complete"):  # the same days for the largest reward namespace that is left
+        share = rates["reward_namespaces_share_of_txs"]
+        so_far += (f" In the same days HOT's namespace (.tg) sent {hot['partial'] / 1e3:,.0f}K transactions a day against "
+                   f"{hot['latest_complete'] / 1e3:,.0f}K in {rates['latest_complete_month']} ({_pct(hot['pct_change'])}), and the "
+                   f"reward apps' namespaces {share['partial'] * 100:.0f}% of all transactions against "
+                   f"{share['latest_complete'] * 100:.0f}%.")
     return Chart(
         "population", "Every active account, counted (full chain, not a sample)",
         f"In {lm}, {M(al['accounts']['latest'])} accounts acted on NEAR against {M(al['accounts']['prior'])} in {pm} "
@@ -152,8 +167,8 @@ def _population_chart(pop: pd.DataFrame, summary: dict, out: Path) -> Chart:
         f"means) and those also active the month before {M(c['returning_accounts']['prior'])} to "
         f"{M(c['returning_accounts']['latest'])} ({_pct(c['returning_accounts']['pct_change'])}); most of those accounts were "
         f"sponsored users of other apps, see the next chart. Their transactions paid by the "
-        f"sender grew {_pct(c['direct_txs']['pct_change'])} ({_pct(c3['direct_txs']['pct_change'])} on three-month means) "
-        f"while those sponsored through relayers fell {_pct(c['relayed_txs']['pct_change'])}. Transactions per account in that group "
+        f"sender changed {_pct(c['direct_txs']['pct_change'])} ({_pct(c3['direct_txs']['pct_change'])} on three-month means) "
+        f"while those sponsored through relayers changed {_pct(c['relayed_txs']['pct_change'])}.{so_far} Transactions per account in that group "
         f"rose from {c['txs_per_account']['prior']:.1f} to {c['txs_per_account']['latest']:.1f} a month, but with last year's "
         f"mix of account types it would be {ps['core_txs_per_account_at_prior_mix']:.1f}: low-activity accounts left, "
         f"the rest did not get busier. Named .near accounts: {_pct(n['accounts']['pct_change'])} "
@@ -234,8 +249,22 @@ def _segments_chart(seg: pd.DataFrame, sg: dict, out: Path) -> Chart:
     if game:  # part of that fall is one game changing who pays, not accounts leaving
         game_note = (f" That fall is not a clean count of users leaving: up to {game['game_players_prior']:,} of last year's accounts "
                      f"were players of the Meteor wallet's reward game, who paid their own fees then; its relayer submits the "
-                     f"game's calls now. With all of them taken out the change would be "
-                     f"{_pct(game['pct_change_if_all_of_them_were_regular'])}.")
+                     f"game's calls now.")
+        clean = game.get("without_the_game")
+        if clean:  # the same players can still be inside this year's count, so the bound is applied to both months
+            game_note += (f" Up to {clean['players_still_self_paying_latest_at_most']:,} of this year's accounts still act through "
+                          f"that relayer and pay for a transaction of their own. Without the game's players the change lies "
+                          f"between {_pct(clean['pct_change_low'])} and {_pct(clean['pct_change_high'])}.")
+        else:
+            game_note += (f" With all of them taken out of last year's count the change would be "
+                          f"{_pct(game['pct_change_if_all_of_them_were_regular'])}.")
+    adj, adj_note = sg.get("self_paid_txs_adjustments"), ""
+    if adj and "pct_change_without_both" in adj:  # what the tables show inside those transactions that is not independent use
+        side = adj["reward_side_direct_txs"]
+        adj_note = (f" Both months hold transactions that are not independent use: direct calls to reward-side contracts "
+                    f"({side['prior'] / 1e6:.2f}M in {sg['prior_month']}, {side['latest'] / 1e6:.2f}M in {sg['latest_month']}) and, in "
+                    f"{sg['latest_month']}, {adj['failing_sender_txs_latest'] / 1e6:.2f}M from an account whose sampled calls all "
+                    f"failed. Without them the change is {_pct(adj['pct_change_without_both'])}.")
     return Chart(
         "segments", "Who pays, and how often",
         f"Accounts whose fees an app paid: {m['sponsored_accounts']['prior'] / 1e6:.1f}M in {sg['prior_month']}, "
@@ -244,7 +273,7 @@ def _segments_chart(seg: pd.DataFrame, sg: dict, out: Path) -> Chart:
         f"{m['regular_accounts']['latest']:,.0f}, {both('regular_accounts')}; their low was {sg['regular_accounts_low']['value']:,.0f} in "
         f"{sg['regular_accounts_low']['month']}.{game_note} Accounts sending 1,000 or more a month: {m['heavy_accounts']['prior']:,.0f} to "
         f"{m['heavy_accounts']['latest']:,.0f}, and they send {sg['heavy_share_of_independent_self_paid_txs']['latest'] * 100:.0f}% of "
-        f"those self-paid transactions, which changed {both('independent_self_paid_txs')}.",
+        f"those self-paid transactions, which changed {both('independent_self_paid_txs')}.{adj_note}",
         "sql/payer_frequency.sql on the NEAR BigQuery public dataset (91.28 GB), result in data/bq/payer_frequency.csv. "
         "Sponsored = every transaction of the account that month was submitted by a relayer. Frequency classes are powers "
         "of ten of the monthly transaction count; 1,000 a month is more than 30 a day. Occasional accounts (under 10 a "
@@ -294,6 +323,12 @@ def _clients_chart(cl: dict, out: Path) -> Chart:
         lo, hi = cl["finance_txs_change_range"]
         more += (f" Allowing for the group's contracts that are not among a month's 40 largest, its change on the full "
                  f"count lies between {_pct(lo)} and {_pct(hi)}.")
+    failing = cl.get("failing_senders")
+    if failing:  # a count is not always use: one sender's sampled calls all failed, and its transactions are in the group
+        sampled, who = sum(v["transactions"] for v in failing["sampled"].values()), " and ".join(failing["sampled"])
+        more += (f" A count is not always use: all {sampled} sampled calls of {who} to {failing['target']} failed. Without the "
+                 f"{failing['transactions_latest_all'] / 1e6:.2f}M transactions that {who} sent in {lm}, the finance group "
+                 f"changed {_pct(failing['finance_pct_change_without_them'])}.")
     return Chart(
         "clients", "Who sends the transactions",
         f"In {lm}, {L['accounts_for_half_of_txs']} accounts sent half of NEAR's {L['transactions'] / 1e6:.1f}M transactions "
@@ -302,7 +337,7 @@ def _clients_chart(cl: dict, out: Path) -> Chart:
         f"{cl['reward_apps_share']['prior'] * 100:.0f}%; Sweat alone is {sw['latest_share'] * 100:.0f}%. Trading, Intents, token "
         f"transfers and bridges are {cl['finance_share']['latest'] * 100:.0f}% (was {cl['finance_share']['prior'] * 100:.0f}%); "
         f"transactions on the Ref/Rhea exchange changed {_pct(ref['pct_change'])}. intents.near received "
-        f"{i['latest']['transactions'] / 1e6:.2f}M transactions ({i['prior']['transactions'] / 1e6:.2f}M a year earlier), "
+        f"{i['latest']['transactions'] / 1e6:.2f}M transactions ({i['prior']['transactions'] / 1e6:.2f}M in {pm}), "
         f"up to {i['latest']['top2_share'] * 100:.0f}% of them signed by two accounts." + more,
         "sql/top_accounts.sql on the NEAR BigQuery public dataset (13.53 GB), result in data/bq/top_accounts_result.csv. "
         "A direct transaction is assigned to the contract it calls, a relayed one to its relayer; contracts and relayers are "
@@ -629,9 +664,14 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
         for ax, name in zip(axes, names):
             ll = metrics.lead_lag(d[name], d["price_usd"])
             ax.bar(ll["lag_weeks"], ll["corr"], color=[ACCENT if k > 0 else MUTED for k in ll["lag_weeks"]])
-            band = ll["band"].iloc[0]
-            ax.axhline(band, color=INK, linestyle=":", linewidth=0.8)
-            ax.axhline(-band, color=INK, linestyle=":", linewidth=0.8)
+            # the band of each lag, the one the text decides by: the sample loses a week per week of lag, so the band
+            # is a little wider at the ends. It is carried to the edges of the panel, which keeps its limits.
+            left, right = ax.get_xlim()
+            xs = np.r_[left, ll["lag_weeks"].to_numpy(float), right]
+            band = np.r_[ll["band"].iloc[0], ll["band"].to_numpy(float), ll["band"].iloc[-1]]
+            for sign in (1, -1):
+                ax.plot(xs, sign * band, color=INK, linestyle=":", linewidth=0.8)
+            ax.set_xlim(left, right)
             _style(ax, LEAD_LABELS.get(name, name.replace("_", " ")))
             ax.set_xlabel("weeks metric leads price →", fontsize=7, color=MUTED)
         _save(fig, out, "lead_lag")
@@ -649,7 +689,7 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
             f"correlate with price in the same week (r={usd.get('corr', float('nan')):.2f}) only because USD fees are NEAR "
             "fees multiplied by the price.",
             "corr(Δlog metric_t, Δlog price_{t+k}), k in weeks, positive k = metric moves first (green bars); "
-            "dotted lines = ±2/√n noise band.",
+            "dotted lines = ±2/√n noise band of each lag.",
         ))
     for c in charts:  # the dashboard shows the first sentence on its own: make it the plain takeaway
         first = _takeaway(c.slug, summary)

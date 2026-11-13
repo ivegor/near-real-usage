@@ -3,8 +3,8 @@
 "automatic" predictions are scored by the build from the daily series once the data reaches the check date and
 covers every day of the window the prediction names; until then they stay open.
 "bigquery" predictions are scored by the build from the committed query results (data/bq/) once those hold the
-month a prediction names: the account queries in sql/ have to be run again for it, by hand. Until then they are
-reported as open. The file's SHA-256 is quoted in PREDICTIONS.md so later edits are visible.
+month a prediction names, all of it: the account queries in sql/ have to be run again for it, by hand. Until then
+they are reported as open. The file's SHA-256 is quoted in PREDICTIONS.md so later edits are visible.
 """
 from __future__ import annotations
 
@@ -120,7 +120,10 @@ def step(daily: pd.DataFrame, fees: pd.DataFrame | None = None, census: pd.DataF
                 "range_mean": float(now.mean()), "range_mean_a_year_earlier": float(then.mean()),
                 "range_pct_change": float((now.mean() / then.mean() - 1) * 100),
                 "range_pct_change_without_dormant_implicit": float((calm[months].mean() / calm[earlier].mean() - 1) * 100),
-                "range_months_below_a_year_earlier": int((now.to_numpy() < then.to_numpy()).sum())})
+                "range_months_below_a_year_earlier": int((now.to_numpy() < then.to_numpy()).sum()),
+                # an average below the year before is not every month below it: the months that were above, by how much
+                "range_months_above_a_year_earlier": {m: float((now[m] / then[e] - 1) * 100)
+                                                      for m, e in zip(months, earlier) if now[m] > then[e]}})
     if seg is not None:
         s = segments.series(seg)
         out["regular_self_paying_accounts"] = pair(s["regular_accounts"])
@@ -171,13 +174,34 @@ COMMITTED = ("regular_self_paying_accounts", "core_self_paid_txs_mean", "account
 BQ_METRIC = re.compile(r"^(?P<name>[a-z_]+?)_(?P<first>\d{4}_\d{2})(?:_to_(?P<last>\d{4}_\d{2}))?$")
 
 
-def _measure_committed(p: dict, census: pd.DataFrame | None, seg: pd.DataFrame | None, top: dict | None) -> float | None:
+def holds_the_whole_month(table_txs: float, month: str, daily: pd.DataFrame | None) -> bool:
+    """False when a query result is short of the aggregator's transaction count for a month by a day or more.
+
+    The census says where its scan stopped (population.QUERY_END). The other two queries name whole months, so their
+    result is partial only when the query was run before the month ended, and the result itself does not say so. The
+    aggregator does: NearBlocks counts the same transactions day by day, and the two sources agree to a few hundred
+    transactions in a month (population.totals_check). A result that misses a day is short by at least the month's
+    quietest day, so that is the line; no tolerance is chosen. Without a daily count for every day of the month there
+    is nothing to compare with, and the result is taken as it is.
+    """
+    if daily is None or "txns" not in daily:
+        return True
+    period = pd.Period(month, "M")
+    days = daily["txns"].reindex(pd.date_range(period.start_time, period.end_time.normalize(), freq="D"))
+    if days.isna().any():
+        return True
+    return float(days.sum() - table_txs) < float(days.min())
+
+
+def _measure_committed(p: dict, census: pd.DataFrame | None, seg: pd.DataFrame | None, top: dict | None,
+                       daily: pd.DataFrame | None = None) -> float | None:
     """A "bigquery" prediction measured from the committed query results; None while they do not hold its months.
 
     The queries cover whole calendar months and are run by hand: sql/payer_frequency.sql for the frequency classes,
     sql/account_age.sql for the census (with QUERY_END in thesis/population.py), sql/top_accounts.sql for the largest
     accounts and the apps. Once a result that holds the named month is committed, the build scores the prediction
-    with the same definitions its threshold was taken from.
+    with the same definitions its threshold was taken from. A month counts only when the result holds all of it: for
+    the census that is QUERY_END, for the other two results the comparison with the daily series (holds_the_whole_month).
     """
     m = BQ_METRIC.match(str(p["metric"]))
     if not m or m["name"] not in COMMITTED:
@@ -187,7 +211,12 @@ def _measure_committed(p: dict, census: pd.DataFrame | None, seg: pd.DataFrame |
     name = m["name"]
     if name == "regular_self_paying_accounts" and seg is not None:
         regular = segments.series(seg)["regular_accounts"]
-        return float(regular[months].mean()) if set(months) <= set(regular.index) else None
+        if not set(months) <= set(regular.index):
+            return None
+        counted = seg.groupby("month")["txs"].sum()
+        if not all(holds_the_whole_month(counted[x], x, daily) for x in months):
+            return None  # the query was run before the month ended: wait for a run that holds all of it
+        return float(regular[months].mean())
     if name == "core_self_paid_txs_mean" and census is not None:
         if not set(months) <= set(population.complete_months(census)):
             return None  # a month the scan has not finished is not a month
@@ -196,6 +225,8 @@ def _measure_committed(p: dict, census: pd.DataFrame | None, seg: pd.DataFrame |
     if top and len(months) == 1 and {"via", "conc"} <= set(top.get(months[0], {})):
         month = top[months[0]]
         c = month["conc"]
+        if not holds_the_whole_month(c["txs"], months[0], daily):
+            return None  # the same for the largest accounts and the apps
         if name == "accounts_for_half_of_txs":
             if c["heavy_txs"] >= 0.5 * c["txs"]:
                 return float(c["n50"])
@@ -223,7 +254,7 @@ def evaluate(daily: pd.DataFrame, fees: pd.DataFrame | None, path: Path | None =
         status, measured = "open", None
         if last >= on:
             if p["scoring"] == "bigquery":
-                measured, waiting = _measure_committed(p, census, seg, top), "open (needs the census query for that month)"
+                measured, waiting = _measure_committed(p, census, seg, top, daily), "open (needs the census query for that month)"
             else:
                 measured, waiting = _measure(p["metric"], on, daily, fees), "open (waiting for complete data)"
             if measured is not None and not np.isfinite(measured):

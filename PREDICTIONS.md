@@ -56,7 +56,10 @@ of its self-paid transactions came from dormant accounts that sent one transacti
 Without them the top of the range is 8.65M (June 2026). The file is frozen, so the threshold stays at 10.38M, which
 is the harder of the two for the prediction to stay above; `docs/summary.json` publishes both levels under
 `predictions.baselines`. Months before the range were higher, 11.27M in November 2025 and 12.07M in December 2024:
-the range is the nine months before the step, the same for all the metrics of rule 1.
+the range is the nine months before the step, the same for all the metrics of rule 1. The first 11 days of B2's
+window were in the census when the file was frozen: self-paid transactions ran at 356 thousand a day, a rate of
+10.68M a month, 3% above the threshold and 12% below October's rate. The margin is thin. The rate was worked out
+after the file was frozen, so it played no part in the choice of the threshold.
 
 A second note, on B1. The accounts it counts turned out to include players of a reward game who paid their own fees:
 up to 15,162 of the 27,078 a year ago; the game's calls go through a relayer now (see "Who pays, and how often" in
@@ -65,7 +68,15 @@ changes how the year before is read, not the threshold. The frozen statement of 
 counts accounts outside the reward apps' namespaces (`.kaiching`, `.tg`), as the 7,201 does. The move was over before the low: Meteor fully sponsored
 14,667 accounts in August 2026 and 15,409 in October, against 7,748 and 8,677 a year earlier, and in the keyless
 sample, which starts on 14 August 2026, all 41 calls to the game come through the relayer. The August low and the
-January value are both counted after it.
+January value are both counted after it. Both can still hold players who pay for a transaction of their own, because
+a relayed call counts towards the frequency class: up to 4,313 such accounts in October 2026.
+
+A third note, on what the data already held when the file was frozen. It ran through 2026-11-11. A1's window is the
+seven days to 17 November, so one of its seven days was known, and the first 11 days of November had averaged
+$129.7M a day, 45% above A1's threshold. B4 is about January, but the same eleven days of the census pointed its
+way: HOT's namespace was sending 196 thousand transactions a day against 100 thousand in October (see "Evidence
+against" in THESIS.md). Neither figure set a threshold: A1's is the top of the range before the September step,
+B4's is the point where the two groups are equal.
 
 ## Scoring
 
@@ -76,9 +87,19 @@ status is on the dashboard and in `docs/summary.json` under `predictions`.
 those hold the month a prediction names: `sql/payer_frequency.sql` (B1), `sql/account_age.sql` (B2) and
 `sql/top_accounts.sql` (B3, B4) have to be run again by hand with later dates (the free BigQuery tier allows it once
 a month) and their results committed, with `QUERY_END` in `thesis/population.py` moved to the new end of the scan.
-Until then they are shown as open. A month counts only if the scan reached its last day, and B4 is scored with the
+Until then they are shown as open. A month counts only if the result holds all of it. For the census that is the day
+its scan stopped (`QUERY_END`). The other two queries name whole months, so their result is partial only if the
+query was run before the month ended; the build sets the month's transaction count in the result against NearBlocks'
+daily counts and leaves the prediction open while the result is short by a day or more (the line is the quietest
+day of that month, not a chosen tolerance). B4 is scored with the
 app groups as they were on 2026-11-13: a contract or relayer that an app starts to use after that date is not in
 them and counts as "other". The list of the month's 40 largest is committed with the result, so what was left out
 can be seen.
+A later run adds months and keeps the earlier ones. For `sql/payer_frequency.sql` and `sql/account_age.sql` only the
+last date is moved, so that the result holds every earlier month too and replaces the file (`bq-freq` and `bq-age`
+refuse a result that would drop months). `sql/top_accounts.sql` names two months a year apart: both are changed, to
+January 2027 and January 2026, and the rows of the result are added to `data/bq/top_accounts_result.csv` next to the
+October rows that THESIS.md quotes. `tests/test_rerun.py` runs the whole build on tables extended this way, and the
+tests of the October figures read the tables cut at October, so they keep passing.
 GitHub switches a scheduled workflow off after 60 days without activity in a public repository. If that happens
 before a check date, the prediction is scored when the workflow is switched on again or the build is run by hand.

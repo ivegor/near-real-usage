@@ -117,7 +117,13 @@ def render(charts: list[Chart], summary: dict, out: Path) -> Path:
         pred_card = (f'<section class="card"><h2>Predictions</h2><p class="lead">Written on 2026-11-13, scored by the build as the '
                      f'data reaches each check date (data through {html.escape(pred["data_through"])}). Details: {_repo_link("PREDICTIONS.md")}.</p>'
                      f'<table><tr><th>Id</th><th>Check on</th><th>Prediction</th><th>Status</th></tr>{trs}</table></section>')
-    src = "".join(f'<li><code>{html.escape(k)}</code>: <a href="{html.escape(v)}">{html.escape(v)}</a></li>' for k, v in SOURCES.items())
+    src = "".join(f'<li><code>{html.escape(k)}</code>: <a href="{html.escape(v)}">{html.escape(v)}</a></li>'
+                  for k, v in {**SOURCES, **value.URLS}.items())
+    # the keyless chain endpoints behind the block sample and the wallet balances; read by hand-run commands, not by the build
+    src += ("<li><code>fastnear</code> (no key, paced requests): block archive <code>" + html.escape(census.BLOCK_URL)
+            + "</code>, archival RPC node <code>" + html.escape(census.RPC_URL) + "</code>, transaction index <code>"
+            + html.escape(census.TX_URL) + "</code>; results in <code>data/raw/census_*</code> and "
+            "<code>data/raw/revenue_wallets.json</code></li>")
     page = f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>NEAR Real Usage: evidence dashboard</title>

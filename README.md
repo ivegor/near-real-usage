@@ -6,6 +6,11 @@
 one-off accounts, so it is a weak basis for a long-term investment case. This project counts who actually acts on
 NEAR, account by account over the whole chain, and tests with re-runnable code whether usage leads the NEAR price.
 
+**The long-term case, in short.** After the largest reward app left, what remains on NEAR is the reward apps that
+stayed, which still send 43% of transactions, and a small amount of self-paid, financial activity carried by a few
+hundred heavy accounts. That activity grew in autumn 2026 together with the price, and the revenue it earns covers
+18% of the new NEAR issued. That is a narrow case; nine dated predictions say what would widen it or close it.
+
 **Key findings (snapshot 2026-11-11; accounts: October 2026 vs October 2025, three-month means in brackets):**
 
 * Accounts acting on NEAR fell **97%** (43.6M → 1.38M a month). **The whole fall is accounts whose fees an app was
@@ -17,14 +22,19 @@ NEAR, account by account over the whole chain, and tests with re-runnable code w
   their own fees then, and the game's calls are relayed now, so how many really left is not established. Our first draft claimed
   returning accounts grew 37%; the full-chain count refuted it.
 * **Self-paid transactions outside reward apps are up 28%** October to October, but only since autumn: in the nine
-  months before (December to August) they ran 17% below the year before, and the year as a whole is flat
-  (−5% on eleven-month means). They jumped in September and October 2026, when the NEAR price went from $1.92 to
-  $4.89 in one month. Transactions sponsored through relayers fell 75%. Transactions to the exchange, Intents, token
-  contracts and bridges are up **37%**; what is neither that group nor the reward apps is level (+3%). Both are
-  October-to-October figures: the tables hold no month before the rally for them.
+  months before (December to August) they averaged 17% below the year before (below it in 7 of the 9 months), and
+  the year as a whole is flat (−5% on eleven-month means). They jumped in September and October 2026, when the NEAR
+  price went from $1.92 to $4.89 in one month, and in the first 11 days of November they run 12% below October's
+  daily rate and 5% below November 2025's. Without the reward-side calls in both Octobers and one account whose
+  calls fail, the October change is +26%. Transactions sponsored through relayers fell 75%. Transactions to the
+  exchange, Intents, token contracts and bridges are up **37%** (+29% without that account); what is neither that
+  group nor the reward apps is level (+3%). Both are October-to-October figures: the tables hold no month before the
+  rally for them.
 * **30 accounts send half of all transactions.** Seven of the ten largest are relays or service accounts (Intents,
   Sweat, the bridges), so this counts who submits transactions, not how many people stand behind them. Reward and
-  wallet apps still send 43% (Sweat alone 26%), or 45% counting the one-off deletion of old KaiChing accounts.
+  wallet apps still send 43% (Sweat alone 26%), or 45% counting the one-off deletion of old KaiChing accounts, and
+  November started with more: in its first 11 days HOT's namespace sent 196 thousand transactions a day against
+  100 thousand in October.
 * NEAR Intents volume: **$56M → $129M a day**, October to October, but that base was the middle of a ramp-up: the
   volume is level with November 2025 ($122M) and +73% on the nine months in between ($74.5M). Usage does **not** lead price: 6 of 85 weekly
   lead-lag tests fall outside the noise band where about 4 are expected by chance, and none stands after Holm's
@@ -43,7 +53,7 @@ the daily series, four once the BigQuery queries are run again for January 2027)
 **Demo video (73 s):** [`demo/near-real-usage.mp4`](demo/near-real-usage.mp4).
 
 **What it is.** A reproducible research pipeline: one command downloads public data, computes the metrics, renders the
-charts and a static dashboard, and prints every number used in [`THESIS.md`](THESIS.md). The account census is one SQL
+charts and a static dashboard, and writes every number used in [`THESIS.md`](THESIS.md) to `docs/summary.json`. The account census is one SQL
 query on NEAR's public BigQuery dataset; its result is committed, so the build needs no Google account.
 
 ## Run it (2 minutes)
@@ -64,16 +74,17 @@ virtual environment to set up:
 
 | Do this | See this |
 |---|---|
-| `python -m thesis build` | `data/raw/*.json` (exact API responses), `data/daily.csv`, `docs/*.png`, `docs/index.html`, `docs/summary.json`; summary printed to stdout. If an API is down, the build says so and uses the committed copy |
+| `python -m thesis build` | `data/raw/*.json` (exact API responses), `data/daily.csv`, `docs/*.png`, `docs/index.html`, `docs/summary.json`; stdout gets a short digest: one sentence per chart and the status of the nine predictions. If an API is down, the build says so and uses the committed copy |
 | `python -m thesis build --offline` | Same outputs rebuilt from the committed `data/raw/` files, no network |
-| `python -m pytest -q` | 96 tests: parsing, metric formulas, a planted 3-week lead recovered by the lead-lag test, the account census on a hand-made table, block parsing with relayed transactions, the scoring of all nine predictions, the numbers quoted in THESIS.md, PREDICTIONS.md and this README against the frozen copy of the summary, full offline build |
+| `python -m pytest -q` | 111 tests: parsing, metric formulas, a planted 3-week lead recovered by the lead-lag test, the account census on a hand-made table, block parsing with relayed transactions, the scoring of all nine predictions, the numbers quoted in THESIS.md, PREDICTIONS.md and this README against the frozen copy of the summary, full offline build, and the build on tables extended the way a later run of the queries extends them |
 | `python -m thesis wallets` (network, about 2 minutes, no key) | `data/raw/revenue_wallets.json`: what NEAR's three revenue wallets hold at the start and the end of the 90-day window and 30 days before its end, read from an archival RPC node. The build sets their growth against the new supply and against DefiLlama's revenue series |
 | `python -m thesis outcomes` (network, about 5 minutes, no key) | `data/raw/census_outcomes.csv`: how the transactions to NEAR Intents in the sampled blocks ended, by sender |
+| `python -m thesis census` (network, about 1.5 hours, no key, resumable) | `data/raw/census_sample.csv`, `census_existence.csv` and `census_meta.json`: the keyless block sample behind the independent check; `--seed N` draws another sample |
 | `python -m thesis video` (needs ffmpeg) | `demo/near-real-usage.mp4`, a 73-second slideshow rendered from the build outputs, so the numbers on screen are the ones in `docs/summary.json` |
 | Paste [`sql/account_age.sql`](sql/account_age.sql) into the BigQuery console, save the result as CSV, then `python -m thesis bq-age result.csv` | `data/bq/account_age.csv` rebuilt from the chain: 25 months × family × age × returning. Scans 482.64 GB (free tier is 1 TB a month); check the dry-run estimate first |
 | Paste [`sql/payer_frequency.sql`](sql/payer_frequency.sql) into the BigQuery console (91.28 GB), save the result as CSV, then `python -m thesis bq-freq result.csv` | `data/bq/payer_frequency.csv` rebuilt from the chain: accounts by who pays the fee (an app's relayer or the account itself), by namespace and by transactions per month, August 2025 to October 2026 |
 | Paste [`sql/payers.sql`](sql/payers.sql) into the BigQuery console (53.23 GB), save the result as `data/bq/payers_result.csv` | Sponsored accounts named by the app whose relayer paid for them (Sweat, Ember, HOT, KaiChing, Meteor), July to October of 2025 and 2026 |
-| Paste [`sql/top_accounts.sql`](sql/top_accounts.sql) into the BigQuery console (13.53 GB), save the result as `data/bq/top_accounts_result.csv` | The 40 largest accounts and the 40 largest contracts or relayers for October 2026 and October 2025, plus concentration: 30 accounts send half of all transactions |
+| Paste [`sql/top_accounts.sql`](sql/top_accounts.sql) into the BigQuery console (13.53 GB), save the result as `data/bq/top_accounts_result.csv` | The 40 largest accounts and the 40 largest contracts or relayers for October 2026 and October 2025, plus concentration: 30 accounts send half of all transactions. A later run for two other months adds its rows to the file; the build compares the latest month with the one a year earlier |
 | Paste [`sql/one_day_actions.sql`](sql/one_day_actions.sql) into the BigQuery console (0.6 GB) | One day by action kind: 3,448,826 relayed transactions signed by 17 relayers for 2,694,016 users; 238,399 accounts created by 12 creators; total equal to NearBlocks' count for that day |
 
 **Live dashboard:** <https://ivegor.github.io/near-real-usage/>, rebuilt from scratch by GitHub Actions on every push

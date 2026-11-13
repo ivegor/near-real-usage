@@ -14,6 +14,11 @@ DOCS = ROOT / "docs"
 SNAPSHOT = ROOT / "data" / "snapshot" / "thesis_summary.json"
 
 
+def same_months(a: dict, b: dict) -> bool:
+    """True when two summaries compare the same latest month with the same earlier month."""
+    return (a.get("latest_month"), a.get("prior_month")) == (b.get("latest_month"), b.get("prior_month"))
+
+
 def build(offline: bool, require_fresh: bool = False) -> None:
     daily = sources.load_daily(offline=offline)
     stale = [] if offline else list(sources.NOT_REFRESHED)  # sources read from their saved copies because a download failed
@@ -43,7 +48,14 @@ def build(offline: bool, require_fresh: bool = False) -> None:
     top = clients.load()
     if top:
         summary["clients"] = clients.summarize(top)
-        if pop is not None:
+        # The queries are run separately, and a later run of one of them moves its months on. Figures that combine two
+        # results are computed only while both compare the same two months; otherwise they are left out and named.
+        apart = [name for name, other in (("population", pop), ("segments", seg))
+                 if other is not None and not same_months(summary[name], summary["clients"])]
+        if apart:
+            summary["clients"]["not_combined_with"] = apart
+            print(f"[clients] months differ from {', '.join(apart)}: the figures that combine them are left out")
+        if pop is not None and "population" not in apart:
             kaiching = summary["population"]["segments"]["kaiching"]["txs"]
             clients.add_namespace_view(summary["clients"], kaiching["latest"])
             clients.add_three_parts(summary["clients"], kaiching["prior"])
@@ -57,11 +69,19 @@ def build(offline: bool, require_fresh: bool = False) -> None:
             ended = census.load_outcomes()  # how the sampled transactions to NEAR Intents ended, by sender
             if ended is not None and len(ended):
                 summary["clients"]["intents_outcomes"] = census.outcomes(ended)
+                sampled = cs[2].get("windows", {}).get(summary["clients"]["intents_outcomes"]["window"], {})
+                if sampled:  # a sender whose sampled calls all failed, taken out of the month it was sampled in
+                    clients.add_failing_senders(summary["clients"], top, (sampled["start"], sampled["end"]))
             view = clients.sample_view(cs[0], cs[2].get("windows", {}), daily, seed=cs[2].get("seed", census.SEED))
             if view:
                 summary["clients"]["sample_view"] = view
-        if seg is not None:
-            segments.add_reward_game_bound(summary["segments"], summary["clients"]["reward_game"])
+        if seg is not None and "segments" not in apart:
+            # the accounts the game's relayer pays everything for: the other accounts acting through it can still be
+            # counted as self-paying, so the game's players are taken out of both months (only while the months match)
+            paid = summary.get("sponsors")
+            fully = paid["month"].get(f"sponsored_by_{clients.GAME_SPONSOR}") if paid and same_months(paid, summary["clients"]) else None
+            segments.add_reward_game_bound(summary["segments"], summary["clients"]["reward_game"], fully)
+            segments.add_self_paid_adjustments(summary["segments"], summary["clients"])
     if not offline:
         try:
             value.fetch()  # keep the fee and buyback series current; fall back to the saved copies on an outage
@@ -90,10 +110,16 @@ def build(offline: bool, require_fresh: bool = False) -> None:
         summary["cross_check"] = population.cross_check(summary["signer_census"], pop, summary.get("clients"))
     built = charts.build_all(daily, summary, DOCS)
     page = dashboard.render(built, summary, DOCS)
-    print(dashboard.summary_json(summary))
-    print(f"\nDashboard: {page}")
+    # A digest, not the whole summary: 95 KB of JSON pushes these lines out of a terminal, and out of the part of a
+    # tool's output that a reader, human or machine, gets to see. Every number is in docs/summary.json.
+    census_end = summary.get("population", {}).get("query_end")
+    print(f"Data {summary['first_date']} to {summary['last_date']}" + (f"; account census through {census_end}" if census_end else ""))
     for c in built:
-        print(f"- {c.title}: {c.sentence}")
+        print(f"- {c.title}: {dashboard.split_sentence(c.sentence)[0]}")
+    if pred:
+        print("Predictions: " + ", ".join(f"{p['id']} {p['status']}" for p in pred["items"]))
+    print(f"Every number: {DOCS / 'summary.json'}")
+    print(f"Dashboard: {page}")
 
 
 def main() -> None:

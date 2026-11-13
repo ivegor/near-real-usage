@@ -16,3 +16,13 @@ def test_slides_quote_the_summary_without_gaps():
     assert f"{s['segments']['metrics']['heavy_accounts']['latest']:,.0f} heavy accounts send" in text
     # a chart slide shows its supporting line on one row: 115 characters fit the 1280-pixel frame, 117 ran off its edge
     assert all(len(x["line"]) <= 115 for x in spec if x["chart"]), [len(x["line"]) for x in spec]
+
+
+def test_slides_do_not_need_the_top_ten_comparison():
+    """After a later run of the query the file of largest accounts may hold no month of the sample's window."""
+    s = json.loads((Path(__file__).resolve().parent.parent / "docs" / "summary.json").read_text(encoding="utf-8"))
+    with_it = next(x["line"] for x in video.slides(s) if x["chart"] == "signer_census")
+    assert ", top 10 accounts " in with_it and with_it.endswith("%.")
+    del s["cross_check"]["recent"]["top10_tx_share"]
+    without = next(x["line"] for x in video.slides(s) if x["chart"] == "signer_census")
+    assert "top 10" not in without and without.endswith("%.") and with_it.startswith(without[:-1])

@@ -9,7 +9,7 @@ edit both.
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
-python -m pytest -q                  # 96 tests, no network
+python -m pytest -q                  # 111 tests, no network
 python -m thesis build --offline     # rebuilds docs/ from the committed data, no network
 python -m thesis build               # same, after refreshing data/raw/ from the public APIs
 ```
@@ -25,7 +25,19 @@ reproduces the numbers exactly; the PNG files are byte-identical only with the l
   The build does not need BigQuery: results are committed in `data/bq/`.
 * **The account census ends on 2026-11-11** (`QUERY_END` in `thesis/population.py`). If the query is re-run, update
   that constant together with `data/bq/account_age.csv`: a month counts only if the scan reached its last day.
-  Predictions B1 to B4 are scored by the build from `data/bq/` once the files there hold January 2027.
+  Predictions B1 to B4 are scored by the build from `data/bq/` once the files there hold January 2027, all of it:
+  run the frequency and top-accounts queries after the month has ended, because a result that is short of
+  NearBlocks' daily counts by a day or more is left unscored.
+* **A later run of a query adds months and keeps the earlier ones.** `sql/account_age.sql` and
+  `sql/payer_frequency.sql` are run again with only their last date moved (`bq-age` and `bq-freq` refuse a result
+  that drops months); the rows of a later `sql/top_accounts.sql` run are added to `data/bq/top_accounts_result.csv`,
+  next to the October rows THESIS.md quotes. Tests of the October figures read the tables through
+  `tests/snapshot.py`, which cuts them at the snapshot's months, and `tests/test_rerun.py` runs the whole build on
+  tables extended this way. The days of the unfinished month are used only as rates per day of transactions, and
+  for every namespace (`partial_month.txs_per_day` in the summary), not only where the month suits the argument.
+* **A correction is applied to both periods.** The players of Meteor's game were first taken out of last year's
+  regular accounts only; a player who still pays for one transaction is inside this year's count too, because a
+  frequency class counts relayed transactions. A bound on one side of a comparison is not a range.
 * **THESIS.md is a snapshot.** `tests/test_thesis_numbers.py` checks its key numbers, and the README's, against the
   frozen copy of the summary in `data/snapshot/` (`python -m thesis snapshot` refreshes it after an offline build).
   Change them together, and do not type numbers by hand: take them from `summary.json`.

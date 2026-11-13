@@ -1694,6 +1694,101 @@
         "other": 634,
         "sweat": 11,
         "tg": 198246
+      },
+      "core_direct_txs": {
+        "days": 11,
+        "transactions": 3917401,
+        "per_day": 356127.36363636365,
+        "whole_month_at_that_rate": 10683820.90909091,
+        "per_day_by_month": {
+          "2024-12": 389510.0,
+          "2025-01": 337907.8387096774,
+          "2025-02": 393360.39285714284,
+          "2025-03": 348005.2580645161,
+          "2025-04": 263993.06666666665,
+          "2025-05": 205176.03225806452,
+          "2025-06": 193774.26666666666,
+          "2025-07": 311017.1612903226,
+          "2025-08": 270415.6129032258,
+          "2025-09": 217996.16666666666,
+          "2025-10": 314549.4193548387,
+          "2025-11": 375657.23333333334,
+          "2025-12": 218485.83870967742,
+          "2026-01": 214010.64516129033,
+          "2026-02": 370738.85714285716,
+          "2026-03": 213961.64516129033,
+          "2026-04": 205357.26666666666,
+          "2026-05": 263697.3548387097,
+          "2026-06": 289525.43333333335,
+          "2026-07": 231569.4193548387,
+          "2026-08": 252968.90322580645,
+          "2026-09": 436810.0,
+          "2026-10": 402762.03225806454
+        },
+        "latest_complete_month": {
+          "month": "2026-10",
+          "per_day": 402762.03225806454,
+          "pct_change": -11.57871519324849
+        },
+        "same_month_a_year_earlier": {
+          "month": "2025-11",
+          "per_day": 375657.23333333334,
+          "pct_change": -5.198853626130018
+        }
+      },
+      "txs_per_day": {
+        "days": 11,
+        "month": "2026-11",
+        "latest_complete_month": "2026-10",
+        "all": {
+          "partial": 722809.0909090909,
+          "latest_complete": 729917.7741935484,
+          "pct_change": -0.9739019292017481,
+          "relayed": {
+            "partial": 277523.54545454547,
+            "latest_complete": 241933.74193548388
+          }
+        },
+        "core": {
+          "partial": 417170.7272727273,
+          "latest_complete": 479813.5806451613,
+          "pct_change": -13.055664928909238,
+          "relayed": {
+            "partial": 61043.36363636364,
+            "latest_complete": 77051.54838709677
+          }
+        },
+        "kaiching": {
+          "partial": 0.0,
+          "latest_complete": 20735.064516129034,
+          "pct_change": -100.0,
+          "relayed": {
+            "partial": 0.0,
+            "latest_complete": 0.0
+          }
+        },
+        "tg": {
+          "partial": 195760.0,
+          "latest_complete": 99967.51612903226,
+          "pct_change": 95.82361108915059,
+          "relayed": {
+            "partial": 106691.0,
+            "latest_complete": 35695.77419354839
+          }
+        },
+        "sweat": {
+          "partial": 109878.36363636363,
+          "latest_complete": 129401.6129032258,
+          "pct_change": -15.087330697696032,
+          "relayed": {
+            "partial": 109789.18181818182,
+            "latest_complete": 129186.41935483871
+          }
+        },
+        "reward_namespaces_share_of_txs": {
+          "partial": 0.42284797947402175,
+          "latest_complete": 0.34264707942578243
+        }
       }
     },
     "one_day": {
@@ -1795,6 +1890,15 @@
           "relayed_txs": 0,
           "txs_per_day": 0.22580645161290322
         }
+      },
+      "fall_txs": 2695288,
+      "kaiching_share_of_the_fall_at_most": 0.5094335002419037,
+      "other_accounts_in_the_fall_at_least": 1322218,
+      "median_day": {
+        "month_before": 3325419.0,
+        "month_after": 783747.0,
+        "fall": 2541672.0,
+        "kaiching_share_of_it": 0.8953730889262735
       },
       "active_accounts": {
         "before": 139048,
@@ -1986,13 +2090,32 @@
       "share_of_prior_regular_at_most": 0.5599379570130734,
       "fall": 9973.0,
       "pct_change_as_counted": -36.83063741782997,
-      "pct_change_if_all_of_them_were_regular": 43.54649211144679
+      "pct_change_if_all_of_them_were_regular": 43.54649211144679,
+      "without_the_game": {
+        "relayer_accounts_latest": 19722,
+        "fully_sponsored_latest": 15409,
+        "players_still_self_paying_latest_at_most": 4313,
+        "pct_change_low": -52.75869709727454,
+        "pct_change_high": 43.54649211144679,
+        "pct_change_with_the_most_out_of_both_months": 7.351460221550865
+      }
     },
     "self_paid_txs_reward_game_bound": {
       "game_direct_txs_prior": 532727,
       "share_of_prior_self_paid_txs_at_most": 0.05451268366144171,
       "pct_change_as_counted": 27.830665805886756,
       "pct_change_if_all_of_them_were_independent": 35.20082564504059
+    },
+    "self_paid_txs_adjustments": {
+      "pct_change_as_counted": 27.830665805886756,
+      "reward_side_direct_txs": {
+        "latest": 310912,
+        "prior": 532727
+      },
+      "pct_change_without_reward_side_direct_txs": 31.83590651145707,
+      "failing_sender_txs_latest": 513339,
+      "pct_change_without_failing_senders": 22.577790220815828,
+      "pct_change_without_both": 26.28017298198686
     }
   },
   "sponsors": {
@@ -2601,6 +2724,35 @@
         "near"
       ]
     },
+    "reward_side_direct_calls": {
+      "contracts": [
+        "fast-auth.near",
+        "aa-harvest-moon.near",
+        "embr.playember_reserve.near"
+      ],
+      "latest": {
+        "transactions": 310912,
+        "by_contract": {
+          "embr.playember_reserve.near": {
+            "transactions": 164956,
+            "accounts": 44
+          },
+          "fast-auth.near": {
+            "transactions": 145956,
+            "accounts": 6
+          }
+        }
+      },
+      "prior": {
+        "transactions": 532727,
+        "by_contract": {
+          "aa-harvest-moon.near": {
+            "transactions": 532727,
+            "accounts": 15162
+          }
+        }
+      }
+    },
     "reward_minus_finance_share": {
       "latest": 0.019868521646561072,
       "latest_range": [
@@ -2859,6 +3011,27 @@
         "accounts": 7
       }
     },
+    "failing_senders": {
+      "target": "intents.near",
+      "sampled": {
+        "escrow.ai.near": {
+          "transactions": 26,
+          "failed": 26
+        }
+      },
+      "transactions_latest": {
+        "escrow.ai.near": 513339
+      },
+      "transactions_latest_all": 513339,
+      "transactions_prior": {
+        "escrow.ai.near": null
+      },
+      "smallest_of_the_40_accounts_prior": 51944,
+      "share_of_target_txs_latest": 0.25490871803020637,
+      "target_pct_change_without_them": -35.35373554106407,
+      "finance_pct_change_without_them": 29.025689857170754,
+      "finance_pct_change_without_them_and_with_the_exchange_bot_targets": 23.4205572776927
+    },
     "sample_view": {
       "windows": {
         "prior": {
@@ -3103,7 +3276,11 @@
         "range_mean_a_year_earlier": 9163344.444444444,
         "range_pct_change": -16.98485026694523,
         "range_pct_change_without_dormant_implicit": -20.938373037747006,
-        "range_months_below_a_year_earlier": 7
+        "range_months_below_a_year_earlier": 7,
+        "range_months_above_a_year_earlier": {
+          "2026-05": 28.522494531446398,
+          "2026-06": 49.41376804763205
+        }
       },
       "regular_self_paying_accounts": {
         "before": 7201.0,

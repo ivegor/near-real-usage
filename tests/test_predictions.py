@@ -7,6 +7,8 @@ import pandas as pd
 
 from thesis import predictions
 
+from . import snapshot
+
 ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -53,6 +55,24 @@ def test_the_notes_quote_the_frozen_snapshot():
             f"{meteor['2025-08']:,.0f} and {meteor['2025-10']:,.0f} a year earlier") in text
     assert f"all {game['sample_calls']['recent']['calls']} calls to the game come through the relayer" in text
     assert game["sample_calls"]["recent"]["relayed"] == game["sample_calls"]["recent"]["calls"]
+    # the days of B2's window that were already in the census when the file was frozen
+    pace, base = s["population"]["partial_month"]["core_direct_txs"], s["predictions"]["baselines"]
+    assert s["population"]["partial_month"]["month"] == "2026-11" and pace["latest_complete_month"]["month"] == "2026-10"
+    over = (pace["whole_month_at_that_rate"] / base["core_self_paid_txs_plateau_top"] - 1) * 100
+    assert (f"The first {pace['days']} days of B2's window were in the census when the file was frozen: self-paid transactions ran at "
+            f"{pace['per_day'] / 1e3:.0f} thousand a day, a rate of {pace['whole_month_at_that_rate'] / 1e6:.2f}M a month, {over:.0f}% above the "
+            f"threshold and {abs(pace['latest_complete_month']['pct_change']):.0f}% below October's rate") in text
+    # what else the data held on the day the file was frozen: one day of A1's window, and where HOT was heading for B4
+    a1 = pd.read_csv(ROOT / "predictions.csv").set_index("id").loc["A1"]
+    assert str((pd.Timestamp(a1["check_on"]) - pd.Timedelta(days=6)).date()) == s["last_date"]       # the first of its seven days
+    so_far, hot = s["month_to_date_yoy"]["intents_volume_usd"], s["population"]["partial_month"]["txs_per_day"]["tg"]
+    over_a1 = (so_far["recent"] / a1["threshold"] - 1) * 100
+    assert (f"one of its seven days was known, and the first {so_far['days']} days of November had averaged "
+            f"${so_far['recent'] / 1e6:.1f}M a day, {over_a1:.0f}% above A1's threshold") in text
+    assert (f"HOT's namespace was sending {hot['partial'] / 1e3:.0f} thousand transactions a day against "
+            f"{hot['latest_complete'] / 1e3:.0f} thousand in October") in text
+    still = s["segments"]["regular_accounts_reward_game_bound"]["without_the_game"]["players_still_self_paying_latest_at_most"]
+    assert f"up to {still:,} such accounts in October 2026" in text
 
 
 def test_baselines_are_computed_from_data_not_typed():
@@ -127,6 +147,7 @@ def test_not_scored_on_part_of_its_window(tmp_path):
 
 
 BQ_HEADER = "id,question,check_on,metric,operator,threshold,baseline,scoring,statement\n"
+JANUARY_TXS = 1_690_000      # what the frequency table and the table of largest accounts below both count in January 2027
 
 
 def bq_results(tmp_path, half_reached=True, heavy=3):
@@ -141,19 +162,30 @@ def bq_results(tmp_path, half_reached=True, heavy=3):
     seg = pd.DataFrame([("2027-01", "rest", "self", "10-99", 9_000, 200_000, 190_000), ("2027-01", "rest", "self", "100-999", 500, 90_000, 90_000),
                         ("2027-01", "tg", "self", "10-99", 70_000, 900_000, 800_000), ("2027-01", "rest", "sponsored", "10-99", 40_000, 500_000, 0)],
                        columns=["month", "namespace", "payer", "txs_in_month", "accounts", "txs", "self_paid_txs"])
+    assert seg["txs"].sum() == JANUARY_TXS
     result = tmp_path / "top.csv"
-    heavy_txs = 700 if half_reached else 400
+    k = JANUARY_TXS // 1000      # the same month in the other table: the shares below are thousandths of it
+    heavy_txs = (700 if half_reached else 400) * k
     result.write_text("m,sec,cells\n"
-                      "2027-01,actors,intents.near|350|intents.near;oracle.sweat|300|relayer:sweat-relayer.near\n"
-                      f"2027-01,conc,1000|500|{heavy}|{heavy_txs}|{heavy_txs}|{heavy_txs}|{heavy_txs}|2|{heavy}\n"
-                      "2027-01,via,intents.near|350|12;relayer:sweat-relayer.near|300|30;mystery.near|40|1\n")
+                      f"2027-01,actors,intents.near|{350 * k}|intents.near;oracle.sweat|{300 * k}|relayer:sweat-relayer.near\n"
+                      f"2027-01,conc,{JANUARY_TXS}|500|{heavy}|{heavy_txs}|{heavy_txs}|{heavy_txs}|{heavy_txs}|2|{heavy}\n"
+                      f"2027-01,via,intents.near|{350 * k}|12;relayer:sweat-relayer.near|{300 * k}|30;mystery.near|{40 * k}|1\n")
     from thesis import clients
     return census, seg, clients.load(result)
 
 
+def days_of_january(index, total=JANUARY_TXS):
+    """The aggregator's daily transaction counts: January 2027 adds up to `total`, with one quiet day; other days do not matter."""
+    txns = pd.Series(1.0, index=index)
+    january = index[(index >= "2027-01-01") & (index <= "2027-01-31")]
+    txns[january] = (total - 30_000) / 30
+    txns[january[0]] = 30_000        # the quietest day: a result short by this much or more has missed a day
+    return txns
+
+
 def test_bigquery_predictions_are_scored_once_the_committed_results_hold_the_month(tmp_path, monkeypatch):
     """B1 to B4 stay open until the queries are run again; then the build scores them like the others, misses included."""
-    from thesis import clients, population, segments
+    from thesis import population
     p = tmp_path / "p.csv"
     p.write_text(BQ_HEADER
                  + "B1,q,2027-02-01,regular_self_paying_accounts_2027_01,>,7201,b,bigquery,the rebound holds\n"
@@ -161,14 +193,17 @@ def test_bigquery_predictions_are_scored_once_the_committed_results_hold_the_mon
                  + "B3,q,2027-02-01,accounts_for_half_of_txs_2027_01,<,100,b,bigquery,a few dozen accounts\n"
                  + "B4,q,2027-02-01,reward_minus_finance_tx_share_2027_01,>,0,b,bigquery,reward apps are larger\n"
                  + "B9,q,2027-02-01,something_else_2027_01,>,0,b,bigquery,no rule for this one\n")
-    daily = pd.DataFrame({"intents_volume_usd": 1.0, "price_usd": 1.0}, index=pd.date_range("2026-06-01", "2027-02-05", freq="D"))
+    idx = pd.date_range("2026-06-01", "2027-02-05", freq="D")
+    daily = pd.DataFrame({"intents_volume_usd": 1.0, "price_usd": 1.0, "txns": days_of_january(idx)}, index=idx)
 
     def status(**kw):
         return {r["id"]: (r["status"], r["measured"]) for r in predictions.evaluate(daily, None, p, **kw)["items"]}
 
     waiting = ("open (needs the census query for that month)", None)
     assert set(status().values()) == {waiting}                                            # no results at all
-    committed = dict(census=population.load(), seg=segments.load(), top=clients.load())   # today's results end in October 2026
+    # the results as they stood when the predictions were written: they end in October 2026
+    monkeypatch.setattr(population, "QUERY_END", snapshot.SCAN_END)
+    committed = dict(census=snapshot.census(), seg=snapshot.frequency(), top=snapshot.top())
     assert set(status(**committed).values()) == {waiting}
 
     census, seg, top = bq_results(tmp_path)
@@ -186,6 +221,46 @@ def test_bigquery_predictions_are_scored_once_the_committed_results_hold_the_mon
     # a census that stops before the last month of the window is not enough
     monkeypatch.setattr(population, "QUERY_END", "2027-01-20")
     assert status(census=census, seg=seg, top=top)["B2"] == waiting
+
+
+def test_a_result_that_misses_a_day_of_its_month_is_not_scored(tmp_path):
+    """The frequency and top-accounts queries name whole months. Run before the month ended, their result is short of the
+    aggregator's daily counts by a day or more, and the prediction waits for a run that holds the whole month."""
+    p = tmp_path / "p.csv"
+    p.write_text(BQ_HEADER
+                 + "B1,q,2027-02-01,regular_self_paying_accounts_2027_01,>,7201,b,bigquery,the rebound holds\n"
+                 + "B3,q,2027-02-01,accounts_for_half_of_txs_2027_01,<,100,b,bigquery,a few dozen accounts\n"
+                 + "B4,q,2027-02-01,reward_minus_finance_tx_share_2027_01,>,0,b,bigquery,reward apps are larger\n")
+    idx = pd.date_range("2026-06-01", "2027-02-05", freq="D")
+    _, seg, top = bq_results(tmp_path)
+
+    def status(txns):
+        daily = pd.DataFrame({"intents_volume_usd": 1.0, "price_usd": 1.0, "txns": txns}, index=idx)
+        return {r["id"]: r["status"] for r in predictions.evaluate(daily, None, p, seg=seg, top=top)["items"]}
+
+    waiting = "open (needs the census query for that month)"
+    assert status(days_of_january(idx)) == {"B1": "held", "B3": "held", "B4": "failed"}
+    # the aggregator counted a day's worth more than the results hold: the quietest day of the month (30,000) is the line
+    assert set(status(days_of_january(idx, JANUARY_TXS + 31_000)).values()) == {waiting}
+    # short by less than a day is how two sources differ in a month they both hold: scored
+    assert status(days_of_january(idx, JANUARY_TXS + 29_000)) == {"B1": "held", "B3": "held", "B4": "failed"}
+    # the rule itself: nothing to compare with means the result is taken as it is
+    days = pd.DataFrame({"txns": days_of_january(idx)}, index=idx)
+    assert predictions.holds_the_whole_month(JANUARY_TXS, "2027-01", days)
+    assert not predictions.holds_the_whole_month(JANUARY_TXS - 31_000, "2027-01", days)
+    assert predictions.holds_the_whole_month(1, "2027-01", None) and predictions.holds_the_whole_month(1, "2027-01", days[["txns"]].rename(columns={"txns": "x"}))
+    assert predictions.holds_the_whole_month(1, "2027-03", days)             # the daily series does not reach that month
+    # and the committed results as they stand: every month the frequency table holds is a whole one
+    from thesis import sources
+    real, table = sources.load_daily(offline=True), snapshot.frequency()
+    for month, counted in table.groupby("month")["txs"].sum().items():
+        assert predictions.holds_the_whole_month(counted, month, real), month
+    assert all(predictions.holds_the_whole_month(v["conc"]["txs"], m, real) for m, v in snapshot.top().items())
+    # while a result that stopped one day short would not pass: October without the transactions of its last day
+    october = snapshot.census()
+    october = october[october["month"] == "2026-10"]["txs"].sum()
+    assert predictions.holds_the_whole_month(october, "2026-10", real)
+    assert not predictions.holds_the_whole_month(october - real.loc["2026-10-31", "txns"], "2026-10", real)
 
 
 def test_every_prediction_in_the_frozen_file_can_be_scored(tmp_path, monkeypatch):
@@ -206,14 +281,15 @@ def test_every_prediction_in_the_frozen_file_can_be_scored(tmp_path, monkeypatch
     tail["total_supply_yocto"] = daily["total_supply_yocto"].iloc[-1] + np.arange(1, len(more) + 1) * 8.8e28
     more_fees = pd.date_range(fees.index.max() + pd.Timedelta(days=1), until, freq="D")
     daily, fees = pd.concat([daily, tail]), pd.concat([fees, pd.DataFrame([fees.iloc[-1]] * len(more_fees), index=more_fees)])
+    january = (daily.index >= "2027-01-01") & (daily.index <= "2027-01-31")
+    daily.loc[january, "txns"] = JANUARY_TXS / 31          # the aggregator's January: the month the two tables below hold in full
     census, seg, top = bq_results(tmp_path)
     monkeypatch.setattr(population, "QUERY_END", "2027-02-10")
     out = predictions.evaluate(daily, fees, census=census, seg=seg, top=top)["items"]
     assert len(out) == 9 and all(r["status"] in ("held", "failed") and r["measured"] is not None for r in out), out
-    # and with today's files the four that wait for the queries say so
-    monkeypatch.undo()
-    from thesis import clients, segments
-    now = predictions.evaluate(daily, fees, census=population.load(), seg=segments.load(), top=clients.load())["items"]
+    # and with the results as they stood when the file was frozen, the four that wait for the queries say so
+    monkeypatch.setattr(population, "QUERY_END", snapshot.SCAN_END)
+    now = predictions.evaluate(daily, fees, census=snapshot.census(), seg=snapshot.frequency(), top=snapshot.top())["items"]
     assert [r["id"] for r in now if r["status"].startswith("open (needs")] == ["B1", "B2", "B3", "B4"]
 
 
@@ -275,6 +351,8 @@ def test_step_reports_what_the_series_did_in_the_range_before_it():
     c = s["core_self_paid_txs"]
     assert (c["range_mean"], c["range_mean_a_year_earlier"]) == (900.0, 1000.0) and abs(c["range_pct_change"] + 10) < 1e-9
     assert abs(c["range_pct_change_without_dormant_implicit"] + 20) < 1e-9 and c["range_months_below_a_year_earlier"] == 8
+    # an average below the year before is not every month below it: the month above is named, with by how much
+    assert list(c["range_months_above_a_year_earlier"]) == ["2026-02"] and abs(c["range_months_above_a_year_earlier"]["2026-02"] - 70) < 1e-9
 
 
 def test_adjacent_positive_leads_counts_only_neighbouring_positive_lags():

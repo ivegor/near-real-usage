@@ -54,10 +54,11 @@ def slides(s: dict) -> list[dict]:
          "chart": "value_capture", "sec": 10},
     ]
     if cc:
+        top10 = cc.get("top10_tx_share")  # present only while the file of largest accounts holds a month of the sample's window
         out.append({"head": "Checked a second way, with no API key.",
                     "line": f"A random sample of blocks agrees with the full count: relayed transactions "
-                            f"{cc['relayed_tx_share']['sample'] * 100:.0f}% vs {cc['relayed_tx_share']['bigquery'] * 100:.0f}%, "
-                            f"top 10 accounts {cc['top10_tx_share']['sample'] * 100:.0f}% vs {cc['top10_tx_share']['bigquery'] * 100:.0f}%.",
+                            f"{cc['relayed_tx_share']['sample'] * 100:.0f}% vs {cc['relayed_tx_share']['bigquery'] * 100:.0f}%"
+                            + (f", top 10 accounts {top10['sample'] * 100:.0f}% vs {top10['bigquery'] * 100:.0f}%." if top10 else "."),
                     "chart": "signer_census", "sec": 9})
     n_out = sum(len(x["outside_band"]) for x in s["lead_vs_price"].values())
     out += [
