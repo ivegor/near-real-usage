@@ -208,6 +208,10 @@ def summarize(df: pd.DataFrame, query_end: str | None = None) -> dict:
     out["reward_namespace_txs_per_day_by_month"] = {
         f: {m: float(v / days_in[m]) for m, v in df[df["family"] == f].groupby("month")["txs"].sum().reindex(every_month).fillna(0).items()}
         for f in REWARD_FAMILIES}
+    # the same through relayers only: an app that changes relayers shows here first
+    out["reward_namespace_relayed_txs_per_day_by_month"] = {
+        f: {m: float(v / days_in[m]) for m, v in df[df["family"] == f].groupby("month")["relayed_txs"].sum().reindex(every_month).fillna(0).items()}
+        for f in REWARD_FAMILIES}
     out["reward_namespaces_share_of_txs_windows"] = {
         str(n): float(1 - core_t[months[-n:]].sum() / all_t[months[-n:]].sum()) for n in (1, 3, 6)}
     out["sweat_share_of_all_txs"] = seg["sweat"]["txs"]["latest"] / seg["all"]["txs"]["latest"]
@@ -445,6 +449,13 @@ def signer_spike(daily: pd.DataFrame, partial: str, query_end: str) -> dict | No
     rest = a.drop(day)
     return {"date": str(day.date()), "signers": int(a[day]), "median_other_day": float(rest.median()),
             "above_the_median_day": float(a[day] - rest.median())}
+
+
+def days_of(daily: pd.DataFrame, partial: str, query_end: str, columns=("txns", "active_accounts", "active_contracts", "deleted_accounts")) -> dict:
+    """Every day of the unfinished month the census covers, for the daily columns that can date a step inside it: a rate
+    over eleven days is one number, and a level that changed on one of them is two."""
+    d = daily.loc[pd.Period(partial, "M").start_time:pd.Timestamp(query_end)]
+    return {c: {str(k.date()): int(v) for k, v in d[c].dropna().items()} for c in columns if c in d}
 
 
 def largest_daily_fall(df: pd.DataFrame, daily: pd.DataFrame) -> dict | None:

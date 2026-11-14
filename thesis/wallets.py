@@ -141,3 +141,22 @@ def summarize(data: dict, daily: pd.DataFrame, fees: pd.DataFrame | None) -> dic
         if tail:
             out["last_days"] = tail
     return out
+
+
+PROTOCOL_PATH = sources.RAW_DIR / "protocol_config.json"
+
+
+def fetch_protocol() -> None:
+    """Network part (one request): the issuance parameters in force, as the protocol's own configuration states them."""
+    res = census._rpc("EXPERIMENTAL_protocol_config", {"finality": "final"})
+    if "result" not in res:
+        raise RuntimeError(f"protocol config: {json.dumps(res)[:200]}")
+    cfg = res["result"]
+    data = {"read_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ"), "rpc": census.RPC_URL,
+            "protocol_version": cfg["protocol_version"], "max_inflation_rate": cfg["max_inflation_rate"],
+            "protocol_reward_rate": cfg["protocol_reward_rate"]}
+    PROTOCOL_PATH.write_text(json.dumps(data, indent=1), encoding="utf-8")
+
+
+def load_protocol() -> dict | None:
+    return json.loads(PROTOCOL_PATH.read_text(encoding="utf-8")) if PROTOCOL_PATH.exists() else None

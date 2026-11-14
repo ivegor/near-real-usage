@@ -223,3 +223,73 @@ def test_p_value_of_a_correlation():
     assert 0.04 < metrics._p_value(0.2, 100) < 0.05      # just inside 2/sqrt(n) = 0.2
     assert metrics._p_value(0.5, 100) < 1e-6
     assert metrics._p_value(0.3, 3) != metrics._p_value(0.3, 3)  # too few points: not a number
+
+
+def test_the_build_goes_on_from_v3_when_v1_is_switched_off(tmp_path, monkeypatch):
+    """NearBlocks switches /v1 off on 2026-11-22. The daily build must then carry the table on from the v3 API for the
+    columns v3 has with the same meaning, say which columns ended, and still count as fresh."""
+    import json
+    import shutil
+
+    from thesis import __main__ as cli
+    from thesis import value
+    saved = sources.RAW_DIR
+    raw = tmp_path / "raw"
+    shutil.copytree(saved, raw)
+    v1 = json.loads((raw / "nearblocks_charts.json").read_text(encoding="utf-8"))
+    v1["charts"] = sorted(v1["charts"], key=lambda r: r["date"])[:-40]     # the saved copy ends 40 days earlier
+    cut = v1["charts"][-1]["date"][:10]
+    (raw / "nearblocks_charts.json").write_text(json.dumps(v1), encoding="utf-8")
+    v3 = {url: json.loads((saved / f"{name}.json").read_text(encoding="utf-8")) for name, url in sources.NEARBLOCKS_V3.items()}
+    intents = json.loads((saved / "defillama_intents.json").read_text(encoding="utf-8"))
+
+    def fetch(url, retries=3):
+        if url == sources.NEARBLOCKS_CHARTS_URL:
+            raise RuntimeError("410 Gone")
+        return v3.get(url, intents)
+
+    monkeypatch.setattr(sources, "RAW_DIR", raw)
+    monkeypatch.setattr(sources, "_fetch_json", fetch)
+    monkeypatch.setattr(value, "fetch", lambda: None)
+    (tmp_path / "data").mkdir()
+    monkeypatch.setattr(cli, "ROOT", tmp_path)
+    monkeypatch.setattr(cli, "DOCS", tmp_path / "docs")
+    cli.build(offline=False, require_fresh=True)                             # fresh: v3 answered
+    assert sources.NOT_REFRESHED == [] and sources.CONTINUED_FROM_V3
+    table = pd.read_csv(tmp_path / "data" / "daily.csv", index_col=0, parse_dates=True)
+    after = table[table.index > cut]
+    assert len(after) >= 40 and after["txns"].notna().all() and after["price_usd"].notna().all()
+    assert after["total_supply_yocto"].notna().all() and after["fees_usd"].notna().all()
+    assert after["active_accounts"].isna().all() and after["new_accounts"].isna().all()   # v3 has no such columns
+    # on the days both carry, the continued columns are the saved /v1 values
+    full = sources.parse_nearblocks(json.loads((saved / "nearblocks_charts.json").read_text(encoding="utf-8")))
+    both = after.index.intersection(full.index)
+    assert len(both) >= 38 and (after.loc[both, "txns"] == full.loc[both, "txns"]).all()
+    assert (after.loc[both, "price_usd"] - full.loc[both, "price_usd"]).abs().max() < 1e-9
+    summary = json.loads((tmp_path / "docs" / "summary.json").read_text(encoding="utf-8"))
+    assert summary["series_ended"]["active_accounts"] == cut and "txns" not in summary["series_ended"]
+    page = (tmp_path / "docs" / "index.html").read_text(encoding="utf-8")
+    assert "Some series ended" in page and f"active accounts ({cut})" in page
+    sources.CONTINUED_FROM_V3.clear()
+
+
+def test_v3_carries_the_same_values_as_v1_for_the_columns_it_continues():
+    """The two committed copies, day by day from 2025-10-01: the columns continued from v3 are the /v1 values."""
+    import json
+    raw = {k: json.loads((sources.RAW_DIR / f"{k}.json").read_text(encoding="utf-8")) for k in sources.NEARBLOCKS_V3}
+    v3 = sources.parse_nearblocks_v3(raw)
+    v1 = sources.parse_nearblocks(json.loads((sources.RAW_DIR / "nearblocks_charts.json").read_text(encoding="utf-8")))
+    days = v1.index.intersection(v3.index)
+    days = days[days >= "2025-10-01"]
+    assert len(days) > 400
+    for col in ("total_supply_yocto", "gas_used", "txns", "price_usd", "market_cap_usd"):
+        a, b = v1.loc[days, col].astype(float), v3.loc[days, col].astype(float)
+        assert ((a - b).abs() <= 1e-9 * a.abs()).all(), col
+    same = (v1.loc[days, "active_contracts"] == v3.loc[days, "active_contracts"]).mean()
+    assert same > 0.98
+    close = ((v3.loc[days, "fees_usd"] / v1.loc[days, "fees_usd"] - 1).abs() < 0.001).mean()
+    assert close > 0.9
+    # what is NOT continued: v3 counts the accounts relayers acted for as active, /v1 counted signers
+    assert "active_accounts" not in v3.columns and "new_accounts" not in v3.columns
+    relayed = sources.relayed_daily()
+    assert (relayed.loc[days, "accounts_with_relayed_users"] > v1.loc[days, "active_accounts"]).all()

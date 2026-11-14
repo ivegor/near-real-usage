@@ -13,7 +13,7 @@ each command in that image on the repository mounted at `/app`, as the current u
 
 ```bash
 make serve      # builds the image (tests + offline build inside), serves the dashboard on :8000
-make test       # 125 tests, no network
+make test       # 134 tests, no network
 make offline    # rebuilds docs/ from the committed data, no network
 make build      # same, after refreshing data/raw/ from the public APIs
 make snapshot   # freezes docs/summary.json as data/snapshot/thesis_summary.json
@@ -64,6 +64,13 @@ changes in another order and their last digits differ; nothing else in `summary.
   the build compares them with BigQuery in `cross_check` of `docs/summary.json`.
   `thesis/wallets.py` (balances of the revenue wallets, `data/raw/revenue_wallets.json`) and the `outcomes` command
   use the same paced client.
+* **NearBlocks switches `/v1` off on 2026-11-22.** While `/v1/charts` answers, the daily table is built from it
+  alone. When it does not, `thesis/sources.py` carries the table on from `/v3` for the columns that mean the same
+  there; signers, new and deleted accounts end with `/v1`. Do not splice v3's `active_accounts` onto the old series:
+  it also counts the accounts relayers acted for. The committed `/v1` copy stays as it is, because THESIS.md is built
+  from it.
+* **Numbers quoted from other entries are theirs.** THESIS.md cites two other entries for where the Intents revenue
+  comes from. Keep such figures attributed and linked, and never put them into `summary.json` as if measured here.
 * **`predictions.csv` is frozen.** Its SHA-256 is quoted in `PREDICTIONS.md` and a test compares them. Do not edit
   it after the fact; add new predictions as a new file.
 * **The app groups in `thesis/clients.py` are part of prediction B4.** `REWARD_APPS` and `FINANCE_APPS` stay as they

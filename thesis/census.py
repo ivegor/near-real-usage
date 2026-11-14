@@ -21,6 +21,7 @@ rate-limited without a key, so it takes about 1.5 hours; it caches every respons
 from __future__ import annotations
 
 import json
+import re
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -34,6 +35,7 @@ RAW_DIR = Path(__file__).resolve().parent.parent / "data" / "raw"
 BLOCK_URL = "https://mainnet.neardata.xyz/v0/block/{height}"
 RPC_URL = "https://archival-rpc.mainnet.fastnear.com"
 
+IMPLICIT = re.compile(r"[0-9a-f]{64}")  # an implicit account: 64 hex characters, no name
 SEED = 20261112
 WINDOW_DAYS = 90
 # Blocks carried about 6x more transactions a year ago, so fewer blocks give a similar sample size.
@@ -346,6 +348,34 @@ def self_deletions(sample: pd.DataFrame, suffix: str) -> dict:
         days = pd.to_datetime(gone["ts"], unit="ns").dt.strftime("%Y-%m-%d")
         out[label] = {"transactions": int(len(hit)), "delete_account": int(len(gone)),
                       "first_day": str(days.min()) if len(gone) else None, "last_day": str(days.max()) if len(gone) else None}
+    return out
+
+
+def one_block_transfers(sample: pd.DataFrame, exist: pd.DataFrame | None = None) -> dict:
+    """Per window: the sampled blocks in which two or more accounts each send a plain `Transfer` to the same receiver.
+
+    People paying one address do not land in the same block; a sweep of many accounts into one does. Each such block is
+    listed with its time, how many senders, how many of them are implicit and existed a year before the window, and
+    the receiver (a public account). It names one block of a day, not what the whole day was.
+    """
+    out = {}
+    for label, w in sample.groupby("window"):
+        t = w[(w["method"] == "Transfer") & ~w["relayed"].astype(bool) & (w["actor"] == w["signer"])]
+        rows = []
+        for (height, target), g in t.groupby(["height", "target"]):
+            if g["actor"].nunique() < 2:
+                continue
+            senders = g["actor"].unique()
+            old = None
+            if exist is not None:
+                e = exist[(exist["window"] == label) & exist["actor"].isin(senders)]
+                old = int(e["existed_365d"].fillna(False).astype(bool).sum())
+            when = pd.to_datetime(int(g["ts"].iloc[0]), unit="ns")
+            rows.append({"height": int(height), "time_utc": when.strftime("%Y-%m-%d %H:%M"), "receiver": str(target),
+                         "senders": int(len(senders)), "implicit_senders": int(sum(bool(IMPLICIT.fullmatch(a)) for a in senders)),
+                         "senders_older_than_a_year": old,
+                         "blocks_sampled_that_day": int(w[pd.to_datetime(w["ts"], unit="ns").dt.date == when.date()]["height"].nunique())})
+        out[label] = rows
     return out
 
 

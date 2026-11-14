@@ -63,3 +63,23 @@ def test_buyback_windows_set_the_last_window_against_every_other():
     assert bb["near_ratio"] < bb["usd_ratio"]
     th = w["threshold_price"]
     assert abs(th["mean_price_that_meets_it"] * th["near_per_day"] * 31 - 723262.0) < 1e-6
+
+
+def test_one_large_day_lifts_a_mean_and_not_the_median():
+    daily, fees = synthetic()
+    fees.loc["2026-10-20", "holders_revenue"] = 50 * fees.loc["2026-10-19", "holders_revenue"]   # one day of fifty
+    out = autumn.summarize(daily, fees, ("2025-12", "2026-08"), "2026-04-02", line=89.6e6)
+    half = "2026-10-16..2026-10-31"
+    assert out["half_months"][half]["buyback_usd"] > 3 * out["half_months_median"][half]["buyback_usd"]
+    # the median day of a half-month is the level of its days: one large day moves the mean only
+    assert out["half_months_median"][half]["buyback_usd"] == out["half_months_median"]["2026-10-01..2026-10-15"]["buyback_usd"]
+    assert out["above_reference_top"]["buyback_usd"] == out["above_reference_top_by_median"]["buyback_usd"]
+
+
+def test_one_day_moves_date_a_step_inside_a_month():
+    s = pd.Series(100.0, index=pd.date_range("2026-11-01", "2026-11-11"))
+    s["2026-11-09":] = 180.0
+    s["2026-11-03"] = 90.0
+    out = autumn.one_day_moves(s, pd.Timestamp("2026-11-01"), pd.Timestamp("2026-11-11"))["2026-11"]
+    assert (out["rise"]["date"], out["rise"]["day_before"], out["rise"]["day"]) == ("2026-11-09", 100.0, 180.0)
+    assert out["fall"]["date"] == "2026-11-03" and abs(out["fall"]["pct_change"] + 10) < 1e-9

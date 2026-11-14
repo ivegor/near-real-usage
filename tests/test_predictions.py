@@ -352,6 +352,14 @@ def test_step_reports_what_the_series_did_in_the_range_before_it():
     assert abs(c["range_pct_change_without_dormant_implicit"] + 20) < 1e-9 and c["range_months_below_a_year_earlier"] == 8
     # an average below the year before is not every month below it: the month above is named, with by how much
     assert list(c["range_months_above_a_year_earlier"]) == ["2026-02"] and abs(c["range_months_above_a_year_earlier"]["2026-02"] - 70) < 1e-9
+    # inside a family, by age and activity: the three parts add up to the family's change, and the burst is the older
+    # accounts that were not active the month before
+    for f, fam in c["range_by_family"].items():
+        parts = fam["by_age_and_activity"]
+        assert sum(parts[k]["change"] for k in ("under_a_year", "older_active_the_month_before", "older_not_active_the_month_before")) == fam["range_change_txs"]
+    imp = c["range_by_family"]["implicit"]["by_age_and_activity"]
+    assert imp["older_not_active_the_month_before"]["change"] == 900 and imp["under_a_year"]["change"] == 0
+    assert c["base_of_the_months_above"]["2026-02"]["base_month"] == "2025-02"
 
 
 def test_adjacent_positive_leads_counts_only_neighbouring_positive_lags():

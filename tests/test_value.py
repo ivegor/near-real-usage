@@ -86,3 +86,35 @@ def test_a_missing_day_stays_missing(tmp_path, monkeypatch):
     assert len(fees) == 40 and int(fees["holders_revenue"].isna().sum()) == 2 and fees["fees"].notna().all()
     assert value.covered_through(fees) == fees.index.max()
     assert value.covered_through(fees.iloc[:21]) == fees.index[19]            # the last day with all three is before the null
+
+
+def test_take_splits_a_revenue_step_into_volume_and_take():
+    idx = pd.date_range("2026-01-01", periods=200, freq="D")
+    step = idx[100]
+    volume = pd.Series(100.0, index=idx)
+    volume[idx >= step] = 200.0                       # volume doubles on the step day
+    revenue = volume * 2e-4                           # 2 basis points kept before the step ...
+    revenue[idx >= step] = volume[idx >= step] * 3e-4  # ... 3 after it
+    daily = pd.DataFrame({"intents_volume_usd": volume, "price_usd": 2.0}, index=idx)
+    fees = pd.DataFrame({"fees": volume * 1e-3, "revenue": revenue, "holders_revenue": revenue}, index=idx)
+    t = value.take(daily, fees, str(step.date()), days=90)
+    assert (t["before"]["days"], t["after"]["days"]) == (90, 100)
+    assert t["before"]["take_bps"] == pytest.approx(2.0) and t["after"]["take_bps"] == pytest.approx(3.0)
+    assert t["volume_ratio"] == pytest.approx(2.0) and t["take_ratio"] == pytest.approx(1.5)
+    assert t["revenue_ratio"] == pytest.approx(t["volume_ratio"] * t["take_ratio"])
+    assert t["last_30_days_vs_the_30_before"]["volume_pct_change"] == pytest.approx(0.0)
+    fees.loc[idx[50], "revenue"] = float("nan")       # a hole in the window before the step: no figure
+    assert value.take(daily, fees, str(step.date()), days=90) is None
+    assert value.take(daily, fees, None) is None
+
+
+def test_issuance_cut_scales_the_gap_by_the_change_in_the_maximum():
+    v = {"buyback_coverage_of_new_supply": 0.18, "growth_needed_to_cover_new_supply": 1 / 0.18}
+    protocol = {"max_inflation_rate": [1, 40], "protocol_version": 88, "read_at_utc": "2026-11-14T08:11Z"}
+    c = value.issuance_cut(v, protocol)
+    assert c["max_issuance_in_force"] == 0.025 and not c["in_force_yet"]
+    assert c["net_new_supply_scale"] == pytest.approx(0.64)
+    assert c["coverage_at_target"] == pytest.approx(0.18 / 0.64)
+    assert c["growth_needed_at_target"] == pytest.approx(0.64 / 0.18)
+    assert value.issuance_cut(v, {**protocol, "max_inflation_rate": [2, 125]})["in_force_yet"]   # 1.6%: adopted
+    assert value.issuance_cut(v, None) is None

@@ -26,6 +26,10 @@ def build(offline: bool, require_fresh: bool = False) -> None:
     stale = [] if offline else list(sources.NOT_REFRESHED)  # sources read from their saved copies because a download failed
     daily.to_csv(ROOT / "data" / "daily.csv")
     summary = metrics.summarize(daily)
+    ended = sources.series_ended(daily)  # columns the v3 API does not carry stop with /v1 (switched off on 2026-11-22)
+    if ended:
+        summary["series_ended"] = ended
+    relayed = sources.relayed_daily()  # the aggregator's own count of relayed users, a second source for the census
     cs = census.load()
     if cs:
         summary["signer_census"] = census.summarize(*cs)
@@ -35,12 +39,20 @@ def build(offline: bool, require_fresh: bool = False) -> None:
         day = population.one_day(daily)
         if day:
             summary["population"]["one_day"] = day
+            if relayed is not None and pd.Timestamp(day["date"]) in relayed.index:
+                row = relayed.loc[pd.Timestamp(day["date"])]
+                day["nearblocks_v3"] = {k: int(row[k]) for k in ("relayed_txns", "relayed_users", "relayers", "accounts_with_relayed_users")}
         totals = population.totals_check(pop, daily)  # BigQuery month by month against the aggregator
         if totals:
             summary["population"]["totals_check"] = totals
         fall = population.largest_daily_fall(pop, daily)  # the step other analyses see in the daily series, named
         if fall:
             summary["population"]["largest_daily_fall"] = fall
+            days = [pd.Timestamp(fall[k]) for k in ("day_before", "date")]
+            if relayed is not None and all(d in relayed.index for d in days):
+                # the same step in the aggregator's count of relayed users: the side its signer count cannot see
+                fall["relayed_users"] = {"before": int(relayed.loc[days[0], "relayed_users"]), "after": int(relayed.loc[days[1], "relayed_users"])}
+                fall["relayed_txns"] = {"before": int(relayed.loc[days[0], "relayed_txns"]), "after": int(relayed.loc[days[1], "relayed_txns"])}
         gone = population.deletions(summary["population"], daily)  # what the aggregator counted as deleted in the bursts
         if gone:
             summary["population"]["deleted_accounts"] = gone
@@ -52,6 +64,9 @@ def build(offline: bool, require_fresh: bool = False) -> None:
             spike = population.signer_spike(daily, part["month"], part["through"])
             if spike:
                 part["signer_spike"] = spike
+            part["daily"] = population.days_of(daily, part["month"], part["through"])
+            if relayed is not None:  # the aggregator's defined count of users behind relayers, for the same days
+                part["daily"].update(population.days_of(relayed, part["month"], part["through"], ("relayed_users", "relayed_txns")))
     seg = segments.load()
     if seg is not None:
         summary["segments"] = segments.summarize(seg)
@@ -82,6 +97,8 @@ def build(offline: bool, require_fresh: bool = False) -> None:
                 cs[0], clients.GAME_RELAYER.split(":", 1)[1], clients.GAME_CLAIM)
             # the one-off of October 2026: what the old KaiChing user accounts in the sample actually sent
             summary["clients"]["kaiching_accounts_sample"] = census.self_deletions(cs[0], ".users.kaiching")
+            # blocks in which several accounts each send a plain transfer to one receiver: what a sweep looks like
+            summary["clients"]["one_block_transfers_sample"] = census.one_block_transfers(cs[0], cs[1])
             ended = census.load_outcomes()  # how the sampled transactions to NEAR Intents ended, by sender
             if ended is not None and len(ended):
                 summary["clients"]["intents_outcomes"] = census.outcomes(ended)
@@ -115,7 +132,8 @@ def build(offline: bool, require_fresh: bool = False) -> None:
     pred = predictions.evaluate(daily, fees, census=pop, seg=seg, top=top)
     if pred:
         pred["baselines"] = predictions.baselines(daily, fees, pop, seg)
-        pred["step"] = predictions.step(daily, fees, pop, seg)  # what moved in the step month, the price included
+        gone_months = list(summary.get("population", {}).get("deleted_accounts", {}).get("months_above_ten_times_the_median", []))
+        pred["step"] = predictions.step(daily, fees, pop, seg, deletion_months=gone_months)  # the step month, the price included
         summary["predictions"] = pred
     fall = summary.get("population", {}).get("largest_daily_fall", {}).get("date")
     if pred:
@@ -127,6 +145,10 @@ def build(offline: bool, require_fresh: bool = False) -> None:
                              sample=cs[0] if cs else None, windows=cs[2].get("windows") if cs else None,
                              seed=cs[2].get("seed", census.SEED) if cs else 0, census_per_day=census_per_day)
         if a:
+            if relayed is not None:  # the same one-day moves in the aggregator's defined count of users behind relayers
+                a["one_day_moves_relayed"] = {c: autumn.one_day_moves(relayed[c].dropna(), pd.Timestamp(a["reference"]["from"]),
+                                                                      min(daily.index.max(), relayed.index.max()))
+                                              for c in ("relayed_users", "relayed_txns") if c in relayed}
             summary["autumn"] = a
     if fees is not None:
         v = value.summarize(daily, fees)
@@ -139,6 +161,12 @@ def build(offline: bool, require_fresh: bool = False) -> None:
                               reference=predictions.BUYBACK_PLATEAU)
             if w:
                 summary["value_capture"]["windows"] = w
+            kept = value.take(daily, fees, summary.get("autumn", {}).get("intents_step", {}).get("day"))
+            if kept:  # the revenue step split into more volume and more kept from each dollar of it
+                summary["value_capture"]["take"] = kept
+            cut = value.issuance_cut(v, wallets.load_protocol())  # the approved issuance cut, as arithmetic
+            if cut:
+                summary["value_capture"]["issuance_cut"] = cut
             held = wallets.load()  # the same revenue measured from the wallets' balances on the chain
             w = wallets.summarize(held, daily, fees) if held else None
             if w:
@@ -176,6 +204,7 @@ def main() -> None:
     sub.add_parser("video", help="render demo/near-real-usage.mp4 from the build outputs (needs ffmpeg)")
     sub.add_parser("fetch-value", help="download the NEAR Intents fee and buyback series from DefiLlama into data/raw/")
     sub.add_parser("wallets", help="read the balances of NEAR's three revenue wallets from an archival RPC node (network, ~2 min)")
+    sub.add_parser("protocol", help="read the issuance parameters in force from the protocol configuration (network, one request)")
     sub.add_parser("outcomes", help="ask a transaction index how the sampled transactions to NEAR Intents ended (network, ~5 min)")
     args = ap.parse_args()
     if args.cmd == "snapshot":
@@ -189,6 +218,10 @@ def main() -> None:
         return
     if args.cmd == "fetch-value":
         value.fetch()
+        return
+    if args.cmd == "protocol":
+        wallets.fetch_protocol()
+        print(wallets.PROTOCOL_PATH)
         return
     if args.cmd == "wallets":
         wallets.fetch(str(sources.load_daily(offline=True).index.max().date()))

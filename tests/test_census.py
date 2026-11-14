@@ -125,3 +125,21 @@ def test_outcomes_by_sender():
     assert (s["transactions"], s["failed"], s["blocks"]) == (6, 3, 4)
     assert s["senders"] == {"bot.near": {"transactions": 3, "failed": 3}, "a.near": {"transactions": 2, "failed": 0}}
     assert s["other_senders"] == {"transactions": 1, "failed": 0, "accounts": 1}
+
+
+def test_one_block_transfers_finds_a_sweep_and_not_two_payments_in_two_blocks():
+    a, b, c, to = ("a" * 64), ("b" * 64), ("c" * 64), ("d" * 64)
+    ts = 1762767000 * 10**9
+    sample = pd.DataFrame([
+        {"window": "recent", "height": 10, "ts": ts, "actor": a, "signer": a, "target": to, "method": "Transfer", "relayed": False},
+        {"window": "recent", "height": 10, "ts": ts, "actor": b, "signer": b, "target": to, "method": "Transfer", "relayed": False},
+        {"window": "recent", "height": 11, "ts": ts + 10**9, "actor": c, "signer": c, "target": to, "method": "Transfer", "relayed": False},
+        {"window": "recent", "height": 12, "ts": ts + 2 * 10**9, "actor": "x.near", "signer": "x.near", "target": to, "method": "Transfer", "relayed": False},
+        {"window": "prior", "height": 5, "ts": ts, "actor": a, "signer": a, "target": to, "method": "Transfer", "relayed": False},
+    ])
+    exist = pd.DataFrame({"window": ["recent"] * 2, "actor": [a, b], "existed_30d": [True, True], "existed_365d": [True, False]})
+    out = census.one_block_transfers(sample, exist)
+    assert out["prior"] == []
+    (row,) = out["recent"]
+    assert (row["height"], row["senders"], row["implicit_senders"], row["senders_older_than_a_year"]) == (10, 2, 2, 1)
+    assert row["blocks_sampled_that_day"] == 3 and row["receiver"] == to

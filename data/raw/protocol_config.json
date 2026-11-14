@@ -1,0 +1,13 @@
+{
+ "read_at_utc": "2026-11-14T08:11Z",
+ "rpc": "https://archival-rpc.mainnet.fastnear.com",
+ "protocol_version": 88,
+ "max_inflation_rate": [
+  1,
+  40
+ ],
+ "protocol_reward_rate": [
+  0,
+  1
+ ]
+}

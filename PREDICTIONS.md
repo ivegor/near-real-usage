@@ -9,7 +9,8 @@ No threshold is a number tuned to the outcome. Five are reference levels taken f
 are natural lines (rule 3), and each prediction answers a question someone running or funding the product would ask.
 
 1. **New level or spike?** In September 2026 three things stepped up together: Intents volume, the buybacks it funds,
-   and self-paid transactions outside reward apps. The NEAR price rose in the same month, from $1.92 to $4.89, so
+   and self-paid transactions outside reward apps (month by month; by half-months the step has two dates, see the
+   first note below). The NEAR price rose in the same month, from $1.92 to $4.89, so
    the step may be the rally itself. A year earlier Intents volume had a one-month spike (November 2025)
    and fell straight back. So the test is the same for all three: does the metric stay **above the highest month of
    its range before the step** (December 2025 to August 2026 for Intents volume and self-paid transactions; March to
@@ -73,7 +74,8 @@ is the harder of the two for the prediction to stay above; `docs/summary.json` p
 the range is the nine months before the step, the same for all the metrics of rule 1. The first 11 days of B2's
 window were in the census when the file was frozen: self-paid transactions ran at 356 thousand a day, a rate of
 10.68M a month, 3% above the threshold and 12% below October's rate. Those days hold a one-off of dormant accounts on
-10 November of the kind taken out of February: with the same filter, 347 thousand a day and 10.41M a month, 0.3%
+10 November that the filter used for February takes out, though it was not deletions (NearBlocks counted 74 that
+day): with the same filter, 347 thousand a day and 10.41M a month, 0.3%
 above the threshold. The margin is thin. The rate was worked out
 after the file was frozen, so it played no part in the choice of the threshold.
 
@@ -92,7 +94,8 @@ A third note, on what the data already held when the file was frozen. It ran thr
 seven days to 17 November, so one of its seven days was known, and the first 11 days of November had averaged
 $129.7M a day, 45% above A1's threshold. B4 is about January, but the same eleven days of the census pointed its
 way: HOT's namespace was sending 196 thousand transactions a day against 100 thousand in October (see "Evidence
-against" in THESIS.md), and October was HOT's lowest month, with a new relayer taking over from September. The "43%
+against" in THESIS.md), and October was one month after HOT's lowest: September, when a new relayer took over, with the return
+beginning in October and a further step on 9 November. The "43%
 vs 41%" B4 starts from is October too, a month in which the reward apps' share was close to its low (34% of
 transactions by namespace, against 45% to 56% a month from April to August). Neither figure set a threshold: A1's is
 the top of the range before the September step, B4's is the point where the two groups are equal.
@@ -120,5 +123,11 @@ refuse a result that would drop months). `sql/top_accounts.sql` names two months
 January 2027 and January 2026, and the rows of the result are added to `data/bq/top_accounts_result.csv` next to the
 October rows that THESIS.md quotes. `tests/test_rerun.py` runs the whole build on tables extended this way, and the
 tests of the October figures read the tables cut at October, so they keep passing.
+NearBlocks switches off the API the daily series comes from (`/v1/charts`) on 2026-11-22, before most check dates.
+From then the build reads the API that replaces it for the columns that mean the same there (transactions, fees, gas,
+price, market capitalisation, total supply), which is all that A1 to A4 and the check of the BigQuery months against
+daily transaction counts need. The new API has no count of signers or of new accounts, so two of the five usage
+metrics behind A5 stop in November 2026; A5 is scored on the series as they then stand, and that is said here now,
+before the date, and not after it.
 GitHub switches a scheduled workflow off after 60 days without activity in a public repository. If that happens
 before a check date, the prediction is scored when the workflow is switched on again or the build is run by hand.

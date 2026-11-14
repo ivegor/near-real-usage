@@ -4,7 +4,7 @@
 IMAGE := near-real-usage
 RUN := docker run --rm --user "$$(id -u):$$(id -g)" -v "$(CURDIR):/app" $(IMAGE)-env
 
-.PHONY: env serve docker test offline build snapshot census wallets outcomes fetch-value thesis
+.PHONY: env serve docker test offline build snapshot census wallets outcomes protocol fetch-value thesis
 
 env:
 	docker build --target env -t $(IMAGE)-env .
@@ -27,7 +27,7 @@ snapshot: env
 	$(RUN) python -m thesis snapshot
 
 # network commands that refresh the committed samples (see README)
-census wallets outcomes fetch-value: env
+census wallets outcomes protocol fetch-value: env
 	$(RUN) python -m thesis $@
 
 # any other command with its arguments, e.g. make thesis ARGS="bq-age result.csv" (the file inside the repository)

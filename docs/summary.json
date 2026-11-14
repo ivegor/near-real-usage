@@ -1580,6 +1580,86 @@
         "2026-11": 109878.36363636363
       }
     },
+    "reward_namespace_relayed_txs_per_day_by_month": {
+      "kaiching": {
+        "2024-12": 1759687.9032258065,
+        "2025-01": 1963761.5483870967,
+        "2025-02": 1664286.607142857,
+        "2025-03": 1682632.1612903227,
+        "2025-04": 2030733.9,
+        "2025-05": 2000315.935483871,
+        "2025-06": 2000000.9,
+        "2025-07": 1889050.5483870967,
+        "2025-08": 1999997.8387096773,
+        "2025-09": 1999997.5,
+        "2025-10": 2000001.0,
+        "2025-11": 2000001.4,
+        "2025-12": 1989043.8387096773,
+        "2026-01": 2000321.5806451612,
+        "2026-02": 1984001.7857142857,
+        "2026-03": 1999943.677419355,
+        "2026-04": 39858.833333333336,
+        "2026-05": 0.0,
+        "2026-06": 0.0,
+        "2026-07": 0.0,
+        "2026-08": 0.0,
+        "2026-09": 0.0,
+        "2026-10": 0.0,
+        "2026-11": 0.0
+      },
+      "tg": {
+        "2024-12": 3016273.5161290322,
+        "2025-01": 2271941.5483870967,
+        "2025-02": 2499764.785714286,
+        "2025-03": 2438107.4516129033,
+        "2025-04": 2086549.7333333334,
+        "2025-05": 1358489.9032258065,
+        "2025-06": 1158142.0,
+        "2025-07": 1134118.2580645161,
+        "2025-08": 1181262.7419354839,
+        "2025-09": 1074470.0333333334,
+        "2025-10": 884380.0,
+        "2025-11": 724135.3666666667,
+        "2025-12": 605248.8387096775,
+        "2026-01": 368037.6451612903,
+        "2026-02": 294694.4285714286,
+        "2026-03": 271292.9032258064,
+        "2026-04": 141205.9,
+        "2026-05": 65346.967741935485,
+        "2026-06": 67807.3,
+        "2026-07": 69508.93548387097,
+        "2026-08": 42002.67741935484,
+        "2026-09": 8534.366666666667,
+        "2026-10": 35695.77419354839,
+        "2026-11": 106691.0
+      },
+      "sweat": {
+        "2024-12": 0.0,
+        "2025-01": 8301.0,
+        "2025-02": 32194.39285714286,
+        "2025-03": 38055.48387096774,
+        "2025-04": 90389.7,
+        "2025-05": 158114.32258064515,
+        "2025-06": 150975.03333333333,
+        "2025-07": 154148.87096774194,
+        "2025-08": 147573.5483870968,
+        "2025-09": 148603.26666666666,
+        "2025-10": 155018.12903225806,
+        "2025-11": 153828.6,
+        "2025-12": 157287.29032258064,
+        "2026-01": 156757.48387096773,
+        "2026-02": 137774.07142857142,
+        "2026-03": 123013.64516129032,
+        "2026-04": 143546.9,
+        "2026-05": 165759.0,
+        "2026-06": 177861.66666666666,
+        "2026-07": 185391.8064516129,
+        "2026-08": 153878.16129032258,
+        "2026-09": 158287.26666666666,
+        "2026-10": 129186.41935483871,
+        "2026-11": 109789.18181818182
+      }
+    },
     "reward_namespaces_share_of_txs_windows": {
       "1": 0.34264707942578243,
       "3": 0.3658301588910595,
@@ -2175,6 +2255,86 @@
         "signers": 177510,
         "median_other_day": 77791.5,
         "above_the_median_day": 99718.5
+      },
+      "daily": {
+        "txns": {
+          "2026-11-01": 509345,
+          "2026-11-02": 522358,
+          "2026-11-03": 597189,
+          "2026-11-04": 706690,
+          "2026-11-05": 848794,
+          "2026-11-06": 717484,
+          "2026-11-07": 682432,
+          "2026-11-08": 609504,
+          "2026-11-09": 895302,
+          "2026-11-10": 970505,
+          "2026-11-11": 891297
+        },
+        "active_accounts": {
+          "2026-11-01": 46478,
+          "2026-11-02": 48060,
+          "2026-11-03": 72343,
+          "2026-11-04": 79164,
+          "2026-11-05": 78560,
+          "2026-11-06": 78574,
+          "2026-11-07": 77076,
+          "2026-11-08": 79184,
+          "2026-11-09": 77752,
+          "2026-11-10": 177510,
+          "2026-11-11": 77831
+        },
+        "active_contracts": {
+          "2026-11-01": 60683,
+          "2026-11-02": 49151,
+          "2026-11-03": 59087,
+          "2026-11-04": 64771,
+          "2026-11-05": 77822,
+          "2026-11-06": 75369,
+          "2026-11-07": 73823,
+          "2026-11-08": 78892,
+          "2026-11-09": 145602,
+          "2026-11-10": 130339,
+          "2026-11-11": 114185
+        },
+        "deleted_accounts": {
+          "2026-11-01": 11,
+          "2026-11-02": 84,
+          "2026-11-03": 4842,
+          "2026-11-04": 64,
+          "2026-11-05": 315,
+          "2026-11-06": 60,
+          "2026-11-07": 9,
+          "2026-11-08": 9,
+          "2026-11-09": 62,
+          "2026-11-10": 74,
+          "2026-11-11": 40
+        },
+        "relayed_users": {
+          "2026-11-01": 62686,
+          "2026-11-02": 51033,
+          "2026-11-03": 60840,
+          "2026-11-04": 66400,
+          "2026-11-05": 78494,
+          "2026-11-06": 76466,
+          "2026-11-07": 75222,
+          "2026-11-08": 80193,
+          "2026-11-09": 146991,
+          "2026-11-10": 131478,
+          "2026-11-11": 115305
+        },
+        "relayed_txns": {
+          "2026-11-01": 205776,
+          "2026-11-02": 210890,
+          "2026-11-03": 217074,
+          "2026-11-04": 222937,
+          "2026-11-05": 237043,
+          "2026-11-06": 234230,
+          "2026-11-07": 297395,
+          "2026-11-08": 228683,
+          "2026-11-09": 439654,
+          "2026-11-10": 387593,
+          "2026-11-11": 371481
+        }
       }
     },
     "one_day": {
@@ -2191,6 +2351,12 @@
         "txns": 4632736,
         "active_accounts": 288151,
         "new_accounts": 267015
+      },
+      "nearblocks_v3": {
+        "relayed_txns": 3448822,
+        "relayed_users": 2694011,
+        "relayers": 17,
+        "accounts_with_relayed_users": 2984920
       }
     },
     "totals_check": {
@@ -2338,6 +2504,14 @@
         "after": 20655,
         "per_day_month_before": 135314.29032258064,
         "per_day_month_of": 21990.233333333334
+      },
+      "relayed_users": {
+        "before": 2819581,
+        "after": 331452
+      },
+      "relayed_txns": {
+        "before": 3175118,
+        "after": 688105
       }
     },
     "deleted_accounts": {
@@ -4387,6 +4561,20 @@
         "last_day": "2026-10-07"
       }
     },
+    "one_block_transfers_sample": {
+      "prior": [],
+      "recent": [
+        {
+          "height": 223897411,
+          "time_utc": "2026-11-10 09:29",
+          "receiver": "3d9ccff55cef5a3efd1fe14b14509b726123910845243ef1671b45e46f214324",
+          "senders": 8,
+          "implicit_senders": 8,
+          "senders_older_than_a_year": 8,
+          "blocks_sampled_that_day": 6
+        }
+      ]
+    },
     "intents_outcomes": {
       "target": "intents.near",
       "window": "recent",
@@ -5189,20 +5377,230 @@
             "range_pct_change": -49.37716120212181,
             "range_change_txs": -11070125,
             "range_months_below_a_year_earlier": 8,
-            "range_pct_change_without_dormant_implicit": -65.00609592693303
+            "range_pct_change_without_dormant_implicit": -65.00609592693303,
+            "by_age_and_activity": {
+              "under_a_year": {
+                "range": 3907110,
+                "a_year_earlier": 17176963,
+                "change": -13269853,
+                "pct_change": -77.25377879663593
+              },
+              "older_active_the_month_before": {
+                "range": 3745028,
+                "a_year_earlier": 4690097,
+                "change": -945069,
+                "pct_change": -20.15030819192013
+              },
+              "older_not_active_the_month_before": {
+                "range": 3697262,
+                "a_year_earlier": 552465,
+                "change": 3144797,
+                "pct_change": 569.2300869738355
+              },
+              "age_m0": {
+                "range": 1208474,
+                "a_year_earlier": 4834304,
+                "change": -3625830,
+                "pct_change": -75.00210992109723
+              },
+              "age_lt30": {
+                "range": 398798,
+                "a_year_earlier": 2734549,
+                "change": -2335751,
+                "pct_change": -85.41631545092079
+              },
+              "age_lt1y": {
+                "range": 2299838,
+                "a_year_earlier": 9608110,
+                "change": -7308272,
+                "pct_change": -76.06357545864898
+              },
+              "age_lt2y": {
+                "range": 2907208,
+                "a_year_earlier": 2061215,
+                "change": 845993,
+                "pct_change": 41.043413714726505
+              },
+              "age_ge2y": {
+                "range": 4535082,
+                "a_year_earlier": 3181347,
+                "change": 1353735,
+                "pct_change": 42.55225852445521
+              }
+            }
           },
           "near": {
             "range_pct_change": 4.144261762867574,
             "range_change_txs": 2094529,
-            "range_months_below_a_year_earlier": 5
+            "range_months_below_a_year_earlier": 5,
+            "by_age_and_activity": {
+              "under_a_year": {
+                "range": 19158452,
+                "a_year_earlier": 27457045,
+                "change": -8298593,
+                "pct_change": -30.223911568051108
+              },
+              "older_active_the_month_before": {
+                "range": 33319904,
+                "a_year_earlier": 21686917,
+                "change": 11632987,
+                "pct_change": 53.64057509880264
+              },
+              "older_not_active_the_month_before": {
+                "range": 156634,
+                "a_year_earlier": 1396499,
+                "change": -1239865,
+                "pct_change": -88.78380865292421
+              },
+              "age_m0": {
+                "range": 2056273,
+                "a_year_earlier": 1608936,
+                "change": 447337,
+                "pct_change": 27.803281174639636
+              },
+              "age_lt30": {
+                "range": 2331658,
+                "a_year_earlier": 2020298,
+                "change": 311360,
+                "pct_change": 15.411587795463833
+              },
+              "age_lt1y": {
+                "range": 14770521,
+                "a_year_earlier": 23827811,
+                "change": -9057290,
+                "pct_change": -38.01142287052721
+              },
+              "age_lt2y": {
+                "range": 25766147,
+                "a_year_earlier": 7987159,
+                "change": 17778988,
+                "pct_change": 222.59464222510155
+              },
+              "age_ge2y": {
+                "range": 7710391,
+                "a_year_earlier": 15096257,
+                "change": -7385866,
+                "pct_change": -48.925147471985944
+              }
+            }
           },
           "other": {
             "range_pct_change": -52.91027005564813,
             "range_change_txs": -5031827,
-            "range_months_below_a_year_earlier": 9
+            "range_months_below_a_year_earlier": 9,
+            "by_age_and_activity": {
+              "under_a_year": {
+                "range": 918141,
+                "a_year_earlier": 1747775,
+                "change": -829634,
+                "pct_change": -47.46800932614323
+              },
+              "older_active_the_month_before": {
+                "range": 3559740,
+                "a_year_earlier": 7757143,
+                "change": -4197403,
+                "pct_change": -54.11016659097299
+              },
+              "older_not_active_the_month_before": {
+                "range": 406,
+                "a_year_earlier": 5196,
+                "change": -4790,
+                "pct_change": -92.18629715165511
+              },
+              "age_m0": {
+                "range": 709,
+                "a_year_earlier": 37402,
+                "change": -36693,
+                "pct_change": -98.10437944494946
+              },
+              "age_lt30": {
+                "range": 1878,
+                "a_year_earlier": 26465,
+                "change": -24587,
+                "pct_change": -92.9038352541092
+              },
+              "age_lt1y": {
+                "range": 915554,
+                "a_year_earlier": 1683908,
+                "change": -768354,
+                "pct_change": -45.629214897726
+              },
+              "age_lt2y": {
+                "range": 224271,
+                "a_year_earlier": 1016021,
+                "change": -791750,
+                "pct_change": -77.92653891996326
+              },
+              "age_ge2y": {
+                "range": 3335875,
+                "a_year_earlier": 6746318,
+                "change": -3410443,
+                "pct_change": -50.55265701972542
+              }
+            }
           }
         },
-        "range_change_txs": -14007423
+        "range_change_txs": -14007423,
+        "base_of_the_months_above": {
+          "2026-05": {
+            "base_month": "2025-05",
+            "base": 6360457,
+            "rank_lowest_first_among_base_months": 2,
+            "base_months": 9,
+            "rank_lowest_first_among_all_months": 3,
+            "all_months": 21
+          },
+          "2026-06": {
+            "base_month": "2025-06",
+            "base": 5813228,
+            "rank_lowest_first_among_base_months": 1,
+            "base_months": 9,
+            "rank_lowest_first_among_all_months": 1,
+            "all_months": 21
+          }
+        },
+        "price_usd_by_month": {
+          "2025-12": 1.61501575,
+          "2026-01": 1.6203822567741937,
+          "2026-02": 1.0636778317857143,
+          "2026-03": 1.283403201935484,
+          "2026-04": 1.3369761416666668,
+          "2026-05": 1.7702125761290324,
+          "2026-06": 2.130200490333334,
+          "2026-07": 1.8874657006451616,
+          "2026-08": 1.7340923677419355
+        },
+        "deletions_in_the_range": {
+          "months": {
+            "2025-12": {
+              "accounts": 463515,
+              "median_month": 70111.0,
+              "above_the_median_month": 393404,
+              "share_of_the_month": 0.05808363456345661
+            },
+            "2026-02": {
+              "accounts": 3452808,
+              "median_month": 70111.0,
+              "above_the_median_month": 3382697,
+              "share_of_the_month": 0.32586443210700483
+            }
+          },
+          "taken_out": [
+            "2025-12"
+          ],
+          "left_to_the_dormant_filter": [
+            "2026-02"
+          ],
+          "base_months_with_deletions": [
+            "2024-12",
+            "2025-01",
+            "2025-03",
+            "2025-04",
+            "2025-05"
+          ],
+          "payer_table_first_month": "2025-08",
+          "range_pct_change_without_them": -17.461876486144668
+        }
       },
       "regular_self_paying_accounts": {
         "before": 7201.0,
@@ -5229,7 +5627,10 @@
         "buyback_near": 13367.367591203794,
         "price_usd": 2.2083065586666666,
         "deleted_accounts": 681.4666666666667,
-        "active_accounts": 125863.26666666666
+        "active_accounts": 125863.26666666666,
+        "transfer_volume_near": 52979178.77419142,
+        "new_contracts": 21.266666666666666,
+        "active_contracts": 99750.93333333333
       },
       "top_half": {
         "txns": "2026-06-01..2026-06-15",
@@ -5241,7 +5642,107 @@
         "buyback_near": "2026-06-01..2026-06-15",
         "price_usd": "2026-06-01..2026-06-15",
         "deleted_accounts": "2026-06-01..2026-06-15",
-        "active_accounts": "2026-04-16..2026-04-30"
+        "active_accounts": "2026-04-16..2026-04-30",
+        "transfer_volume_near": "2026-06-01..2026-06-15",
+        "new_contracts": "2026-04-16..2026-04-30",
+        "active_contracts": "2026-05-01..2026-05-15"
+      },
+      "top_median": {
+        "txns": 845410.0,
+        "txns_less_deleted": 845252.0,
+        "fees_near": 949.4999989296804,
+        "gas_tgas": 10012459.165143764,
+        "intents_volume_usd": 87963176.0,
+        "buyback_usd": 21467.0,
+        "buyback_near": 10901.305036309892,
+        "price_usd": 2.166186305,
+        "deleted_accounts": 9.0,
+        "active_accounts": 126197.0,
+        "transfer_volume_near": 47947132.9491754,
+        "new_contracts": 12.0,
+        "active_contracts": 98167.0
+      },
+      "top_half_median": {
+        "txns": "2026-06-01..2026-06-15",
+        "txns_less_deleted": "2026-06-01..2026-06-15",
+        "fees_near": "2026-05-16..2026-05-31",
+        "gas_tgas": "2026-06-01..2026-06-15",
+        "intents_volume_usd": "2026-06-01..2026-06-15",
+        "buyback_usd": "2026-06-01..2026-06-15",
+        "buyback_near": "2026-05-16..2026-05-31",
+        "price_usd": "2026-05-16..2026-05-31",
+        "deleted_accounts": "2026-04-16..2026-04-30",
+        "active_accounts": "2026-04-16..2026-04-30",
+        "transfer_volume_near": "2026-05-16..2026-05-31",
+        "new_contracts": "2026-04-16..2026-04-30",
+        "active_contracts": "2026-05-01..2026-05-15"
+      },
+      "top_half_largest_day": {
+        "txns": {
+          "date": "2026-06-05",
+          "value": 1055518.0,
+          "share_of_the_half": 0.08109831445156539
+        },
+        "txns_less_deleted": {
+          "date": "2026-06-05",
+          "value": 1055517.0,
+          "share_of_the_half": 0.08116198094173602
+        },
+        "fees_near": {
+          "date": "2026-06-04",
+          "value": 1321.9999983035484,
+          "share_of_the_half": 0.0875844705635247
+        },
+        "gas_tgas": {
+          "date": "2026-06-04",
+          "value": 13851157.041431634,
+          "share_of_the_half": 0.08645739649312863
+        },
+        "intents_volume_usd": {
+          "date": "2026-06-05",
+          "value": 223909280.0,
+          "share_of_the_half": 0.16269377215000433
+        },
+        "buyback_usd": {
+          "date": "2026-06-05",
+          "value": 142586.0,
+          "share_of_the_half": 0.3166122274058564
+        },
+        "buyback_near": {
+          "date": "2026-06-05",
+          "value": 64512.89387591856,
+          "share_of_the_half": 0.32174319755806097
+        },
+        "price_usd": {
+          "date": "2026-06-04",
+          "value": 2.82354069,
+          "share_of_the_half": 0.08523999770831335
+        },
+        "deleted_accounts": {
+          "date": "2026-06-08",
+          "value": 10005.0,
+          "share_of_the_half": 0.9787712776364703
+        },
+        "active_accounts": {
+          "date": "2026-04-16",
+          "value": 133652.0,
+          "share_of_the_half": 0.07079216652568475
+        },
+        "transfer_volume_near": {
+          "date": "2026-06-05",
+          "value": 152219886.9027102,
+          "share_of_the_half": 0.1915468056504536
+        },
+        "new_contracts": {
+          "date": "2026-04-16",
+          "value": 145.0,
+          "share_of_the_half": 0.45454545454545453
+        },
+        "active_contracts": {
+          "date": "2026-05-06",
+          "value": 118779.0,
+          "share_of_the_half": 0.07938371838124823
+        }
       }
     },
     "half_months": {
@@ -5256,6 +5757,9 @@
         "price_usd": 1.3811253146666667,
         "deleted_accounts": 223.73333333333332,
         "active_accounts": 125863.26666666666,
+        "transfer_volume_near": 13177628.394310625,
+        "new_contracts": 21.266666666666666,
+        "active_contracts": 96497.6,
         "days": 15.0
       },
       "2026-05-01..2026-05-15": {
@@ -5269,6 +5773,9 @@
         "price_usd": 1.4467332706666665,
         "deleted_accounts": 9.266666666666667,
         "active_accounts": 123480.86666666667,
+        "transfer_volume_near": 20665484.272991255,
+        "new_contracts": 7.333333333333333,
+        "active_contracts": 99750.93333333333,
         "days": 15.0
       },
       "2026-05-16..2026-05-31": {
@@ -5282,6 +5789,9 @@
         "price_usd": 2.073474425,
         "deleted_accounts": 66.1875,
         "active_accounts": 118557.125,
+        "transfer_volume_near": 52226162.88084769,
+        "new_contracts": 6.9375,
+        "active_contracts": 91456.9375,
         "days": 16.0
       },
       "2026-06-01..2026-06-15": {
@@ -5295,6 +5805,9 @@
         "price_usd": 2.2083065586666666,
         "deleted_accounts": 681.4666666666667,
         "active_accounts": 115215.33333333333,
+        "transfer_volume_near": 52979178.77419142,
+        "new_contracts": 6.133333333333334,
+        "active_contracts": 95927.4,
         "days": 15.0
       },
       "2026-06-16..2026-06-30": {
@@ -5308,6 +5821,9 @@
         "price_usd": 2.052094422,
         "deleted_accounts": 3.1333333333333333,
         "active_accounts": 109808.93333333333,
+        "transfer_volume_near": 28342550.70749453,
+        "new_contracts": 6.0,
+        "active_contracts": 94740.66666666667,
         "days": 15.0
       },
       "2026-07-01..2026-07-15": {
@@ -5321,6 +5837,9 @@
         "price_usd": 1.9326685653333333,
         "deleted_accounts": 1.2,
         "active_accounts": 100116.46666666666,
+        "transfer_volume_near": 16773047.462551076,
+        "new_contracts": 6.733333333333333,
+        "active_contracts": 95797.86666666667,
         "days": 15.0
       },
       "2026-07-16..2026-07-31": {
@@ -5334,6 +5853,9 @@
         "price_usd": 1.845088015,
         "deleted_accounts": 7.3125,
         "active_accounts": 87013.0,
+        "transfer_volume_near": 23379744.685764253,
+        "new_contracts": 10.875,
+        "active_contracts": 85505.0625,
         "days": 16.0
       },
       "2026-08-01..2026-08-15": {
@@ -5347,6 +5869,9 @@
         "price_usd": 1.6535530760000001,
         "deleted_accounts": 40.2,
         "active_accounts": 82258.13333333333,
+        "transfer_volume_near": 17115794.888245326,
+        "new_contracts": 4.533333333333333,
+        "active_contracts": 84183.86666666667,
         "days": 15.0
       },
       "2026-08-16..2026-08-31": {
@@ -5360,6 +5885,9 @@
         "price_usd": 1.80959795375,
         "deleted_accounts": 62.75,
         "active_accounts": 79910.0,
+        "transfer_volume_near": 25402001.18805195,
+        "new_contracts": 8.25,
+        "active_contracts": 59533.3125,
         "days": 16.0
       },
       "2026-09-01..2026-09-15": {
@@ -5373,6 +5901,9 @@
         "price_usd": 2.233455924,
         "deleted_accounts": 161.13333333333333,
         "active_accounts": 69423.46666666666,
+        "transfer_volume_near": 45471658.613769494,
+        "new_contracts": 9.933333333333334,
+        "active_contracts": 53286.26666666667,
         "days": 15.0
       },
       "2026-09-16..2026-09-30": {
@@ -5386,6 +5917,9 @@
         "price_usd": 4.152984070666666,
         "deleted_accounts": 92.8,
         "active_accounts": 56455.46666666667,
+        "transfer_volume_near": 87610978.5197341,
+        "new_contracts": 33.06666666666667,
+        "active_contracts": 51789.333333333336,
         "days": 15.0
       },
       "2026-10-01..2026-10-15": {
@@ -5399,6 +5933,9 @@
         "price_usd": 5.052850663999999,
         "deleted_accounts": 37918.86666666667,
         "active_accounts": 93852.13333333333,
+        "transfer_volume_near": 66683623.47930644,
+        "new_contracts": 35.53333333333333,
+        "active_contracts": 60545.13333333333,
         "days": 15.0
       },
       "2026-10-16..2026-10-31": {
@@ -5412,6 +5949,9 @@
         "price_usd": 4.75993552875,
         "deleted_accounts": 657.3125,
         "active_accounts": 51603.6875,
+        "transfer_volume_near": 37718997.43469881,
+        "new_contracts": 31.0625,
+        "active_contracts": 55706.1875,
         "days": 16.0
       },
       "2026-11-01..2026-11-11": {
@@ -5425,6 +5965,9 @@
         "price_usd": 3.8461493663636364,
         "deleted_accounts": 506.3636363636364,
         "active_accounts": 81139.27272727272,
+        "transfer_volume_near": 31583137.2846782,
+        "new_contracts": 48.54545454545455,
+        "active_contracts": 84520.36363636363,
         "days": 11.0
       }
     },
@@ -5465,7 +6008,638 @@
         "2026-09-01..2026-09-15",
         "2026-09-16..2026-09-30",
         "2026-10-01..2026-10-15"
+      ],
+      "transfer_volume_near": [
+        "2026-09-16..2026-09-30",
+        "2026-10-01..2026-10-15"
+      ],
+      "new_contracts": [
+        "2026-09-16..2026-09-30",
+        "2026-10-01..2026-10-15",
+        "2026-10-16..2026-10-31",
+        "2026-11-01..2026-11-11"
       ]
+    },
+    "half_months_median": {
+      "2026-04-16..2026-04-30": {
+        "txns": 751971.0,
+        "txns_less_deleted": 751969.0,
+        "fees_near": 762.9999974656014,
+        "gas_tgas": 7812145.578637917,
+        "intents_volume_usd": 55196390.0,
+        "buyback_usd": 6321.0,
+        "buyback_near": 4641.328201423863,
+        "price_usd": 1.3958294,
+        "deleted_accounts": 9.0,
+        "active_accounts": 126197.0,
+        "transfer_volume_near": 12053283.987950947,
+        "new_contracts": 12.0,
+        "active_contracts": 96900.0,
+        "days": 15.0
+      },
+      "2026-05-01..2026-05-15": {
+        "txns": 761084.0,
+        "txns_less_deleted": 761077.0,
+        "fees_near": 779.9999999172389,
+        "gas_tgas": 8156596.155293653,
+        "intents_volume_usd": 55924660.0,
+        "buyback_usd": 13243.0,
+        "buyback_near": 8839.413625748628,
+        "price_usd": 1.49238561,
+        "deleted_accounts": 4.0,
+        "active_accounts": 124037.0,
+        "transfer_volume_near": 18301353.998616207,
+        "new_contracts": 7.0,
+        "active_contracts": 98167.0,
+        "days": 15.0
+      },
+      "2026-05-16..2026-05-31": {
+        "txns": 828601.5,
+        "txns_less_deleted": 828370.5,
+        "fees_near": 949.4999989296804,
+        "gas_tgas": 10005806.469404085,
+        "intents_volume_usd": 66799066.0,
+        "buyback_usd": 20428.5,
+        "buyback_near": 10901.305036309892,
+        "price_usd": 2.166186305,
+        "deleted_accounts": 3.0,
+        "active_accounts": 118151.0,
+        "transfer_volume_near": 47947132.9491754,
+        "new_contracts": 6.5,
+        "active_contracts": 90596.0,
+        "days": 16.0
+      },
+      "2026-06-01..2026-06-15": {
+        "txns": 845410.0,
+        "txns_less_deleted": 845252.0,
+        "fees_near": 942.0000019995558,
+        "gas_tgas": 10012459.165143764,
+        "intents_volume_usd": 87963176.0,
+        "buyback_usd": 21467.0,
+        "buyback_near": 9835.40511280207,
+        "price_usd": 2.12577658,
+        "deleted_accounts": 5.0,
+        "active_accounts": 114609.0,
+        "transfer_volume_near": 43855484.952909715,
+        "new_contracts": 6.0,
+        "active_contracts": 96925.0,
+        "days": 15.0
+      },
+      "2026-06-16..2026-06-30": {
+        "txns": 757253.0,
+        "txns_less_deleted": 757247.0,
+        "fees_near": 834.9999988579501,
+        "gas_tgas": 8729677.44434445,
+        "intents_volume_usd": 66800391.0,
+        "buyback_usd": 10905.0,
+        "buyback_near": 5481.153229482267,
+        "price_usd": 2.06645978,
+        "deleted_accounts": 3.0,
+        "active_accounts": 109728.0,
+        "transfer_volume_near": 25140175.965645522,
+        "new_contracts": 6.0,
+        "active_contracts": 93958.0,
+        "days": 15.0
+      },
+      "2026-07-01..2026-07-15": {
+        "txns": 753757.0,
+        "txns_less_deleted": 753756.0,
+        "fees_near": 797.9999986396059,
+        "gas_tgas": 8252484.964610077,
+        "intents_volume_usd": 82437888.0,
+        "buyback_usd": 16289.0,
+        "buyback_near": 8175.222757319511,
+        "price_usd": 1.91883995,
+        "deleted_accounts": 1.0,
+        "active_accounts": 103825.0,
+        "transfer_volume_near": 16071007.0375712,
+        "new_contracts": 5.0,
+        "active_contracts": 91512.0,
+        "days": 15.0
+      },
+      "2026-07-16..2026-07-31": {
+        "txns": 712257.0,
+        "txns_less_deleted": 712253.5,
+        "fees_near": 821.4999994709913,
+        "gas_tgas": 7968244.126897285,
+        "intents_volume_usd": 60244414.5,
+        "buyback_usd": 14298.5,
+        "buyback_near": 8195.2332413505,
+        "price_usd": 1.87479412,
+        "deleted_accounts": 2.5,
+        "active_accounts": 86712.0,
+        "transfer_volume_near": 20729320.984253358,
+        "new_contracts": 10.0,
+        "active_contracts": 85474.5,
+        "days": 16.0
+      },
+      "2026-08-01..2026-08-15": {
+        "txns": 671128.0,
+        "txns_less_deleted": 671117.0,
+        "fees_near": 804.0000022557391,
+        "gas_tgas": 7815411.836710814,
+        "intents_volume_usd": 72342481.0,
+        "buyback_usd": 13576.0,
+        "buyback_near": 8269.57945430713,
+        "price_usd": 1.64267742,
+        "deleted_accounts": 4.0,
+        "active_accounts": 82269.0,
+        "transfer_volume_near": 13240617.972748276,
+        "new_contracts": 3.0,
+        "active_contracts": 83941.0,
+        "days": 15.0
+      },
+      "2026-08-16..2026-08-31": {
+        "txns": 683073.5,
+        "txns_less_deleted": 683064.0,
+        "fees_near": 871.9999989587832,
+        "gas_tgas": 8486091.810539262,
+        "intents_volume_usd": 124834784.0,
+        "buyback_usd": 27204.0,
+        "buyback_near": 15372.733520089543,
+        "price_usd": 1.84208338,
+        "deleted_accounts": 6.0,
+        "active_accounts": 80109.0,
+        "transfer_volume_near": 24189032.94930009,
+        "new_contracts": 8.0,
+        "active_contracts": 51728.5,
+        "days": 16.0
+      },
+      "2026-09-01..2026-09-15": {
+        "txns": 706597.0,
+        "txns_less_deleted": 706329.0,
+        "fees_near": 860.0000002471514,
+        "gas_tgas": 8723020.049918422,
+        "intents_volume_usd": 131467577.0,
+        "buyback_usd": 32832.0,
+        "buyback_near": 14152.753578643087,
+        "price_usd": 2.30543004,
+        "deleted_accounts": 5.0,
+        "active_accounts": 71964.0,
+        "transfer_volume_near": 37547720.97097052,
+        "new_contracts": 6.0,
+        "active_contracts": 52200.0,
+        "days": 15.0
+      },
+      "2026-09-16..2026-09-30": {
+        "txns": 869892.0,
+        "txns_less_deleted": 869867.0,
+        "fees_near": 1212.0000004533017,
+        "gas_tgas": 12165780.656225337,
+        "intents_volume_usd": 175821655.0,
+        "buyback_usd": 79756.0,
+        "buyback_near": 18406.326030581862,
+        "price_usd": 4.33307548,
+        "deleted_accounts": 37.0,
+        "active_accounts": 57466.0,
+        "transfer_volume_near": 79752834.99427953,
+        "new_contracts": 24.0,
+        "active_contracts": 47423.0,
+        "days": 15.0
+      },
+      "2026-10-01..2026-10-15": {
+        "txns": 865681.0,
+        "txns_less_deleted": 825774.0,
+        "fees_near": 1145.9999997617401,
+        "gas_tgas": 11797164.39877635,
+        "intents_volume_usd": 125036685.0,
+        "buyback_usd": 71388.0,
+        "buyback_near": 13380.839900970315,
+        "price_usd": 5.0365159,
+        "deleted_accounts": 2157.0,
+        "active_accounts": 62105.0,
+        "transfer_volume_near": 56149886.996259026,
+        "new_contracts": 28.0,
+        "active_contracts": 58143.0,
+        "days": 15.0
+      },
+      "2026-10-16..2026-10-31": {
+        "txns": 605669.5,
+        "txns_less_deleted": 605321.0,
+        "fees_near": 816.4999999648862,
+        "gas_tgas": 8715311.412453365,
+        "intents_volume_usd": 126089961.5,
+        "buyback_usd": 58089.0,
+        "buyback_near": 11724.722842676727,
+        "price_usd": 4.792518299999999,
+        "deleted_accounts": 433.5,
+        "active_accounts": 51318.5,
+        "transfer_volume_near": 32601097.494771257,
+        "new_contracts": 21.5,
+        "active_contracts": 54158.5,
+        "days": 16.0
+      },
+      "2026-11-01..2026-11-11": {
+        "txns": 706690.0,
+        "txns_less_deleted": 706626.0,
+        "fees_near": 860.0000011562963,
+        "gas_tgas": 9466273.41009643,
+        "intents_volume_usd": 137911779.0,
+        "buyback_usd": 45228.0,
+        "buyback_near": 12618.9407639137,
+        "price_usd": 3.73202929,
+        "deleted_accounts": 62.0,
+        "active_accounts": 77831.0,
+        "transfer_volume_near": 29693193.00613546,
+        "new_contracts": 44.0,
+        "active_contracts": 75369.0,
+        "days": 11.0
+      }
+    },
+    "above_reference_top_by_median": {
+      "txns": [
+        "2026-09-16..2026-09-30",
+        "2026-10-01..2026-10-15"
+      ],
+      "txns_less_deleted": [
+        "2026-09-16..2026-09-30"
+      ],
+      "fees_near": [
+        "2026-09-16..2026-09-30",
+        "2026-10-01..2026-10-15"
+      ],
+      "gas_tgas": [
+        "2026-09-16..2026-09-30",
+        "2026-10-01..2026-10-15"
+      ],
+      "intents_volume_usd": [
+        "2026-08-16..2026-08-31",
+        "2026-09-01..2026-09-15",
+        "2026-09-16..2026-09-30",
+        "2026-10-01..2026-10-15",
+        "2026-10-16..2026-10-31",
+        "2026-11-01..2026-11-11"
+      ],
+      "buyback_usd": [
+        "2026-08-16..2026-08-31",
+        "2026-09-01..2026-09-15",
+        "2026-09-16..2026-09-30",
+        "2026-10-01..2026-10-15",
+        "2026-10-16..2026-10-31",
+        "2026-11-01..2026-11-11"
+      ],
+      "buyback_near": [
+        "2026-08-16..2026-08-31",
+        "2026-09-01..2026-09-15",
+        "2026-09-16..2026-09-30",
+        "2026-10-01..2026-10-15",
+        "2026-10-16..2026-10-31",
+        "2026-11-01..2026-11-11"
+      ],
+      "transfer_volume_near": [
+        "2026-09-16..2026-09-30",
+        "2026-10-01..2026-10-15"
+      ],
+      "new_contracts": [
+        "2026-09-16..2026-09-30",
+        "2026-10-01..2026-10-15",
+        "2026-10-16..2026-10-31",
+        "2026-11-01..2026-11-11"
+      ]
+    },
+    "one_day_moves": {
+      "active_contracts": {
+        "2026-04": {
+          "rise": {
+            "date": "2026-04-28",
+            "day_before": 93534.0,
+            "day": 98718.0,
+            "pct_change": 5.542369619603571
+          },
+          "fall": {
+            "date": "2026-04-25",
+            "day_before": 94160.0,
+            "day": 86694.0,
+            "pct_change": -7.929056924384026
+          }
+        },
+        "2026-05": {
+          "rise": {
+            "date": "2026-05-29",
+            "day_before": 83958.0,
+            "day": 99681.0,
+            "pct_change": 18.727220753233766
+          },
+          "fall": {
+            "date": "2026-05-07",
+            "day_before": 118779.0,
+            "day": 99877.0,
+            "pct_change": -15.913587418651442
+          }
+        },
+        "2026-06": {
+          "rise": {
+            "date": "2026-06-10",
+            "day_before": 84585.0,
+            "day": 96925.0,
+            "pct_change": 14.588875096057219
+          },
+          "fall": {
+            "date": "2026-06-09",
+            "day_before": 97411.0,
+            "day": 84585.0,
+            "pct_change": -13.166890802886734
+          }
+        },
+        "2026-07": {
+          "rise": {
+            "date": "2026-07-02",
+            "day_before": 90837.0,
+            "day": 139550.0,
+            "pct_change": 53.62682607307594
+          },
+          "fall": {
+            "date": "2026-07-03",
+            "day_before": 139550.0,
+            "day": 89882.0,
+            "pct_change": -35.59154424937299
+          }
+        },
+        "2026-08": {
+          "rise": {
+            "date": "2026-08-06",
+            "day_before": 89565.0,
+            "day": 106093.0,
+            "pct_change": 18.453637023390822
+          },
+          "fall": {
+            "date": "2026-08-21",
+            "day_before": 90551.0,
+            "day": 52068.0,
+            "pct_change": -42.49870238870912
+          }
+        },
+        "2026-09": {
+          "rise": {
+            "date": "2026-09-22",
+            "day_before": 46997.0,
+            "day": 71758.0,
+            "pct_change": 52.68634168138391
+          },
+          "fall": {
+            "date": "2026-09-23",
+            "day_before": 71758.0,
+            "day": 47032.0,
+            "pct_change": -34.457482092588975
+          }
+        },
+        "2026-10": {
+          "rise": {
+            "date": "2026-10-23",
+            "day_before": 41683.0,
+            "day": 62849.0,
+            "pct_change": 50.77849483002663
+          },
+          "fall": {
+            "date": "2026-10-06",
+            "day_before": 90674.0,
+            "day": 60770.0,
+            "pct_change": -32.97968546661667
+          }
+        },
+        "2026-11": {
+          "rise": {
+            "date": "2026-11-09",
+            "day_before": 78892.0,
+            "day": 145602.0,
+            "pct_change": 84.55863712416975
+          },
+          "fall": {
+            "date": "2026-11-02",
+            "day_before": 60683.0,
+            "day": 49151.0,
+            "pct_change": -19.003674834797224
+          }
+        }
+      },
+      "active_accounts": {
+        "2026-04": {
+          "rise": {
+            "date": "2026-04-27",
+            "day_before": 118616.0,
+            "day": 124353.0,
+            "pct_change": 4.836615633641328
+          },
+          "fall": {
+            "date": "2026-04-24",
+            "day_before": 126197.0,
+            "day": 121955.0,
+            "pct_change": -3.361411127047398
+          }
+        },
+        "2026-05": {
+          "rise": {
+            "date": "2026-05-02",
+            "day_before": 119055.0,
+            "day": 128424.0,
+            "pct_change": 7.869472092730256
+          },
+          "fall": {
+            "date": "2026-05-15",
+            "day_before": 120501.0,
+            "day": 107035.0,
+            "pct_change": -11.175010995759372
+          }
+        },
+        "2026-06": {
+          "rise": {
+            "date": "2026-06-08",
+            "day_before": 111870.0,
+            "day": 123836.0,
+            "pct_change": 10.696343970680244
+          },
+          "fall": {
+            "date": "2026-06-09",
+            "day_before": 123836.0,
+            "day": 112294.0,
+            "pct_change": -9.320391485513102
+          }
+        },
+        "2026-07": {
+          "rise": {
+            "date": "2026-07-20",
+            "day_before": 85909.0,
+            "day": 88674.0,
+            "pct_change": 3.218521924361828
+          },
+          "fall": {
+            "date": "2026-07-11",
+            "day_before": 102400.0,
+            "day": 90183.0,
+            "pct_change": -11.930664062499996
+          }
+        },
+        "2026-08": {
+          "rise": {
+            "date": "2026-08-03",
+            "day_before": 81729.0,
+            "day": 85195.0,
+            "pct_change": 4.240844742992089
+          },
+          "fall": {
+            "date": "2026-08-08",
+            "day_before": 82269.0,
+            "day": 78514.0,
+            "pct_change": -4.564295178013589
+          }
+        },
+        "2026-09": {
+          "rise": {
+            "date": "2026-09-18",
+            "day_before": 44749.0,
+            "day": 62965.0,
+            "pct_change": 40.70705490625488
+          },
+          "fall": {
+            "date": "2026-09-14",
+            "day_before": 61501.0,
+            "day": 49972.0,
+            "pct_change": -18.74603664981057
+          }
+        },
+        "2026-10": {
+          "rise": {
+            "date": "2026-10-02",
+            "day_before": 62105.0,
+            "day": 118077.0,
+            "pct_change": 90.12478866435876
+          },
+          "fall": {
+            "date": "2026-10-08",
+            "day_before": 175774.0,
+            "day": 82447.0,
+            "pct_change": -53.09488320229385
+          }
+        },
+        "2026-11": {
+          "rise": {
+            "date": "2026-11-10",
+            "day_before": 77752.0,
+            "day": 177510.0,
+            "pct_change": 128.30280893095994
+          },
+          "fall": {
+            "date": "2026-11-11",
+            "day_before": 177510.0,
+            "day": 77831.0,
+            "pct_change": -56.15401949185961
+          }
+        }
+      },
+      "txns": {
+        "2026-04": {
+          "rise": {
+            "date": "2026-04-16",
+            "day_before": 763144.0,
+            "day": 1058803.0,
+            "pct_change": 38.74222951369597
+          },
+          "fall": {
+            "date": "2026-04-17",
+            "day_before": 1058803.0,
+            "day": 729376.0,
+            "pct_change": -31.11315324947134
+          }
+        },
+        "2026-05": {
+          "rise": {
+            "date": "2026-05-22",
+            "day_before": 836842.0,
+            "day": 1109094.0,
+            "pct_change": 32.53326195386943
+          },
+          "fall": {
+            "date": "2026-05-23",
+            "day_before": 1109094.0,
+            "day": 879647.0,
+            "pct_change": -20.687786607807812
+          }
+        },
+        "2026-06": {
+          "rise": {
+            "date": "2026-06-01",
+            "day_before": 761360.0,
+            "day": 882995.0,
+            "pct_change": 15.976016601870334
+          },
+          "fall": {
+            "date": "2026-06-06",
+            "day_before": 1055518.0,
+            "day": 830379.0,
+            "pct_change": -21.329716783607665
+          }
+        },
+        "2026-07": {
+          "rise": {
+            "date": "2026-07-13",
+            "day_before": 694076.0,
+            "day": 794924.0,
+            "pct_change": 14.529820941798889
+          },
+          "fall": {
+            "date": "2026-07-11",
+            "day_before": 770836.0,
+            "day": 715477.0,
+            "pct_change": -7.181683263366012
+          }
+        },
+        "2026-08": {
+          "rise": {
+            "date": "2026-08-24",
+            "day_before": 726225.0,
+            "day": 805717.0,
+            "pct_change": 10.94591896450825
+          },
+          "fall": {
+            "date": "2026-08-25",
+            "day_before": 805717.0,
+            "day": 719568.0,
+            "pct_change": -10.692215753173883
+          }
+        },
+        "2026-09": {
+          "rise": {
+            "date": "2026-09-27",
+            "day_before": 603143.0,
+            "day": 1217209.0,
+            "pct_change": 101.81101330861834
+          },
+          "fall": {
+            "date": "2026-09-12",
+            "day_before": 846582.0,
+            "day": 651970.0,
+            "pct_change": -22.987968088147394
+          }
+        },
+        "2026-10": {
+          "rise": {
+            "date": "2026-10-11",
+            "day_before": 850344.0,
+            "day": 1109584.0,
+            "pct_change": 30.48648546941002
+          },
+          "fall": {
+            "date": "2026-10-12",
+            "day_before": 1109584.0,
+            "day": 712621.0,
+            "pct_change": -35.77584031492884
+          }
+        },
+        "2026-11": {
+          "rise": {
+            "date": "2026-11-09",
+            "day_before": 609504.0,
+            "day": 895302.0,
+            "pct_change": 46.89025830839502
+          },
+          "fall": {
+            "date": "2026-11-06",
+            "day_before": 848794.0,
+            "day": 717484.0,
+            "pct_change": -15.470184756254168
+          }
+        }
+      }
     },
     "intents_step": {
       "line": 89591201.70967741,
@@ -5484,6 +6658,17 @@
           "value": 2.01414955,
           "pct_change": 26.838832075909536,
           "days_after": 5
+        },
+        "day_before": {
+          "date": "2026-08-18",
+          "value": 1.63646787,
+          "pct_change_to_the_day": -2.9641987410360726
+        },
+        "lowest_since": "2026-05-18",
+        "lowest_after_it": {
+          "date": "2026-08-20",
+          "value": 1.7303834,
+          "pct_above_the_day": 8.968973778308275
         },
         "first_day_at_twice_it": {
           "date": "2026-09-19",
@@ -5711,6 +6896,236 @@
         "census": 402762.03225806454,
         "ratio": 1.0071840227756357
       }
+    },
+    "one_day_moves_relayed": {
+      "relayed_users": {
+        "2026-04": {
+          "rise": {
+            "date": "2026-04-29",
+            "day_before": 113705.0,
+            "day": 325765.0,
+            "pct_change": 186.50015390704016
+          },
+          "fall": {
+            "date": "2026-04-30",
+            "day_before": 325765.0,
+            "day": 103372.0,
+            "pct_change": -68.26792319616901
+          }
+        },
+        "2026-05": {
+          "rise": {
+            "date": "2026-05-24",
+            "day_before": 102778.0,
+            "day": 131131.0,
+            "pct_change": 27.5866430559069
+          },
+          "fall": {
+            "date": "2026-05-26",
+            "day_before": 123363.0,
+            "day": 95706.0,
+            "pct_change": -22.419201867658856
+          }
+        },
+        "2026-06": {
+          "rise": {
+            "date": "2026-06-10",
+            "day_before": 95509.0,
+            "day": 105736.0,
+            "pct_change": 10.707891402904446
+          },
+          "fall": {
+            "date": "2026-06-09",
+            "day_before": 107993.0,
+            "day": 95509.0,
+            "pct_change": -11.560008519070685
+          }
+        },
+        "2026-07": {
+          "rise": {
+            "date": "2026-07-02",
+            "day_before": 97530.0,
+            "day": 144089.0,
+            "pct_change": 47.738131856864555
+          },
+          "fall": {
+            "date": "2026-07-03",
+            "day_before": 144089.0,
+            "day": 104860.0,
+            "pct_change": -27.225534218434444
+          }
+        },
+        "2026-08": {
+          "rise": {
+            "date": "2026-08-08",
+            "day_before": 83528.0,
+            "day": 96485.0,
+            "pct_change": 15.512163585863426
+          },
+          "fall": {
+            "date": "2026-08-21",
+            "day_before": 100931.0,
+            "day": 63143.0,
+            "pct_change": -37.4394388245435
+          }
+        },
+        "2026-09": {
+          "rise": {
+            "date": "2026-09-22",
+            "day_before": 50479.0,
+            "day": 74886.0,
+            "pct_change": 48.35079934230075
+          },
+          "fall": {
+            "date": "2026-09-23",
+            "day_before": 74886.0,
+            "day": 49886.0,
+            "pct_change": -33.3840771305718
+          }
+        },
+        "2026-10": {
+          "rise": {
+            "date": "2026-10-23",
+            "day_before": 43383.0,
+            "day": 64422.0,
+            "pct_change": 48.49595463660881
+          },
+          "fall": {
+            "date": "2026-10-06",
+            "day_before": 93325.0,
+            "day": 63227.0,
+            "pct_change": -32.25073667291723
+          }
+        },
+        "2026-11": {
+          "rise": {
+            "date": "2026-11-09",
+            "day_before": 80193.0,
+            "day": 146991.0,
+            "pct_change": 83.29654708016909
+          },
+          "fall": {
+            "date": "2026-11-02",
+            "day_before": 62686.0,
+            "day": 51033.0,
+            "pct_change": -18.58947771432218
+          }
+        }
+      },
+      "relayed_txns": {
+        "2026-04": {
+          "rise": {
+            "date": "2026-04-29",
+            "day_before": 369921.0,
+            "day": 572657.0,
+            "pct_change": 54.80521516756281
+          },
+          "fall": {
+            "date": "2026-04-30",
+            "day_before": 572657.0,
+            "day": 360099.0,
+            "pct_change": -37.11785588930198
+          }
+        },
+        "2026-05": {
+          "rise": {
+            "date": "2026-05-20",
+            "day_before": 382889.0,
+            "day": 418300.0,
+            "pct_change": 9.24837224365287
+          },
+          "fall": {
+            "date": "2026-05-26",
+            "day_before": 393304.0,
+            "day": 360123.0,
+            "pct_change": -8.43647661859529
+          }
+        },
+        "2026-06": {
+          "rise": {
+            "date": "2026-06-22",
+            "day_before": 368654.0,
+            "day": 393386.0,
+            "pct_change": 6.708729594687712
+          },
+          "fall": {
+            "date": "2026-06-24",
+            "day_before": 395367.0,
+            "day": 376880.0,
+            "pct_change": -4.675908712664434
+          }
+        },
+        "2026-07": {
+          "rise": {
+            "date": "2026-07-25",
+            "day_before": 361863.0,
+            "day": 395292.0,
+            "pct_change": 9.238026545958
+          },
+          "fall": {
+            "date": "2026-07-10",
+            "day_before": 429921.0,
+            "day": 385215.0,
+            "pct_change": -10.398654636549509
+          }
+        },
+        "2026-08": {
+          "rise": {
+            "date": "2026-08-24",
+            "day_before": 264604.0,
+            "day": 324750.0,
+            "pct_change": 22.7305709664253
+          },
+          "fall": {
+            "date": "2026-08-21",
+            "day_before": 336297.0,
+            "day": 281748.0,
+            "pct_change": -16.220483679604637
+          }
+        },
+        "2026-09": {
+          "rise": {
+            "date": "2026-09-22",
+            "day_before": 258309.0,
+            "day": 278955.0,
+            "pct_change": 7.992752865753805
+          },
+          "fall": {
+            "date": "2026-09-23",
+            "day_before": 278955.0,
+            "day": 249422.0,
+            "pct_change": -10.587012242117899
+          }
+        },
+        "2026-10": {
+          "rise": {
+            "date": "2026-10-23",
+            "day_before": 199033.0,
+            "day": 252405.0,
+            "pct_change": 26.81565368556973
+          },
+          "fall": {
+            "date": "2026-10-22",
+            "day_before": 239696.0,
+            "day": 199033.0,
+            "pct_change": -16.964404912889663
+          }
+        },
+        "2026-11": {
+          "rise": {
+            "date": "2026-11-09",
+            "day_before": 228683.0,
+            "day": 439654.0,
+            "pct_change": 92.25478063520245
+          },
+          "fall": {
+            "date": "2026-11-08",
+            "day_before": 297395.0,
+            "day": 228683.0,
+            "pct_change": -23.104625161821822
+          }
+        }
+      }
     }
   },
   "value_capture": {
@@ -5795,6 +7210,12 @@
           "captured_share": 0.19461729654697854,
           "buyback_usd_per_day": 32808.0,
           "buyback_near_per_day": 28903.34414877105,
+          "buyback_near_per_day_median": 10891.058521878549,
+          "largest_day_near": {
+            "date": "2026-02-26",
+            "value": 129850.78800726123,
+            "share_of_the_month": 0.7487644990079945
+          },
           "price_usd": 1.0592574350000001
         },
         "2026-03": {
@@ -5804,6 +7225,12 @@
           "captured_share": 0.15694770610284411,
           "buyback_usd_per_day": 18176.129032258064,
           "buyback_near_per_day": 14444.841937121357,
+          "buyback_near_per_day_median": 6714.145395633659,
+          "largest_day_near": {
+            "date": "2026-03-27",
+            "value": 204044.256151039,
+            "share_of_the_month": 0.45566942218666356
+          },
           "price_usd": 1.2834032019354837
         },
         "2026-04": {
@@ -5813,6 +7240,12 @@
           "captured_share": 0.08067333882920477,
           "buyback_usd_per_day": 8624.668333333333,
           "buyback_near_per_day": 6467.827600207878,
+          "buyback_near_per_day_median": 6466.293859916115,
+          "largest_day_near": {
+            "date": "2026-04-23",
+            "value": 20180.399695701733,
+            "share_of_the_month": 0.10400400744062879
+          },
           "price_usd": 1.3369761416666668
         },
         "2026-05": {
@@ -5822,6 +7255,12 @@
           "captured_share": 0.20637915684228372,
           "buyback_usd_per_day": 19987.548387096773,
           "buyback_near_per_day": 10755.95294348345,
+          "buyback_near_per_day_median": 9088.79226308583,
+          "largest_day_near": {
+            "date": "2026-05-23",
+            "value": 27905.81214263143,
+            "share_of_the_month": 0.08369202554175963
+          },
           "price_usd": 1.7702125761290322
         },
         "2026-06": {
@@ -5831,6 +7270,12 @@
           "captured_share": 0.19907211618182588,
           "buyback_usd_per_day": 20649.166666666668,
           "buyback_near_per_day": 9417.817542002429,
+          "buyback_near_per_day_median": 6825.0354373051605,
+          "largest_day_near": {
+            "date": "2026-06-05",
+            "value": 64512.89387591856,
+            "share_of_the_month": 0.22833631956377068
+          },
           "price_usd": 2.130200490333334
         },
         "2026-07": {
@@ -5840,6 +7285,12 @@
           "captured_share": 0.154302391292189,
           "buyback_usd_per_day": 16285.935483870968,
           "buyback_near_per_day": 8612.030853245766,
+          "buyback_near_per_day_median": 8175.222757319511,
+          "largest_day_near": {
+            "date": "2026-07-22",
+            "value": 22753.51198577045,
+            "share_of_the_month": 0.08522777845470315
+          },
           "price_usd": 1.8874657006451616
         },
         "2026-08": {
@@ -5849,6 +7300,12 @@
           "captured_share": 0.1884979704063748,
           "buyback_usd_per_day": 23331.032258064515,
           "buyback_near_per_day": 13296.139667302326,
+          "buyback_near_per_day_median": 11482.937161165757,
+          "largest_day_near": {
+            "date": "2026-08-21",
+            "value": 40318.88851196937,
+            "share_of_the_month": 0.09781856534165034
+          },
           "price_usd": 1.7340923677419353
         },
         "2026-09": {
@@ -5858,6 +7315,12 @@
           "captured_share": 0.25110090485779557,
           "buyback_usd_per_day": 61317.1,
           "buyback_near_per_day": 19835.57686861319,
+          "buyback_near_per_day_median": 15623.01409949223,
+          "largest_day_near": {
+            "date": "2026-09-04",
+            "value": 55868.568316754434,
+            "share_of_the_month": 0.0938861331280598
+          },
           "price_usd": 3.1932199973333337
         },
         "2026-10": {
@@ -5867,6 +7330,12 @@
           "captured_share": 0.34275124466271223,
           "buyback_usd_per_day": 70629.70967741935,
           "buyback_near_per_day": 14498.41399647847,
+          "buyback_near_per_day_median": 12517.378488204065,
+          "largest_day_near": {
+            "date": "2026-10-15",
+            "value": 33346.68309700215,
+            "share_of_the_month": 0.07419428463025557
+          },
           "price_usd": 4.901668658709677
         },
         "2026-11": {
@@ -5876,6 +7345,12 @@
           "captured_share": 0.22512037785014108,
           "buyback_usd_per_day": 48946.0,
           "buyback_near_per_day": 12928.498512558703,
+          "buyback_near_per_day_median": 12618.9407639137,
+          "largest_day_near": {
+            "date": "2026-11-06",
+            "value": 23973.330306953238,
+            "share_of_the_month": 0.16857283637008738
+          },
           "price_usd": 3.8461493663636364
         }
       },
@@ -5906,6 +7381,61 @@
         "captured_share": 0.16430334382297876,
         "coverage": 0.12089207124346023
       }
+    },
+    "take": {
+      "step_day": "2026-08-19",
+      "before": {
+        "from": "2026-05-21",
+        "through": "2026-08-18",
+        "days": 90,
+        "volume_usd_per_day": 73732886.25555556,
+        "revenue_usd_per_day": 19314.855555555554,
+        "take_bps": 2.619571338711868,
+        "gross_fee_bps": 13.183765894392447,
+        "captured_share_of_gross_fees": 0.19869674262238454
+      },
+      "after": {
+        "from": "2026-08-19",
+        "through": "2026-11-11",
+        "days": 85,
+        "volume_usd_per_day": 138984769.09411764,
+        "revenue_usd_per_day": 59297.117647058825,
+        "take_bps": 4.26644718220196,
+        "gross_fee_bps": 15.738232343675362,
+        "captured_share_of_gross_fees": 0.27108807959087566
+      },
+      "volume_ratio": 1.8849766522417335,
+      "revenue_ratio": 3.0700264610574903,
+      "take_ratio": 1.6286814255266346,
+      "take_bps_by_month": {
+        "2026-05": 3.1047638724614086,
+        "2026-06": 2.630811147771617,
+        "2026-07": 2.2890308497220304,
+        "2026-08": 2.604165566800781,
+        "2026-09": 3.829849791852216,
+        "2026-10": 5.493522045360646
+      },
+      "last_30_days_vs_the_30_before": {
+        "through": "2026-11-11",
+        "volume_pct_change": -21.69843711829652,
+        "gross_fees_pct_change": -25.786878737976693,
+        "revenue_usd_pct_change": -20.413214247282895,
+        "revenue_near_pct_change": -24.617202978149678
+      }
+    },
+    "issuance_cut": {
+      "id": "HSP-029",
+      "target_max_issuance": 0.016,
+      "ramp_months": 24,
+      "grace_days": 90,
+      "source": "https://gov.near.org/t/hsp-029-establish-a-24-month-issuance-ramp-to-a-1-6-target-rate-of-near-token-emissions/42644",
+      "max_issuance_in_force": 0.025,
+      "read_at_utc": "2026-11-14T08:11Z",
+      "protocol_version": 88,
+      "in_force_yet": false,
+      "net_new_supply_scale": 0.64,
+      "coverage_at_target": 0.2804444094138929,
+      "growth_needed_at_target": 3.5657690666393473
     },
     "wallets": {
       "source": "https://archival-rpc.mainnet.fastnear.com",

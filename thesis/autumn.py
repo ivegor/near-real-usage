@@ -26,7 +26,10 @@ COLUMNS = {  # what is averaged per day in each half-month
     "fees_near": "network fees in NEAR", "gas_tgas": "gas used, in Tgas",
     "intents_volume_usd": "NEAR Intents volume in USD", "buyback_usd": "buybacks in USD", "buyback_near": "buybacks in NEAR",
     "price_usd": "NEAR price", "deleted_accounts": "deleted accounts", "active_accounts": "signers (active accounts)",
+    "transfer_volume_near": "native NEAR transfer volume, in NEAR", "new_contracts": "new contracts",
+    "active_contracts": "NearBlocks' active_contracts (not defined in its reply; it tracks users behind relayers)",
 }
+NOT_COMPARED = ("price_usd", "deleted_accounts", "active_accounts", "active_contracts")  # context, not activity with a top
 
 
 def halves(first: pd.Timestamp, last: pd.Timestamp) -> list[tuple[pd.Timestamp, pd.Timestamp]]:
@@ -45,10 +48,23 @@ def _label(a: pd.Timestamp, b: pd.Timestamp) -> str:
     return f"{a.date()}..{b.date()}"
 
 
-def table(daily: pd.DataFrame, fees: pd.DataFrame | None, first: str, last: pd.Timestamp) -> pd.DataFrame:
-    """Per-day means of the daily series in each half-month from `first` to `last`."""
+def table(daily: pd.DataFrame, fees: pd.DataFrame | None, first: str, last: pd.Timestamp, stat: str = "mean") -> pd.DataFrame:
+    """Per-day means (or medians, `stat="median"`) of the daily series in each half-month from `first` to `last`.
+
+    A mean of fifteen days can rest on one or two of them; the median day says whether the half-month as a whole moved.
+    """
+    d = series(daily, fees)
+    rows = {}
+    for a, b in halves(pd.Timestamp(first), last):
+        part = d.loc[a:b]
+        rows[_label(a, b)] = {**getattr(part, stat)().to_dict(), "days": int(len(part))}
+    return pd.DataFrame(rows).T
+
+
+def series(daily: pd.DataFrame, fees: pd.DataFrame | None) -> pd.DataFrame:
+    """The daily series of COLUMNS, one row a day."""
     d = pd.DataFrame(index=daily.index)
-    for c in ("txns", "intents_volume_usd", "price_usd", "deleted_accounts", "active_accounts"):
+    for c in ("txns", "intents_volume_usd", "price_usd", "deleted_accounts", "active_accounts", "new_contracts", "active_contracts"):
         if c in daily:
             d[c] = daily[c]
     if "deleted_accounts" in daily:  # a one-off of mass deletions is not activity: the same count without it, every half-month
@@ -58,14 +74,30 @@ def table(daily: pd.DataFrame, fees: pd.DataFrame | None, first: str, last: pd.T
         d["fees_near"] = daily["fees_usd"] / price
     if "gas_used" in daily:
         d["gas_tgas"] = daily["gas_used"] / 1e12
+    if "transfer_volume_usd" in daily:  # NearBlocks' native transfer volume, kept in USD by the parser: back into NEAR
+        d["transfer_volume_near"] = daily["transfer_volume_usd"] / price
     if fees is not None:
         d["buyback_usd"] = fees["holders_revenue"].reindex(d.index)
         d["buyback_near"] = d["buyback_usd"] / price
-    rows = {}
-    for a, b in halves(pd.Timestamp(first), last):
-        part = d.loc[a:b]
-        rows[_label(a, b)] = {**part.mean().to_dict(), "days": int(len(part))}
-    return pd.DataFrame(rows).T
+    return d
+
+
+def one_day_moves(s: pd.Series, first: pd.Timestamp, last: pd.Timestamp) -> dict:
+    """Per calendar month from `first` to `last`: the largest one-day rise and fall of a daily series (in percent of
+    the day before), with the values either side. Where a monthly mean hides a step, this dates it to the day."""
+    out = {}
+    for m in pd.period_range(first, last, freq="M"):
+        part = s.loc[max(first, m.start_time) - pd.Timedelta(days=1):min(last, m.end_time.normalize())]
+        move = (part / part.shift(1) - 1).iloc[1:].replace([np.inf, -np.inf], np.nan).dropna()
+        if move.empty:
+            continue
+        row = {}
+        for name, day in (("rise", move.idxmax()), ("fall", move.idxmin())):
+            before = day - pd.Timedelta(days=1)
+            row[name] = {"date": str(day.date()), "day_before": float(part[before]), "day": float(part[day]),
+                         "pct_change": float(move[day] * 100)}
+        out[str(m)] = row
+    return out
 
 
 def _price_after(price: pd.Series, day: pd.Timestamp) -> dict:
@@ -77,6 +109,16 @@ def _price_after(price: pd.Series, day: pd.Timestamp) -> dict:
     out = {"day": float(price[day]), "highest_in_the_week_from_it": {"date": str(top.date()), "value": float(week[top]),
                                                                      "pct_change": float((week[top] / price[day] - 1) * 100),
                                                                      "days_after": int((top - day).days)}}
+    prev = price.loc[:day - pd.Timedelta(days=1)]
+    if len(prev):  # the day of the step against the day before, and the last earlier day at or below its price
+        out["day_before"] = {"date": str(prev.index[-1].date()), "value": float(prev.iloc[-1]),
+                             "pct_change_to_the_day": float((price[day] / prev.iloc[-1] - 1) * 100)}
+        low = prev[prev <= price[day]]
+        out["lowest_since"] = str(low.index[-1].date()) if len(low) else None
+    later = price.loc[day + pd.Timedelta(days=1):]
+    if len(later):  # how low the price went after the step: the volume after it was not seen at the step day's price
+        out["lowest_after_it"] = {"date": str(later.idxmin().date()), "value": float(later.min()),
+                                  "pct_above_the_day": float((later.min() / price[day] - 1) * 100)}
     if len(twice):
         out["first_day_at_twice_it"] = {"date": str(twice.index[0].date()), "value": float(twice.iloc[0]),
                                         "days_after": int((twice.index[0] - day).days)}
@@ -161,7 +203,28 @@ def summarize(daily: pd.DataFrame, fees: pd.DataFrame | None, plateau: tuple[str
                  "half_months": {k: {c: (float(v[c]) if pd.notna(v[c]) else None) for c in [*COLUMNS, "days"] if c in v}
                                  for k, v in t.iterrows()}}
     out["above_reference_top"] = {c: [k for k, v in after[c].items() if v > out["reference"]["top"][c]]
-                                  for c in COLUMNS if c in after and c not in ("price_usd", "deleted_accounts", "active_accounts")}
+                                  for c in COLUMNS if c in after and c not in NOT_COMPARED}
+    # The same by the median day. A half-month's mean can rest on a day or two, the reference top's too: the largest
+    # day of the half-month that sets each top is published, with its share of that half-month's total.
+    tm = table(daily, fees, str(first.date()), last, stat="median")
+    ref_m = tm.loc[ref.index]
+    after_m = tm.loc[after.index]
+    d = series(daily, fees)
+    out["reference"]["top_median"] = {c: float(ref_m[c].max()) for c in COLUMNS if c in ref_m}
+    out["reference"]["top_half_median"] = {c: str(ref_m[c].idxmax()) for c in COLUMNS if c in ref_m}
+    largest = {}
+    for c, half in out["reference"]["top_half"].items():
+        a, b = (pd.Timestamp(x) for x in half.split(".."))
+        part = d.loc[a:b, c].dropna()
+        if len(part) and part.sum():
+            largest[c] = {"date": str(part.idxmax().date()), "value": float(part.max()), "share_of_the_half": float(part.max() / part.sum())}
+    out["reference"]["top_half_largest_day"] = largest
+    out["half_months_median"] = {k: {c: (float(v[c]) if pd.notna(v[c]) else None) for c in [*COLUMNS, "days"] if c in v}
+                                 for k, v in tm.iterrows()}
+    out["above_reference_top_by_median"] = {c: [k for k, v in after_m[c].items() if v > out["reference"]["top_median"][c]]
+                                            for c in COLUMNS if c in after_m and c not in NOT_COMPARED}
+    out["one_day_moves"] = {c: one_day_moves(d[c].dropna(), first, last) for c in ("active_contracts", "active_accounts", "txns")
+                            if c in d and d[c].notna().any()}
     if step:
         out["intents_step"] = step
     if sample is not None and windows and "recent" in windows:

@@ -493,6 +493,57 @@ def test_thesis_quotes_the_checks_read_from_the_chain():
     assert not missing, f"README.md does not quote these summary values: {missing}"
 
 
+def test_thesis_quotes_the_take_the_issuance_cut_and_the_relayed_users():
+    """Where the revenue step came from, the approved cut in issuance, and the aggregator's own count of relayed users."""
+    s = json.loads((ROOT / "data" / "snapshot" / "thesis_summary.json").read_text(encoding="utf-8"))
+    text, readme = prose("THESIS.md"), prose("README.md")
+    v, day, fall = s["value_capture"], s["population"]["one_day"], s["population"]["largest_daily_fall"]
+    take, cut, v3 = v["take"], v["issuance_cut"], day["nearblocks_v3"]
+    before, after, month, last = take["before"], take["after"], take["take_bps_by_month"], take["last_30_days_vs_the_30_before"]
+    # the second source agrees with the BigQuery count of the same day to within a handful of accounts
+    assert abs(v3["relayed_users"] - day["relayed_users"]) < 10 and abs(v3["relayed_txns"] - day["relayed_transactions"]) < 10
+    assert v3["relayers"] == day["relayers"]
+    assert (take["step_day"], after["through"], last["through"]) == (s["autumn"]["intents_step"]["day"], v["window"][1], v["window"][1])
+    assert abs(take["revenue_ratio"] - take["volume_ratio"] * take["take_ratio"]) < 1e-9
+    summer = [month[m] for m in ("2026-05", "2026-06", "2026-07", "2026-08")]
+    down = [abs(last[k]) for k in ("volume_pct_change", "gross_fees_pct_change", "revenue_usd_pct_change")]
+    assert all(last[k] < 0 for k in last if k.endswith("pct_change")) and 19.5 < min(down) and max(down) < 26   # "a fifth to a quarter"
+    assert not cut["in_force_yet"] and cut["read_at_utc"].startswith("2026-11-14") and cut["id"] == "HSP-029"
+    assert (cut["max_issuance_in_force"], cut["target_max_issuance"], cut["ramp_months"]) == (0.025, 0.016, 24)
+    cover, need = f"{v['buyback_coverage_of_new_supply'] * 100:.0f}%", f"{v['growth_needed_to_cover_new_supply']:.1f} times"
+    cover_cut, need_cut = f"{cut['coverage_at_target'] * 100:.0f}%", f"{cut['growth_needed_at_target']:.1f}"
+    ratios = f"{take['volume_ratio']:.1f} times more volume and a {take['take_ratio']:.1f} times higher take"
+    quoted = [
+        f"{v3['relayed_users']:,} accounts acted for by {v3['relayers']} relayers in {v3['relayed_txns']:,} relayed transactions",
+        f"{fall['relayed_users']['before']:,} on the first day and {fall['relayed_users']['after']:,} on the second",
+        f"carried ${before['volume_usd_per_day'] / 1e6:.1f}M a day and NEAR kept {before['take_bps']:.2f} basis points of it",
+        f"from the step to {after['through']} it carried ${after['volume_usd_per_day'] / 1e6:.1f}M a day and NEAR kept {after['take_bps']:.2f}",
+        f"Volume grew {take['volume_ratio']:.1f} times and the take {take['take_ratio']:.1f} times, which together is the "
+        f"{take['revenue_ratio']:.1f} times in revenue",
+        f"the take was {min(summer):.1f} to {max(summer):.1f} basis points from May to August, {month['2026-09']:.1f} in September "
+        f"and {month['2026-10']:.1f} in October",
+        f"({month['2026-08']:.1f} basis points in August, {month['2026-10']:.1f} in October)",
+        f"less tested than its {after['days']} days suggest",
+        f"volume is {abs(last['volume_pct_change']):.0f}% below the 30 days before, gross fees {abs(last['gross_fees_pct_change']):.0f}%, "
+        f"and captured revenue {abs(last['revenue_usd_pct_change']):.0f}% in USD and {abs(last['revenue_near_pct_change']):.0f}% in NEAR",
+        f"from {cut['max_issuance_in_force'] * 100:.1f}% to {cut['target_max_issuance'] * 100:.1f}% a year on a {cut['ramp_months']}-month ramp",
+        f"still gives a maximum of {cut['max_issuance_in_force'] * 100:.1f}%",
+        f"the {cover} becomes {cover_cut} at the end of the ramp and the {need} becomes {need_cut}",
+        f"is {ratios}",
+        f"the {cover} would be {cover_cut} and the {need} {need_cut}",
+        f"keeps {after['take_bps']:.2f} basis points of Intents volume against {before['take_bps']:.2f} before",
+    ]
+    missing = [q for q in quoted if q not in text]
+    assert not missing, f"THESIS.md does not quote these summary values: {missing}"
+    in_readme = [
+        f"is {ratios} ({before['take_bps']:.2f} → {after['take_bps']:.2f} basis points of volume)",
+        f"over the last 30 days volume is down {abs(last['volume_pct_change']):.0f}% and captured revenue {abs(last['revenue_usd_pct_change']):.0f}%",
+        f"({cut['target_max_issuance'] * 100:.1f}% a year, not yet in force) the {cover} would be {cover_cut}",
+    ]
+    missing = [q for q in in_readme if q not in readme]
+    assert not missing, f"README.md does not quote these summary values: {missing}"
+
+
 def test_thesis_names_the_snapshot_date():
     s = json.loads((ROOT / "data" / "snapshot" / "thesis_summary.json").read_text(encoding="utf-8"))
     assert f"Snapshot as of {s['last_date']}" in (ROOT / "THESIS.md").read_text(encoding="utf-8")
@@ -671,7 +722,9 @@ def test_the_texts_quote_the_readings_by_window_half_month_and_family():
         f"weeks of the price rally, from {first} to {last}",
         f"(100.6% of the net fall as counted, 99.2% with the one-off deletion taken out)".replace("100.6", f"{whole:.1f}").replace("99.2", f"{whole_clean:.1f}"),
         f"named `.near` accounts sent {fam['near']['range_pct_change']:.0f}% more than a year earlier, implicit accounts "
-        f"{abs(fam['implicit']['range_pct_change']):.0f}% less and other accounts {abs(fam['other']['range_pct_change']):.0f}% less",
+        f"{abs(fam['implicit']['range_pct_change']):.0f}% less (those under a year old "
+        f"{abs(fam['implicit']['by_age_and_activity']['under_a_year']['pct_change']):.0f}% less) and other accounts "
+        f"{abs(fam['other']['range_pct_change']):.0f}% less",
         f"it runs at {thousand(calm['per_day'])} a day, {abs(calm['latest_complete_month']['pct_change']):.0f}% below October's rate",
         f"group ran at {thousand(aug_now['per_day'])} transactions a day (95% interval {k(aug_now['per_day_ci95'][0])} to "
         f"{thousand(aug_now['per_day_ci95'][1])}), against {thousand(aug_then['per_day'])} on the same days of 2025 and "
@@ -707,8 +760,9 @@ def test_the_texts_quote_the_readings_by_window_half_month_and_family():
         f"(${step['line'] / 1e6:.1f}M) since {day(step['weekly_mean_above_it_since'])}, its lowest since being "
         f"${step['lowest_weekly_mean_since'] / 1e6:.1f}M",
         f"on a day it was ${step['price_usd']['day']:.2f} ({up['pct_change']:.0f}% higher {words[up['days_after']]} days later, at ${up['value']:.2f})",
-        f"The price began to move the same day ({up['pct_change']:.0f}% higher on {day(up['date'])}) and first stood at twice its level "
-        f"on {day(twice['date'])}",
+        f"On the day of the step the price fell {abs(step['price_usd']['day_before']['pct_change_to_the_day']):.0f}%, to its lowest since "
+        f"{day(step['price_usd']['lowest_since'])}; it rose from the next day ({up['pct_change']:.0f}% higher on {day(up['date'])} than on "
+        f"the 19th) and first stood at twice the step day's level on {day(twice['date'])}",
         f"{min(by_len[x]['coverage'] for x in by_len) * 100:.0f}% to {max(by_len[x]['coverage'] for x in by_len) * 100:.0f}% over other "
         f"windows, and {roll['median'] * 100:.0f}% in the median 90-day window",
         # who pays: the payer dated, the game's accounts, the heavy accounts
@@ -787,7 +841,9 @@ def test_the_texts_quote_the_readings_by_window_half_month_and_family():
         f"count as reported to {thousand(oct1['txns'])}",
         f"back at {thousand(oct2['txns_less_deleted'])} transactions and {oct2['fees_near']:,.0f} NEAR of fees a day, when the price was "
         f"still ${oct2['price_usd']:.2f} on average",
-        f"{thousand(ex[1]['per_day'])} transactions a day in the first half of September, {thousand(ex[2]['per_day'])} and "
+        f"the exchange rose earlier, from 1 September: {thousand(ex[0]['per_day'])} transactions a day (95% interval "
+        f"{k(ex[0]['per_day_ci95'][0])} to {thousand(ex[0]['per_day_ci95'][1])}) from 14 to 31 August, "
+        f"{thousand(ex[1]['per_day'])} in the first half of September, {thousand(ex[2]['per_day'])} and "
         f"{thousand(ex[3]['per_day'])} in the next two half-months, {thousand(ex[4]['per_day'])} (95% interval "
         f"{k(ex[4]['per_day_ci95'][0])} to {thousand(ex[4]['per_day_ci95'][1])}) in the second half of October and "
         f"{thousand(ex[5]['per_day'])} in November",
@@ -863,5 +919,131 @@ def test_the_texts_quote_the_readings_by_window_half_month_and_family():
         f"April to August)",
     ]
     assert th["month"] == "2026-12"
+    missing = [q for q in in_notes if q not in notes]
+    assert not missing, f"PREDICTIONS.md does not quote these summary values: {missing}"
+
+
+def test_the_texts_quote_the_eighth_review_readings():
+    """Means against medians, a family cut by age, a unit changed from USD to NEAR, a step dated to the day, a one-off
+    named by its own shape: each number below answers a reading that a single mean, month or unit had left open."""
+    s = json.loads((ROOT / "data" / "snapshot" / "thesis_summary.json").read_text(encoding="utf-8"))
+    text, readme, notes = prose("THESIS.md"), prose("README.md"), prose("PREDICTIONS.md")
+    p, a, v, c = s["population"], s["autumn"], s["value_capture"]["windows"], s["clients"]
+    st = s["predictions"]["step"]["core_self_paid_txs"]
+    thousand = lambda x: f"{x / 1e3:.0f} thousand"
+    day = lambda d: datetime.strptime(d, "%Y-%m-%d").strftime("%-d %B")
+    halves, med, ref = a["half_months"], a["half_months_median"], a["reference"]
+    oct2, nov = "2026-10-16..2026-10-31", "2026-11-01..2026-11-11"
+    # 1. HOT by month and by day
+    tg, tg_rel = p["reward_namespace_txs_per_day_by_month"]["tg"], p["reward_namespace_relayed_txs_per_day_by_month"]["tg"]
+    hot, rel = s["sponsors"]["sponsored_by_month"]["hot"], s["sponsors"]["hot_relayers_by_month"]
+    assert min(tg_rel, key=tg_rel.get) == "2026-09" and len(tg_rel) == 24
+    assert "2026-09" not in rel["0-relay.hot.tg"] and rel["0here.tg"]["2026-09"]["accounts"] == hot["2026-09"]
+    pm = p["partial_month"]["daily"]
+    ru = a["one_day_moves_relayed"]["relayed_users"]
+    ac = a["one_day_moves"]["active_contracts"]["2026-11"]["rise"]
+    assert ru["2026-11"]["rise"]["date"] == ac["date"] == "2026-11-09" and ru["2026-08"]["fall"]["date"] == "2026-08-21"
+    days = sorted(pm["txns"])
+    before = [pm["txns"][d] for d in days if d < ac["date"]]
+    after = [pm["txns"][d] for d in days if d >= ac["date"]]
+    sig = {d: x for d, x in pm["active_accounts"].items() if d not in ("2026-11-01", "2026-11-02", "2026-11-10")}
+    # 2. implicit accounts by age, named accounts by age
+    imp, near = st["range_by_family"]["implicit"]["by_age_and_activity"], st["range_by_family"]["near"]["by_age_and_activity"]
+    # 3. buybacks in NEAR by mean and by median, and by calendar month
+    bn, top_day = ref["top"]["buyback_near"], ref["top_half_largest_day"]["buyback_near"]
+    by_m = v["by_month"]
+    assert ref["top_half"]["buyback_near"] == "2026-06-01..2026-06-15"
+    assert oct2 not in a["above_reference_top"]["buyback_near"] and oct2 in a["above_reference_top_by_median"]["buyback_near"]
+    assert a["above_reference_top"]["fees_near"] == a["above_reference_top_by_median"]["fees_near"]
+    spring = [by_m[m]["coverage"] for m in ("2026-04", "2026-05", "2026-06", "2026-07")]
+    # 4. the price after the step
+    pr = a["intents_step"]["price_usd"]
+    # 5. the one-off of 10 November
+    sweep = c["one_block_transfers_sample"]
+    assert sweep["prior"] == [] and len(sweep["recent"]) == 1
+    b = sweep["recent"][0]
+    assert b["senders"] == b["implicit_senders"] == b["senders_older_than_a_year"] == 8 and len(b["receiver"]) == 64
+    # 6. the base of May and June
+    base, price = st["base_of_the_months_above"], st["price_usd_by_month"]
+    assert [base[m]["rank_lowest_first_among_base_months"] for m in ("2026-05", "2026-06")] == [2, 1]
+    assert [h for h, x in ref["top_half"].items() if x != "2026-06-01..2026-06-15" and h in a["above_reference_top"]] == ["new_contracts"]
+    # 7. native transfers in NEAR; 9. new contracts
+    tv = [halves[h]["transfer_volume_near"] / 1e6 for h in halves if h >= "2026-08-01"]
+    assert a["above_reference_top"]["transfer_volume_near"] == ["2026-09-16..2026-09-30", "2026-10-01..2026-10-15"]
+    nc = [halves[h]["new_contracts"] for h in halves if "2026-07-01" <= h < "2026-09-01"]
+    late = [halves[h]["new_contracts"] for h in ("2026-09-16..2026-09-30", "2026-10-01..2026-10-15", oct2)]
+    # 8. December's deletions in the self-paid series
+    dl = st["deletions_in_the_range"]
+    dec = dl["months"]["2025-12"]
+    gone = p["deleted_accounts"]["months"]
+    assert dl["taken_out"] == ["2025-12"] and dl["payer_table_first_month"] == "2025-08"
+    assert {"2024-12", "2025-01"} <= set(dl["base_months_with_deletions"])
+    quoted = [
+        f"through relayers {tg_rel['2026-07'] / 1e3:.0f}, {tg_rel['2026-08'] / 1e3:.0f}, {tg_rel['2026-09'] / 1e3:.0f} and "
+        f"{tg_rel['2026-10'] / 1e3:.0f} thousand ({thousand(tg_rel['2026-11'])} in November); September is the lowest of the "
+        f"{len(tg_rel)} months of that series",
+        f"The accounts HOT paid everything for went {hot['2026-07']:,.0f}, {hot['2026-08']:,.0f}, {hot['2026-09']:,.0f} and "
+        f"{hot['2026-10']:,.0f} from July to October",
+        f"`0-relay.hot.tg`, paid everything for {rel['0-relay.hot.tg']['2026-08']['accounts']:,} of them in August",
+        f"went from {ru['2026-11']['rise']['day_before']:,.0f} on 8 November to {ru['2026-11']['rise']['day']:,.0f} on the 9th, the "
+        f"largest one-day rise of the month",
+        f"averaged {sum(before) / len(before) / 1e3:.0f} thousand a day from 1 to 8 November and "
+        f"{sum(after) / len(after) / 1e3:.0f} thousand from 9 to 11",
+        f"`active_contracts` moved the same day, from {ac['day_before']:,.0f} to {ac['day']:,.0f}",
+        f"from {pm['active_accounts']['2026-11-01']:,} and {pm['active_accounts']['2026-11-02']:,} on 1 and 2 November to between "
+        f"{min(sig.values()):,} and {max(sig.values()):,} on the other days but the 10th",
+        f"from {ru['2026-08']['fall']['day_before']:,.0f} on 20 August to {ru['2026-08']['fall']['day']:,.0f} on the 21st, the largest "
+        f"one-day fall of August",
+        f"they sent {imp['under_a_year']['a_year_earlier'] / 1e6:.2f}M self-paid transactions a year earlier and "
+        f"{imp['under_a_year']['range'] / 1e6:.2f}M now ({pct(imp['under_a_year']['pct_change'])})",
+        f"sent {imp['older_active_the_month_before']['a_year_earlier'] / 1e6:.2f}M → {imp['older_active_the_month_before']['range'] / 1e6:.2f}M "
+        f"({pct(imp['older_active_the_month_before']['pct_change'])}) and older ones that had not sent "
+        f"{imp['older_not_active_the_month_before']['change'] / 1e6:.2f}M more",
+        f"named `.near` accounts under a year old sent {abs(near['age_lt1y']['change']) / 1e6:.2f}M fewer and those one to two years "
+        f"old {near['age_lt2y']['change'] / 1e6:.2f}M more",
+        f"their mean from 16 to 31 October ({halves[oct2]['buyback_near']:,.0f} NEAR a day) and from 1 to 11 November "
+        f"({halves[nov]['buyback_near']:,.0f}) is below the top before the step ({bn:,.0f}), while their median day is above the top "
+        f"of the median days ({ref['top_median']['buyback_near']:,.0f}) by {(med[oct2]['buyback_near'] / ref['top_median']['buyback_near'] - 1) * 100:.0f}% "
+        f"and {(med[nov]['buyback_near'] / ref['top_median']['buyback_near'] - 1) * 100:.0f}%",
+        f"rests on one day, {day(top_day['date'])} 2026, with {top_day['value']:,.0f} NEAR, {top_day['share_of_the_half'] * 100:.0f}% of its "
+        f"half-month; March's mean ({by_m['2026-03']['buyback_near_per_day']:,.0f} NEAR a day) rests on "
+        f"{day(by_m['2026-03']['largest_day_near']['date'])} in the same way ({by_m['2026-03']['largest_day_near']['value']:,.0f} NEAR, "
+        f"{by_m['2026-03']['largest_day_near']['share_of_the_month'] * 100:.0f}% of the month), and its median day is "
+        f"{by_m['2026-03']['buyback_near_per_day_median']:,.0f}",
+        f"March was {by_m['2026-03']['coverage'] * 100:.1f}% as well, April to July {min(spring) * 100:.1f}% to {max(spring) * 100:.1f}%",
+        f"fees a day against {ref['top']['fees_near']:,.0f}. By the median day as well ({med['2026-09-16..2026-09-30']['fees_near']:,.0f} and "
+        f"{med['2026-10-01..2026-10-15']['fees_near']:,.0f} NEAR against a top of {ref['top_median']['fees_near']:,.0f})",
+        f"but {(halves[nov]['price_usd'] / pr['day'] - 1) * 100:.0f}% above its price on the day of the step "
+        f"(${halves[nov]['price_usd']:.2f} against ${pr['day']:.2f}). After the step the price never fell below "
+        f"${pr['lowest_after_it']['value']:.2f} ({day(pr['lowest_after_it']['date'])})",
+        f"NearBlocks counted {pm['deleted_accounts']['2026-11-10']}. The keyless sample has one block of that day in which eight "
+        f"implicit accounts older than a year each sent a plain transfer to the same implicit account (block {b['height']}, at "
+        f"{b['time_utc'][-5:]} UTC; one of the {b['blocks_sampled_that_day']} blocks sampled that day",
+        f"February was deletions ({gone['2026-02']['deleted_accounts'] / 1e6:.2f} million by NearBlocks)",
+        f"which are set against the two lowest months of the base ({base['2026-05']['base'] / 1e6:.2f}M in May 2025 and "
+        f"{base['2026-06']['base'] / 1e6:.2f}M in June 2025) and came with the price's previous rise, from "
+        f"${price['2026-04']:.2f} a day on average in April 2026 to ${price['2026-06']:.2f} in June",
+        f"(${halves['2026-06-01..2026-06-15']['price_usd']:.2f} a day on average in it)",
+        f"{tv[0]:.1f}M NEAR a day in the first half of August, then {tv[1]:.1f}M, {tv[2]:.1f}M, {tv[3]:.1f}M and {tv[4]:.1f}M to 15 "
+        f"October, and {tv[5]:.1f}M and {tv[6]:.1f}M since, above their earlier top ({ref['top']['transfer_volume_near'] / 1e6:.1f}M)",
+        f"{min(nc):.1f} to {max(nc):.1f} a day by half-months in July and August 2026, {min(late):.0f} to {max(late):.0f} from 16 "
+        f"September to 31 October and {halves[nov]['new_contracts']:.1f} in the first 11 days of November",
+        f"the payer table has {dec['accounts']:,} self-paying accounts outside the app namespaces with one transaction in December "
+        f"2025, {dec['above_the_median_month']:,} above its median month ({dec['median_month']:,.0f}), "
+        f"{dec['share_of_the_month'] * 100:.1f}% of that month's self-paid transactions",
+        f"the nine months before the step are −{abs(dl['range_pct_change_without_them']):.1f}% instead of "
+        f"−{abs(st['range_pct_change']):.1f}%",
+        f"NearBlocks counted {gone['2024-12']['deleted_accounts']:,} in December 2024 and {gone['2025-01']['deleted_accounts']:,} in "
+        f"January 2025",
+    ]
+    missing = [q for q in quoted if q not in text]
+    assert not missing, f"THESIS.md does not quote these summary values: {missing}"
+    assert dl["range_pct_change_without_them"] < st["range_pct_change"] < 0       # taken out of the range only: a larger fall
+    assert halves[nov]["new_contracts"] == max(x["new_contracts"] for x in halves.values())   # "the highest half-month since 16 April"
+    in_readme = ["What held is the volume and the buybacks in USD; the buybacks in NEAR have held by the median day and not by the mean"]
+    assert oct2 in a["above_reference_top"]["buyback_usd"]
+    missing = [q for q in in_readme if q not in readme]
+    assert not missing, f"README.md does not quote these: {missing}"
+    in_notes = [f"(NearBlocks counted {pm['deleted_accounts']['2026-11-10']} that day)"]
     missing = [q for q in in_notes if q not in notes]
     assert not missing, f"PREDICTIONS.md does not quote these summary values: {missing}"

@@ -178,8 +178,13 @@ def windows(daily: pd.DataFrame, fees: pd.DataFrame, step_day: str | None = None
     for m in pd.period_range(start, end, freq="M"):
         a, b = max(start, m.start_time), min(end, m.end_time.normalize())
         bb = fees["holders_revenue"].loc[a:b]
+        bn = (bb / price.reindex(bb.index)).dropna()
         months[str(m)] = {"from": str(a.date()), "through": str(b.date()), "coverage": cover(a, b), "captured_share": captured(a, b),
-                          "buyback_usd_per_day": float(bb.mean()), "buyback_near_per_day": float((bb / price.reindex(bb.index)).mean()),
+                          "buyback_usd_per_day": float(bb.mean()), "buyback_near_per_day": float(bn.mean()),
+                          # a month's mean can rest on one day: the median day, and the largest day with its share
+                          "buyback_near_per_day_median": float(bn.median()),
+                          "largest_day_near": {"date": str(bn.idxmax().date()), "value": float(bn.max()),
+                                               "share_of_the_month": float(bn.max() / bn.sum()) if bn.sum() else float("nan")},
                           "price_usd": float(price.loc[a:b].mean())}
     out["by_month"] = months
     if step_day:
@@ -203,3 +208,83 @@ def windows(daily: pd.DataFrame, fees: pd.DataFrame, step_day: str | None = None
         out["reference_months"] = {"from": reference[0], "through": reference[1], "captured_share": captured(a, b),
                                    "coverage": cover(a, b)}
     return out
+
+
+def take(daily: pd.DataFrame, fees: pd.DataFrame, step_day: str | None, days: int = 90) -> dict | None:
+    """What NEAR keeps from each dollar of NEAR Intents volume, before and after the step in volume.
+
+    Revenue can grow because more volume passes or because more is kept from each dollar of it. The two are separated
+    here on the day the volume stepped up (`step_day`, found by the rule in thesis/autumn.py): the `days` before it
+    against every day from it to the last day all series cover. Revenue = volume x take, so the ratio of revenue per
+    day is the ratio of volume per day times the ratio of the take.
+
+    The last 30 days are also set against the 30 before them, for volume, gross fees and captured revenue (in USD and
+    in NEAR at each day's price): a level that "has held" above an old range can still be falling inside the new one.
+    """
+    if step_day is None or "intents_volume_usd" not in daily:
+        return None
+    last = covered_through(fees)
+    volume = daily["intents_volume_usd"].dropna()
+    if last is None or volume.empty:
+        return None
+    end = min(last, volume.index.max())
+    step = pd.Timestamp(step_day)
+    frame = pd.DataFrame({"volume": volume, "fees": fees["fees"], "revenue": fees["revenue"]}).loc[:end]
+    frame["revenue_near"] = frame["revenue"] / daily["price_usd"].reindex(frame.index)
+
+    def part(a: pd.Timestamp, b: pd.Timestamp) -> dict | None:
+        w = frame.loc[a:b]
+        n = int((b - a).days) + 1
+        if len(w.dropna(subset=["volume", "fees", "revenue"])) != n or not w["volume"].sum():
+            return None  # a hole in a series: no figure
+        return {"from": str(a.date()), "through": str(b.date()), "days": n,
+                "volume_usd_per_day": float(w["volume"].mean()), "revenue_usd_per_day": float(w["revenue"].mean()),
+                "take_bps": float(w["revenue"].sum() / w["volume"].sum() * 1e4),
+                "gross_fee_bps": float(w["fees"].sum() / w["volume"].sum() * 1e4),
+                "captured_share_of_gross_fees": float(w["revenue"].sum() / w["fees"].sum()) if w["fees"].sum() else float("nan")}
+
+    before, after = part(step - pd.Timedelta(days=days), step - pd.Timedelta(days=1)), part(step, end)
+    if not before or not after:
+        return None
+    out = {"step_day": str(step.date()), "before": before, "after": after,
+           "volume_ratio": after["volume_usd_per_day"] / before["volume_usd_per_day"],
+           "revenue_ratio": after["revenue_usd_per_day"] / before["revenue_usd_per_day"],
+           "take_ratio": after["take_bps"] / before["take_bps"]}
+    monthly = frame.resample("MS").sum()
+    monthly = monthly[(monthly.index >= step.to_period("M").start_time - pd.DateOffset(months=3)) & (monthly.index < end.to_period("M").start_time)]
+    out["take_bps_by_month"] = {str(m.to_period("M")): float(r["revenue"] / r["volume"] * 1e4) for m, r in monthly.iterrows() if r["volume"]}
+    recent, earlier = frame.loc[end - pd.Timedelta(days=29):end], frame.loc[end - pd.Timedelta(days=59):end - pd.Timedelta(days=30)]
+    if len(recent.dropna()) == 30 and len(earlier.dropna()) == 30:
+        out["last_30_days_vs_the_30_before"] = {
+            "through": str(end.date()),
+            **{f"{k}_pct_change": float((recent[c].sum() / earlier[c].sum() - 1) * 100)
+               for k, c in (("volume", "volume"), ("gross_fees", "fees"), ("revenue_usd", "revenue"), ("revenue_near", "revenue_near"))}}
+    return out
+
+
+# House of Stake proposal HSP-029: the maximum annual issuance goes from 2.5% to 1.6% on a 24-month per-epoch ramp
+# that starts one quarter after ratification. Status "Succeeded" in the proposal's own header on 2026-11-14.
+ISSUANCE_PROPOSAL = {
+    "id": "HSP-029", "target_max_issuance": 0.016, "ramp_months": 24, "grace_days": 90,
+    "source": "https://gov.near.org/t/hsp-029-establish-a-24-month-issuance-ramp-to-a-1-6-target-rate-of-near-token-emissions/42644",
+}
+
+
+def issuance_cut(v: dict, protocol: dict | None) -> dict | None:
+    """What the buyback coverage would be at the issuance the proposal ends at, everything else unchanged.
+
+    The maximum issuance in force is read from the protocol's own configuration (`protocol`, see wallets.fetch_protocol),
+    not typed in. Net new supply is taken to scale with the maximum: the measured 2.48% a year is the 2.5% maximum less
+    burned fees, and the burn is small. This is arithmetic on one parameter, not a forecast: revenue, price and the
+    burn are held where they are, and the ramp takes 24 months to reach its end.
+    """
+    if not protocol or not v.get("buyback_coverage_of_new_supply"):
+        return None
+    num, den = protocol["max_inflation_rate"]
+    now = num / den
+    scale = ISSUANCE_PROPOSAL["target_max_issuance"] / now
+    return {**ISSUANCE_PROPOSAL, "max_issuance_in_force": now, "read_at_utc": protocol["read_at_utc"],
+            "protocol_version": protocol["protocol_version"], "in_force_yet": bool(abs(now - ISSUANCE_PROPOSAL["target_max_issuance"]) < 1e-9),
+            "net_new_supply_scale": scale,
+            "coverage_at_target": v["buyback_coverage_of_new_supply"] / scale,
+            "growth_needed_at_target": v["growth_needed_to_cover_new_supply"] * scale}

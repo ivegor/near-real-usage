@@ -13,7 +13,7 @@ from pathlib import Path
 
 from . import census, value
 from .charts import Chart
-from .sources import SOURCES
+from .sources import NEARBLOCKS_V3, SOURCES, V1_SUNSET
 
 ROOT = Path(__file__).resolve().parent.parent
 NEARBLOCKS, DEFILLAMA = SOURCES["nearblocks_charts"], SOURCES["defillama_intents"]
@@ -124,6 +124,15 @@ def render(charts: list[Chart], summary: dict, out: Path) -> Path:
             + "</code>, archival RPC node <code>" + html.escape(census.RPC_URL) + "</code>, transaction index <code>"
             + html.escape(census.TX_URL) + "</code>; results in <code>data/raw/census_*</code> and "
             "<code>data/raw/revenue_wallets.json</code></li>")
+    ended = summary.get("series_ended") or {}
+    ended_note = ""
+    if ended:
+        cols = ", ".join(f"{html.escape(c.replace('_', ' '))} ({html.escape(d)})" for c, d in sorted(ended.items()))
+        ended_note = (f'<p class="sub"><b>Some series ended.</b> NearBlocks switched off the API they came from on {V1_SUNSET}, and '
+                      f"the API that replaced it does not carry them. Last day with a value: {cols}. Figures built on "
+                      "them cover the days up to that date; transactions, fees, price and supply continue.</p>")
+    src += "".join(f'<li><code>{html.escape(k)}</code>: <a href="{html.escape(v)}">{html.escape(v)}</a></li>'
+                   for k, v in NEARBLOCKS_V3.items())
     page = f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>NEAR Real Usage: evidence dashboard</title>
@@ -143,6 +152,7 @@ table{{border-collapse:collapse;font-size:13px;width:100%}} td,th{{border-top:1p
 {html.escape(summary.get('population', {}).get('query_end', 'n/a'))}. Rebuilt daily by <code>python -m thesis build</code>.
 The argument: {_repo_link('THESIS.md')} (its numbers are a snapshot as of {SNAPSHOT}; the daily figures on this page move on).
 Code and data: <a href="{REPO_URL}">{REPO_URL.split('//')[1]}</a>.</p>
+{ended_note}
 {''.join(cards)}
 {pred_card}
 <section class="card"><h2>Sources</h2><ul>{src}

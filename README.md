@@ -10,7 +10,8 @@ NEAR, account by account over the whole chain, and tests with re-runnable code w
 stayed, which still send 43% of transactions (in October, close to their lowest month), and a small amount of
 self-paid, financial activity carried by a few hundred heavy accounts. That activity grew in autumn 2026 in two steps: NEAR Intents volume and the buybacks it funds
 stepped up on 19 August and have held, while the load on the chain (its fees and gas) ran high only for the four weeks of the price
-rally, from 16 September to 15 October. The revenue it earns covers 15% to 18% of the new NEAR issued, depending on the
+rally, from 16 September to 15 October. What held is the volume and the buybacks in USD; the buybacks in NEAR have
+held by the median day and not by the mean. The revenue it earns covers 15% to 18% of the new NEAR issued, depending on the
 window. That is a narrow case; nine dated predictions say what would widen it or close it.
 
 **Key findings (snapshot 2026-11-11; accounts: October 2026 vs October 2025, three-month means in brackets):**
@@ -43,7 +44,7 @@ window. That is a narrow case; nine dated predictions say what would widen it or
   wallet apps still send 43% (Sweat alone 26%), or 45% counting the one-off deletion of old KaiChing accounts, in a
   month close to their low (by namespace 34% in October against 45% to 56% a month from April to August), and
   November started with more: in its first 11 days HOT's namespace sent 196 thousand transactions a day against
-  100 thousand in October.
+  100 thousand in October. HOT's lowest month was September, at a change of relayer; the return began in October.
 * NEAR Intents volume: **$56M → $129M a day**, October to October, but that base was the middle of a ramp-up: the
   volume is level with November 2025 ($122M) and +73% on the nine months in between ($74.5M). It stepped up on 19
   August, as the price began to move and a month before it doubled, and has held since. Usage does **not** lead price: 6 of 85 weekly
@@ -57,6 +58,10 @@ window. That is a narrow case; nine dated predictions say what would widen it or
   over other windows; $11.2M a year at the pace of the whole programme). In NEAR their step was 1.6 times, in USD 3.5
   times: most of it is the price. That figure is DefiLlama's; read from the chain with no key, the three wallets the
   revenue arrives at grew by 1,456,744 NEAR over the same 90 days, 18.3% of the new supply (15.4% over the last 30).
+  The step in revenue since 19 August is 1.9 times more volume and a 1.6 times higher take (2.62 → 4.27 basis points
+  of volume), which two other entries trace to one new, incentivised channel; over the last 30 days volume is down 22%
+  and captured revenue 20%. At the issuance the approved HSP-029 ends at (1.6% a year, not yet in force) the 18% would
+  be 28%.
 
 Full argument, evidence against, and kill criteria: [`THESIS.md`](THESIS.md). Nine dated predictions, their
 thresholds reference levels taken from the data or natural lines such as parity, scored by the build (five from
@@ -94,7 +99,8 @@ same commands: uv installs Python 3.12.12 and the locked libraries itself, with 
 | `make serve` | The tests and `python -m thesis build --offline` run while the image is built; the container serves the rebuilt `docs/` on <http://localhost:8000> |
 | `make build` (network) | `data/raw/*.json` (exact API responses), `data/daily.csv`, `docs/*.png`, `docs/index.html`, `docs/summary.json`; stdout gets a short digest: one sentence per chart and the status of the nine predictions. If an API is down, the build says so and uses the committed copy |
 | `make offline` | Same outputs rebuilt from the committed `data/raw/` files, no network |
-| `make test` | 125 tests: parsing, metric formulas, a planted 3-week lead recovered by the lead-lag test, the account census on a hand-made table, block parsing with relayed transactions, the scoring of all nine predictions, the numbers quoted in THESIS.md, PREDICTIONS.md and this README against the frozen copy of the summary, full offline build, the build on tables extended the way a later run of the queries extends them, and one Python version named the same in `.python-version`, the Dockerfile, `pyproject.toml` and this README |
+| `make test` | 134 tests: parsing, metric formulas, a planted 3-week lead recovered by the lead-lag test, the account census on a hand-made table, block parsing with relayed transactions, the scoring of all nine predictions, the numbers quoted in THESIS.md, PREDICTIONS.md and this README against the frozen copy of the summary, full offline build, the build on tables extended the way a later run of the queries extends them, and one Python version named the same in `.python-version`, the Dockerfile, `pyproject.toml` and this README |
+| `make protocol` (network, one request, no key) | `data/raw/protocol_config.json`: the maximum issuance in force, read from the protocol's own configuration; the build sets the approved cut (HSP-029) against it |
 | `make wallets` (network, about 2 minutes, no key) | `data/raw/revenue_wallets.json`: what NEAR's three revenue wallets hold at the start and the end of the 90-day window and 30 days before its end, read from an archival RPC node. The build sets their growth against the new supply and against DefiLlama's revenue series |
 | `make outcomes` (network, about 5 minutes, no key) | `data/raw/census_outcomes.csv`: how the transactions to NEAR Intents in the sampled blocks ended, by sender |
 | `make census` (network, about 1.5 hours, no key, resumable) | `data/raw/census_sample.csv`, `census_existence.csv` and `census_meta.json`: the keyless block sample behind the independent check; `make thesis ARGS="census --seed N"` draws another sample |
@@ -131,7 +137,11 @@ download a source does not publish (`--require-fresh`), so the page never falls 
 * NEAR public BigQuery dataset `bigquery-public-data.crypto_near_mainnet_us`, tables `transactions` and
   `transaction_actions` (the five queries in `sql/`). Fresh to within minutes in November 2026.
   Results are committed in `data/bq/`. Do not query the `accounts` table: one query on it scans 1.03 TB.
-* NearBlocks daily network charts: `https://api.nearblocks.io/v1/charts` (no key needed).
+* NearBlocks daily network charts: `https://api.nearblocks.io/v1/charts` (no key needed). NearBlocks switches `/v1`
+  off on 2026-11-22; from then the build continues from `https://api.nearblocks.io/v3/` (`block-stats`, `txn-stats`,
+  `address-stats`, `price-stats`) for the columns that mean the same there, and the series of signers, new and
+  deleted accounts end (see "Limits" in THESIS.md). The v3 replies saved in `data/raw/` also give NearBlocks' own
+  daily count of relayed users, used as a second source for the census.
 * DefiLlama NEAR Intents volume: `https://api.llama.fi/summary/dexs/near-intents`.
 * DefiLlama NEAR Intents fees, captured revenue and buybacks: `https://api.llama.fi/summary/fees/near-intents`
   (`python -m thesis fetch-value` refreshes the saved copies).

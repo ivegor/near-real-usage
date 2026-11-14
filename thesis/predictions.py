@@ -64,7 +64,7 @@ def baselines(daily: pd.DataFrame, fees: pd.DataFrame | None, census: pd.DataFra
 
 
 def step(daily: pd.DataFrame, fees: pd.DataFrame | None = None, census: pd.DataFrame | None = None,
-         seg: pd.DataFrame | None = None) -> dict:
+         seg: pd.DataFrame | None = None, deletion_months: list[str] | None = None) -> dict:
     """The month after the reference range (September 2026): what stepped up, and what the NEAR price did meanwhile.
 
     Rule 1 of PREDICTIONS.md calls that month "the step". The price rose in the same month, so the step may be the
@@ -140,8 +140,61 @@ def step(daily: pd.DataFrame, fees: pd.DataFrame | None = None, census: pd.DataF
                 a_, b_ = (fam["implicit"] - woke_fam)[months], (fam["implicit"] - woke_fam)[earlier]
                 by_family["implicit"]["range_pct_change_without_dormant_implicit"] = (
                     float((a_.mean() / b_.mean() - 1) * 100) if b_.mean() else float("nan"))
+            # Inside each family, by age and by activity the month before: who sent the transactions that changed. A
+            # fall in accounts under a year old that does not reappear among the older ones is a smaller inflow; a rise
+            # in one age class matched by a fall in the class below is one cohort growing older, not new old users.
+            young = core_rows["age"].isin(["m0", "lt30", "lt1y"])
+            part = {"under_a_year": young,
+                    "older_active_the_month_before": ~young & (core_rows["prev_month"] == "returning"),
+                    "older_not_active_the_month_before": ~young & (core_rows["prev_month"] == "not_returning")}
+            d_rows = core_rows["txs"] - core_rows["relayed_txs"]
+            for f in fam.columns:
+                is_f = core_rows["family"] == f
+                cut = {}
+                for name, mask in [*part.items(), *((f"age_{a}", core_rows["age"] == a) for a in population.AGES)]:
+                    x = d_rows[is_f & mask].groupby(core_rows["month"]).sum()
+                    a_, b_ = float(x.reindex(months).fillna(0).sum()), float(x.reindex(earlier).fillna(0).sum())
+                    cut[name] = {"range": int(a_), "a_year_earlier": int(b_), "change": int(a_ - b_),
+                                 "pct_change": float((a_ / b_ - 1) * 100) if b_ else float("nan")}
+                by_family[f]["by_age_and_activity"] = cut
             out["core_self_paid_txs"]["range_by_family"] = by_family
             out["core_self_paid_txs"]["range_change_txs"] = int(now.sum() - then.sum())
+            # The months that were above the year before: where their base months stood among the months of the base,
+            # and among every month of the series, lowest first; and the price month by month across the range.
+            base = then.sort_values()
+            every = direct[[m for m in direct.index if str(first - year) <= m <= str(before)]].sort_values()
+            out["core_self_paid_txs"]["base_of_the_months_above"] = {
+                m: {"base_month": e, "base": int(then[e]), "rank_lowest_first_among_base_months": int(list(base.index).index(e)) + 1,
+                    "base_months": int(len(base)), "rank_lowest_first_among_all_months": int(list(every.index).index(e)) + 1,
+                    "all_months": int(len(every))}
+                for m, e in zip(months, earlier) if now[m] > then[e]}
+            if len(price):
+                pm = price.groupby(price.index.to_period("M")).mean()
+                out["core_self_paid_txs"]["price_usd_by_month"] = {m: float(pm[pd.Period(m, "M")]) for m in months
+                                                                    if pd.Period(m, "M") in pm.index}
+            if seg is not None and deletion_months:
+                # Mass deletions are paid by the accounts deleted, so a month of them sits in the self-paid series. The
+                # payer table counts self-paying accounts outside the app namespaces with exactly one transaction; in a
+                # month of deletions the excess over its median month is the size of the one-off. The table starts later
+                # than the base year, so this can be taken out of the range only, and is published as one end.
+                one = seg[(seg["namespace"] == "rest") & (seg["payer"] == "self") & (seg["txs_in_month"].astype(str) == "1")]
+                one = one.groupby("month")["accounts"].sum()
+                usual = float(one.median()) if len(one) else float("nan")
+                hit = {m: {"accounts": int(one[m]), "median_month": usual, "above_the_median_month": int(one[m] - usual),
+                           "share_of_the_month": float((one[m] - usual) / direct[m])}
+                       for m in months if m in deletion_months and m in one.index and one[m] > usual}
+                # February's burst is the dormant-implicit filter's: listed, but not taken out a second time here
+                feb = out["core_self_paid_txs"].get("range_pct_change_without_dormant_implicit")
+                dormant_peak = (woke["txs"] - woke["relayed_txs"]).reindex(months).fillna(0).idxmax()
+                take = {m: v for m, v in hit.items() if m != dormant_peak}
+                less = now.copy()
+                for m, v in take.items():
+                    less[m] -= v["above_the_median_month"]
+                out["core_self_paid_txs"]["deletions_in_the_range"] = {
+                    "months": hit, "taken_out": list(take), "left_to_the_dormant_filter": [m for m in hit if m not in take],
+                    "base_months_with_deletions": [m for m in earlier if m in deletion_months],
+                    "payer_table_first_month": str(one.index.min()) if len(one) else None,
+                    "range_pct_change_without_them": float((less.mean() / then.mean() - 1) * 100)}
     if seg is not None:
         s = segments.series(seg)
         out["regular_self_paying_accounts"] = pair(s["regular_accounts"])
