@@ -150,6 +150,9 @@ refuse a result that would drop months). `sql/top_accounts.sql` names two months
 January 2027 and January 2026, and the rows of the result are added to `data/bq/top_accounts_result.csv` next to the
 October rows that THESIS.md quotes. `tests/test_rerun.py` runs the whole build on tables extended this way, and the
 tests of the October figures read the tables cut at October, so they keep passing.
+The frequency query records `query_end` in its result, and the importer preserves it. Only months whose last day
+is covered enter the frequency summary, its minima and averages, its chart, or B1. The original saved result has
+no such column and is explicitly treated as ending on 2026-10-31; later imports require the metadata.
 NearBlocks switches off the API the daily series comes from (`/v1/charts`) on 2026-11-22, before most check dates.
 From then the build reads the API that replaces it for the columns that mean the same there (transactions, fees, gas,
 price, market capitalisation, total supply), which is all that A1 to A4 and the check of the BigQuery months against
@@ -185,6 +188,14 @@ somewhere in a week is not enough. The unfinished week containing the check date
 week for 2027-02-11 ends on 2027-02-07. Until the completed weeks are usable A5 stays open; otherwise it could be
 scored on the old weeks alone. This rule was added and corrected on 2026-11-14, before the check date. Lags refer to
 calendar weeks even across gaps, rather than to positions in a series with missing weeks removed.
+The history present at the freeze must also remain intact: every daily observation from each source's first usable
+date through 2026-11-11 is required, including signers and new accounts after their endpoint stops. These fixed
+coverage dates are recorded in `A5_HISTORY_START`. Losing an old observation leaves A5 open even if hundreds of
+other observations remain; a shorter history cannot silently turn a failed prediction into a held one.
+The displayed reference levels and monthly step also require every calendar day. A gap in any reference month
+leaves the whole range unknown, rather than taking its maximum from the surviving months. Missing buybacks are
+not zero; price endpoints are the exact first and last days of the step month, with positive finite quotes. These
+coverage checks affect the explanatory calculations, not the frozen thresholds in `predictions.csv`.
 What a miss on A5 would mean, said before the date: A5 is a screen, not the test of THESIS.md. It counts lags
 outside the noise band with no correction for testing many lags at once, and two neighbouring lags of one series are
 not two independent confirmations. With no lead at all it would fail in 3.5% of runs if the lags were independent

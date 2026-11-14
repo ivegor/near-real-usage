@@ -41,7 +41,7 @@ def build(offline: bool, require_fresh: bool = False) -> None:
             summary["population"]["one_day"] = day
             if relayed is not None and pd.Timestamp(day["date"]) in relayed.index:
                 row = relayed.loc[pd.Timestamp(day["date"])]
-                day["nearblocks_v3"] = {k: int(row[k]) for k in ("relayed_txns", "relayed_users", "relayers", "accounts_with_relayed_users")}
+                day["nearblocks_v3"] = population.observed_counts(row, ("relayed_txns", "relayed_users", "relayers", "accounts_with_relayed_users"))
         totals = population.totals_check(pop, daily)  # BigQuery month by month against the aggregator
         if totals:
             summary["population"]["totals_check"] = totals
@@ -51,8 +51,9 @@ def build(offline: bool, require_fresh: bool = False) -> None:
             days = [pd.Timestamp(fall[k]) for k in ("day_before", "date")]
             if relayed is not None and all(d in relayed.index for d in days):
                 # the same step in the aggregator's count of relayed users: the side its signer count cannot see
-                fall["relayed_users"] = {"before": int(relayed.loc[days[0], "relayed_users"]), "after": int(relayed.loc[days[1], "relayed_users"])}
-                fall["relayed_txns"] = {"before": int(relayed.loc[days[0], "relayed_txns"]), "after": int(relayed.loc[days[1], "relayed_txns"])}
+                for column in ("relayed_users", "relayed_txns"):
+                    fall[column] = {label: population.observed_counts(relayed.loc[d], (column,))[column]
+                                    for label, d in zip(("before", "after"), days)}
         gone = population.deletions(summary["population"], daily)  # what the aggregator counted as deleted in the bursts
         if gone:
             summary["population"]["deleted_accounts"] = gone
@@ -147,7 +148,7 @@ def build(offline: bool, require_fresh: bool = False) -> None:
                              sample=cs[0] if cs else None, windows=cs[2].get("windows") if cs else None,
                              seed=cs[2].get("seed", census.SEED) if cs else 0, census_per_day=census_per_day)
         if a:
-            if relayed is not None:  # the same one-day moves in the aggregator's defined count of users behind relayers
+            if relayed is not None and a["reference"]["from"] is not None:
                 a["one_day_moves_relayed"] = {c: autumn.one_day_moves(relayed[c].dropna(), pd.Timestamp(a["reference"]["from"]),
                                                                       min(daily.index.max(), relayed.index.max()))
                                               for c in ("relayed_users", "relayed_txns") if c in relayed}

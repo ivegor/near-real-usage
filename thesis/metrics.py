@@ -10,6 +10,7 @@ import pandas as pd
 def add_derived(daily: pd.DataFrame) -> pd.DataFrame:
     """Usage-quality metrics derived from the raw daily series."""
     d = daily.copy()
+    d["price_usd"] = d["price_usd"].where(np.isfinite(d["price_usd"]) & (d["price_usd"] > 0))
     d["returning_accounts"] = (d["active_accounts"] - d["new_accounts"]).clip(lower=0)
     d["returning_share"] = d["returning_accounts"] / d["active_accounts"]
     d["tx_per_active"] = d["txns"] / d["active_accounts"]
@@ -24,7 +25,35 @@ def add_derived(daily: pd.DataFrame) -> pd.DataFrame:
 
 
 def rolling(d: pd.DataFrame, window: int = 30) -> pd.DataFrame:
-    return d.rolling(window, min_periods=max(1, window // 2)).mean()
+    return d.asfreq("D").rolling(window, min_periods=window).mean()
+
+
+def calendar_window(series: pd.Series, start, end) -> pd.Series:
+    """One observation per expected day; absent and non-finite values remain missing."""
+    return series.reindex(pd.date_range(start, end, freq="D")).replace([np.inf, -np.inf], np.nan)
+
+
+def complete_mean(series: pd.Series) -> float:
+    return float(series.mean()) if len(series) and series.notna().all() else float("nan")
+
+
+def finite_ratio(numerator: float, denominator: float) -> float:
+    """An undefined ratio is unknown; observed zero numerators remain zero."""
+    if not np.isfinite(numerator) or not np.isfinite(denominator) or denominator == 0:
+        return float("nan")
+    result = numerator / denominator
+    return float(result) if np.isfinite(result) else float("nan")
+
+
+def calendar_months(series: pd.Series, first, last, stat: str = "mean") -> pd.Series:
+    """Monthly means or sums, unavailable unless every calendar day is finite (zero is valid)."""
+    first, last = pd.Period(first, "M"), pd.Period(last, "M")
+    days = calendar_window(series, first.start_time, last.end_time.normalize())
+    grouped = days.resample("ME")
+    result = getattr(grouped, stat)()
+    result = result.where(grouped.count() == result.index.days_in_month)
+    result.index = result.index.to_period("M")
+    return result
 
 
 def period_change(series: pd.Series, days: int = 90, lookback_days: int = 365) -> dict:
@@ -33,22 +62,26 @@ def period_change(series: pd.Series, days: int = 90, lookback_days: int = 365) -
     Medians of the same two windows are reported too, as a check that a few extreme days
     do not drive the change.
     """
-    s = series.dropna()
+    s = series.replace([np.inf, -np.inf], np.nan).dropna()
     if s.empty:
         return {"recent": np.nan, "prior": np.nan, "pct_change": np.nan, "median_pct_change": np.nan}
     end = s.index.max()
-    recent = s[(s.index > end - pd.Timedelta(days=days)) & (s.index <= end)]
+    recent = calendar_window(s, end - pd.Timedelta(days=days - 1), end)
     p_end = end - pd.Timedelta(days=lookback_days)
-    prior = s[(s.index > p_end - pd.Timedelta(days=days)) & (s.index <= p_end)]
-    r, p = recent.mean(), prior.mean()
+    prior = calendar_window(s, p_end - pd.Timedelta(days=days - 1), p_end)
+    r, p = complete_mean(recent), complete_mean(prior)
     pct = (r / p - 1) * 100 if prior.size and pd.notna(p) and p != 0 else np.nan
-    rm, pm = recent.median(), prior.median()
+    rm = recent.median() if recent.notna().all() else np.nan
+    pm = prior.median() if prior.notna().all() else np.nan
     mpct = (rm / pm - 1) * 100 if prior.size and pd.notna(pm) and pm != 0 else np.nan
     return {
         "recent": float(r),
         "prior": float(p) if pd.notna(p) else np.nan,
         "pct_change": float(pct) if pd.notna(pct) else np.nan,
         "median_pct_change": float(mpct) if pd.notna(mpct) else np.nan,
+        "from": str(recent.index.min().date()), "through": str(end.date()),
+        "prior_from": str(prior.index.min().date()), "prior_through": str(p_end.date()),
+        "expected_days": days, "recent_days": int(recent.count()), "prior_days": int(prior.count()),
     }
 
 
@@ -129,8 +162,12 @@ def lead_lag(x: pd.Series, price: pd.Series, max_lag: int = 8) -> pd.DataFrame:
 def _p_value(corr: float, n: float) -> float:
     """Two-sided p-value of a correlation under a zero true correlation, by Fisher's z (normal approximation).
     `n` may be an effective number of weeks (bartlett_scan), not a whole number."""
-    if n <= 3 or pd.isna(corr) or abs(corr) >= 1:
+    if n <= 3 or not math.isfinite(corr):
         return float("nan")
+    if abs(corr) > 1 and not math.isclose(abs(corr), 1, rel_tol=0, abs_tol=1e-14):
+        return float("nan")
+    if abs(corr) >= 1:
+        return 0.0  # Fisher's z tends to infinity at either perfect correlation
     return float(math.erfc(abs(math.atanh(corr)) * math.sqrt(n - 3) / math.sqrt(2)))
 
 
@@ -171,7 +208,21 @@ def best_lead(ll: pd.DataFrame) -> dict:
             {"lag_weeks": int(k), "corr": round(float(c), 3)} for k, c in zip(outside["lag_weeks"], outside["corr"])
         ],
         "p_values": [float(v) for v in ll["p"]] if "p" in ll else [],
+        "lags": [int(k) for k in ll["lag_weeks"]],
     }
+
+
+def holm_leading_lags(leads: dict, alpha: float = 0.05) -> list[dict]:
+    """Identify positive lags surviving Holm over the entire family, including negative and zero lags."""
+    tests = sorted((p, name, lag) for name, v in leads.items()
+                   for lag, p in zip(v.get("lags", []), v.get("p_values", [])) if np.isfinite(p))
+    significant = []
+    for i, (p, name, lag) in enumerate(tests):
+        if p > alpha / (len(tests) - i):
+            break
+        if lag > 0:
+            significant.append({"metric": name, "lag_weeks": lag, "p": p})
+    return significant
 
 
 def decoupling_table(d: pd.DataFrame, days: int = 90, lookback_days: int = 365) -> pd.DataFrame:
@@ -224,16 +275,20 @@ def checks(daily: pd.DataFrame, days: int = 90) -> dict:
 
 def month_change(series: pd.Series) -> dict:
     """Mean of the last complete calendar month vs the same month a year earlier (a fixed, dated comparison)."""
-    s = series.dropna()
+    s = series.replace([np.inf, -np.inf], np.nan).dropna()
     if s.empty:
         return {"month": None, "recent": np.nan, "prior": np.nan, "pct_change": np.nan}
     end = s.index.max()
     month = end.to_period("M") if (end + pd.Timedelta(days=1)).day == 1 else end.to_period("M") - 1
-    r = s[s.index.to_period("M") == month].mean()
-    p = s[s.index.to_period("M") == month - 12].mean()
+    recent = calendar_window(s, month.start_time, month.end_time.normalize())
+    prior_month = month - 12
+    prior = calendar_window(s, prior_month.start_time, prior_month.end_time.normalize())
+    r, p = complete_mean(recent), complete_mean(prior)
     pct = (r / p - 1) * 100 if pd.notna(p) and p else np.nan
     return {"month": str(month), "recent": float(r), "prior": float(p) if pd.notna(p) else np.nan,
-            "pct_change": float(pct) if pd.notna(pct) else np.nan}
+            "pct_change": float(pct) if pd.notna(pct) else np.nan,
+            "recent_days": int(recent.count()), "expected_days": len(recent),
+            "prior_days": int(prior.count()), "prior_expected_days": len(prior)}
 
 
 def month_to_date_change(series: pd.Series) -> dict | None:
@@ -242,16 +297,16 @@ def month_to_date_change(series: pd.Series) -> dict | None:
     A calendar-month comparison waits for the month to end. When last year's base was rising month by month, the
     days already in hand say where the year-on-year figure is heading.
     """
-    s = series.dropna()
+    s = series.replace([np.inf, -np.inf], np.nan).dropna()
     if s.empty:
         return None
     end = s.index.max()
     if (end + pd.Timedelta(days=1)).day == 1:
         return None
     start = end.replace(day=1)
-    now = s[start:end]
-    then = s[start - pd.DateOffset(years=1):end - pd.DateOffset(years=1)]
-    if not len(now) or len(then) != len(now):
+    now = calendar_window(s, start, end)
+    then = calendar_window(s, start - pd.DateOffset(years=1), end - pd.DateOffset(years=1))
+    if len(then) != len(now) or not now.notna().all() or not then.notna().all():
         return None
     r, p = float(now.mean()), float(then.mean())
     return {"from": str(start.date()), "through": str(end.date()), "days": int(len(now)), "recent": r, "prior": p,
@@ -281,6 +336,7 @@ def summarize(daily: pd.DataFrame) -> dict:
         "lead_vs_price": leads,
         # all lags of all metrics as one family of tests
         "lead_vs_price_holm": holm([p for v in leads.values() for p in v.get("p_values", [])]),
+        "lead_vs_price_holm_leads": holm_leading_lags(leads),
         # reported apart from the scan above: USD fees contain the price, so this correlation is mechanical
         "lead_fees_usd_mechanical": best_lead(lead_lag(d["fees_usd"], d["price_usd"])),
         # The band and the p-values treat the weeks as independent. Correlation of each series' weekly change with the

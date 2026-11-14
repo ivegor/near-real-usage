@@ -168,6 +168,7 @@ def bq_results(tmp_path, half_reached=True, heavy=3):
                         ("2027-01", "tg", "self", "10-99", 70_000, 900_000, 800_000), ("2027-01", "rest", "sponsored", "10-99", 40_000, 500_000, 0)],
                        columns=["month", "namespace", "payer", "txs_in_month", "accounts", "txs", "self_paid_txs"])
     assert seg["txs"].sum() == JANUARY_TXS
+    seg["query_end"] = "2027-02-05"
     result = tmp_path / "top.csv"
     k = JANUARY_TXS // 1000      # the same month in the other table: the shares below are thousandths of it
     heavy_txs = (700 if half_reached else 400) * k

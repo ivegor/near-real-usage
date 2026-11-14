@@ -10,12 +10,14 @@
 --
 -- Output: one row per month; `cells` is ';'-separated namespace|payer|frequency|accounts|transactions|self-paid.
 -- Cost: 91.28 GB (dry run, 2026-11-13). `python -m thesis bq-freq` unpacks the result into data/bq/payer_frequency.csv.
+-- Move this date on a later run; it is saved with the result so partial months cannot become monthly comparisons.
+DECLARE query_end DATE DEFAULT '2026-10-31';
 WITH transaction_flags AS (
   -- One row per transaction, including Delegate after another action. Do not filter to action zero.
   SELECT block_date, transaction_hash, signer_account_id, receiver_account_id,
     MAX(CASE WHEN action_kind = 'DELEGATE_ACTION' THEN 1 ELSE 0 END) AS relayed
   FROM `bigquery-public-data.crypto_near_mainnet_us.transaction_actions`
-  WHERE block_date BETWEEN '2025-08-01' AND '2026-10-31'
+  WHERE block_date BETWEEN '2025-08-01' AND query_end
   GROUP BY block_date, transaction_hash, signer_account_id, receiver_account_id
 ),
 am AS (
@@ -38,7 +40,7 @@ g AS (
   FROM am
   GROUP BY 1, 2, 3, 4
 )
-SELECT FORMAT_DATE('%Y-%m', m) AS m,
+SELECT FORMAT_DATE('%Y-%m', m) AS m, CAST(query_end AS STRING) AS query_end,
   STRING_AGG(FORMAT('%s|%s|%s|%d|%d|%d', ns, payer, freq, accounts, txs, self_txs), ';' ORDER BY ns, payer, freq) AS cells
 FROM g
 GROUP BY m

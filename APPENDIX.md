@@ -302,11 +302,15 @@ why "buybacks" is its label and not a measurement here.
   day on average in it); the exception is the count of new contracts. The chain's fees in NEAR and the gas it burned
   are above that top in the two half-months from 16 September to 15 October and in no other: 1,268 and 1,750 NEAR of
   fees a day against 1,006. By the median day as well (1,212 and 1,146 NEAR against a top of 949), so the burst is
-  not a few days of it. Its transactions, counted without
-  deleted accounts (each deletion is one transaction) in every half-month, are above it only from 16 to 30 September:
+  not a few days of it. A conditional deletion scenario subtracts one transaction for each deleted account on the
+  same day, symmetrically in every half-month. This is not a measured count of transactions without deletions:
+  a transaction can produce several deletion receipts, and receipts can execute on another day. Under that assumption,
+  the transaction rate is above its reference top only from 16 to 30 September:
   887 thousand a day against a top of 867 thousand, and 834 thousand in the first half of October, when the deletion of
   old KaiChing accounts lifted the count as reported to 872 thousand. In the second half of October the chain was back
-  at 596 thousand transactions and 823 NEAR of fees a day, when the price was still $4.76 on average. Native NEAR
+  at a scenario rate of 596 thousand transactions and 823 NEAR of fees a day, when the price was still $4.76 on average.
+  The saved aggregates do not establish the scenario's error; missing deletion counts leave its result unavailable.
+  Native NEAR
   transfers, counted in NEAR, came and went with the load: 17.1M NEAR a day in the first half of August, then 25.4M,
   45.5M, 87.6M and 66.7M to 15 October, and 37.7M and 31.6M since, above their earlier top (53.0M) only from 16
   September to 15 October. On the keyless sample the exchange rose earlier, from 1 September: 50 thousand

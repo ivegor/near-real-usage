@@ -236,7 +236,8 @@ def test_unpack_refuses_a_result_that_drops_months(tmp_path):
     first.write_text("m,cells\n2026-09,rest|self|n10_99|3|90|80\n2026-10,rest|self|n1k_9k|2|5000|4900\n")
     segments.unpack(first, out)
     later = tmp_path / "later.csv"
-    later.write_text("m,cells\n2026-10,rest|self|n1k_9k|2|5000|4900\n2026-11,rest|self|n1|4|4|4\n")
+    later.write_text("m,query_end,cells\n2026-10,2026-11-30,rest|self|n1k_9k|2|5000|4900\n"
+                     "2026-11,2026-11-30,rest|self|n1|4|4|4\n")
     import pytest
     with pytest.raises(SystemExit, match="first date unchanged"):
         segments.unpack(later, out)

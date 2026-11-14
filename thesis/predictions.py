@@ -13,7 +13,7 @@ import math
 import operator
 import re
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import Decimal, localcontext
 from pathlib import Path
 
 import numpy as np
@@ -30,6 +30,13 @@ def sha256(path: Path | None = None) -> str:
 
 
 FROZEN_DATA_THROUGH = "2026-11-11"  # the last day of the daily data when predictions.csv was frozen
+# Coverage of the saved replies used at the freeze, not thresholds or revised observations. Each of these
+# intervals has a finite daily value throughout; price starts at its first positive quote. Keep these dates
+# when downloads or the thesis snapshot move on: losing old history must not make A5 easier to hold.
+A5_HISTORY_START = {
+    "price_usd": "2020-10-14", "active_accounts": "2020-07-21", "new_accounts": "2020-07-21",
+    "fees_usd": "2020-07-21", "txns": "2020-07-21", "intents_volume_usd": "2024-12-10",
+}
 A5_CONTINUING = ("price_usd", "txns", "fees_usd", "intents_volume_usd")  # fees in NEAR are fees_usd over the price
 A5_METRICS = ("returning_accounts", "active_accounts", "intents_volume_usd", "fees_near", "txns")
 PLATEAU = ("2025-12", "2026-08")      # the nine complete months between the November 2025 spike and the September 2026 step
@@ -73,9 +80,11 @@ def a5_chance_without_a_lead(metrics: int, lags: int = 8) -> float:
 def baselines(daily: pd.DataFrame, fees: pd.DataFrame | None, census: pd.DataFrame | None,
               seg: pd.DataFrame | None = None) -> dict:
     """The reference levels the thresholds in predictions.csv are taken from. Nothing here is a chosen number."""
-    out = {"intents_volume_plateau_top_usd": float(daily["intents_volume_usd"].resample("ME").mean().loc[PLATEAU[0]:PLATEAU[1]].max())}
+    volume = metrics.calendar_months(daily["intents_volume_usd"], *PLATEAU)
+    out = {"intents_volume_plateau_top_usd": float(volume.max()) if volume.notna().all() else None}
     if fees is not None:
-        out["buyback_plateau_top_usd"] = float(fees["holders_revenue"].resample("ME").sum().loc[BUYBACK_PLATEAU[0]:BUYBACK_PLATEAU[1]].max())
+        buyback = metrics.calendar_months(fees["holders_revenue"], *BUYBACK_PLATEAU, stat="sum")
+        out["buyback_plateau_top_usd"] = float(buyback.max()) if buyback.notna().all() else None
     if census is not None:
         core = census[~census["family"].isin(["kaiching", "tg", "sweat"])]
         g = core.groupby("month")[["txs", "relayed_txs", "accounts"]].sum()
@@ -90,6 +99,7 @@ def baselines(daily: pd.DataFrame, fees: pd.DataFrame | None, census: pd.DataFra
             out["core_self_paid_txs_plateau_top_without_dormant_implicit"] = float(calm.max())
             out["core_self_paid_txs_plateau_top_without_dormant_implicit_month"] = str(calm.idxmax())
     if seg is not None:
+        seg = seg[seg["month"].isin(segments.complete_months(seg))]
         out["regular_self_paying_accounts_low"] = float(segments.series(seg)["regular_accounts"].loc[PLATEAU[0]:PLATEAU[1]].min())
     return out
 
@@ -103,39 +113,57 @@ def step(daily: pd.DataFrame, fees: pd.DataFrame | None = None, census: pd.DataF
     """
     before = pd.Period(PLATEAU[1], "M")
     month = before + 1
-    price = daily["price_usd"].dropna() if "price_usd" in daily else pd.Series(dtype=float)
-    by_month = price.index.to_period("M") if len(price) else None
-    if by_month is None or not (by_month == month).any() or price.index.max() < month.end_time.normalize():
-        return {}  # the month is not in the data, or not complete yet
-    in_month, since = price[by_month == month], price[by_month >= month]
+    if seg is not None:
+        seg = seg[seg["month"].isin(segments.complete_months(seg))]
+    if daily.empty or daily.index.max() < month.end_time.normalize():
+        return {}  # the month has not ended yet; price coverage is checked separately
+    price = daily["price_usd"] if "price_usd" in daily else pd.Series(dtype=float)
+    price = price.where(np.isfinite(price) & (price > 0))
+    in_month = metrics.calendar_window(price, month.start_time, month.end_time.normalize())
+    in_before = metrics.calendar_window(price, before.start_time, before.end_time.normalize())
+    since = metrics.calendar_window(price, month.start_time, daily.index.max())
     out = {"month": str(month), "month_before": str(before),
            "price_usd": {"first_day": float(in_month.iloc[0]), "last_day": float(in_month.iloc[-1]),
-                         "mean_before": float(price[by_month == before].mean()), "mean": float(in_month.mean()),
-                         "peak_since": {"date": str(since.idxmax().date()), "value": float(since.max())},
-                         "latest": {"date": str(price.index.max().date()), "value": float(price.iloc[-1])}}}
+                         "mean_before": metrics.complete_mean(in_before), "mean": metrics.complete_mean(in_month)}}
+    if since.notna().all():
+        out["price_usd"]["peak_since"] = {"date": str(since.idxmax().date()), "value": float(since.max())}
+    observed = price.dropna()
+    if len(observed):
+        out["price_usd"]["latest"] = {"date": str(observed.index.max().date()), "value": float(observed.iloc[-1])}
+    unavailable = {}
+    if in_month.iloc[[0, -1]].isna().any():
+        unavailable["price_endpoints"] = "The price comparison needs valid quotes on the month's exact first and last days."
 
     def pair(s: pd.Series) -> dict | None:
         s = s.copy()
         s.index = pd.PeriodIndex(s.index, freq="M")
-        return {"before": float(s[before]), "month": float(s[month])} if before in s.index and month in s.index else None
+        return ({"before": float(s[before]), "month": float(s[month])}
+                if before in s.index and month in s.index and np.isfinite(s[[before, month]]).all() else None)
 
     first, year = pd.Period(PLATEAU[0], "M"), 12
     out["reference_range"] = {"first": str(first), "last": str(before), "months": int((before - first).n + 1)}
     if "intents_volume_usd" in daily:
-        monthly = daily["intents_volume_usd"].resample("ME").mean()
-        monthly.index = monthly.index.to_period("M")
-        out["intents_volume_usd_a_day"] = pair(monthly)
-        days = daily["intents_volume_usd"].dropna()
-        in_range = days[(days.index.to_period("M") >= first) & (days.index.to_period("M") <= before)]
-        if out["intents_volume_usd_a_day"] and len(in_range) and first - 1 in monthly.index:
+        monthly = metrics.calendar_months(daily["intents_volume_usd"], first - 1, month)
+        volume = pair(monthly) or {}
+        if not volume:
+            unavailable["intents_months"] = "The monthly Intents step is unavailable because daily observations are missing."
+        in_range = metrics.calendar_window(daily["intents_volume_usd"], first.start_time, before.end_time.normalize())
+        if in_range.notna().all():
             # The level between the spike a year ago and the step: what "growth" has to be measured against once the
             # year-on-year base has moved through the ramp-up of autumn 2025.
-            out["intents_volume_usd_a_day"].update({
+            volume.update({
                 "range_mean": float(in_range.mean()), "range_low": float(monthly[first:before].min()),
-                "range_top": float(monthly[first:before].max()),
-                "month_before_range": {"month": str(first - 1), "value": float(monthly[first - 1])}})
+                "range_top": float(monthly[first:before].max())})
+            if pd.notna(monthly[first - 1]):
+                volume["month_before_range"] = {"month": str(first - 1), "value": float(monthly[first - 1])}
+        else:
+            unavailable["intents_reference"] = "The Intents reference range is unavailable because daily observations are missing."
+        if volume:
+            out["intents_volume_usd_a_day"] = volume
     if fees is not None and not fees.empty:
-        out["buyback_usd"] = pair(fees["holders_revenue"].resample("ME").sum())
+        out["buyback_usd"] = pair(metrics.calendar_months(fees["holders_revenue"], before, month, stat="sum"))
+        if out["buyback_usd"] is None:
+            unavailable["buyback_months"] = "The monthly buyback step is unavailable because daily observations are missing."
     if census is not None:
         core = census[~census["family"].isin(["kaiching", "tg", "sweat"])].groupby("month")[["txs", "relayed_txs"]].sum()
         direct = core["txs"] - core["relayed_txs"]
@@ -200,7 +228,7 @@ def step(daily: pd.DataFrame, fees: pd.DataFrame | None = None, census: pd.DataF
                     "all_months": int(len(every))}
                 for m, e in zip(months, earlier) if now[m] > then[e]}
             if len(price):
-                pm = price.groupby(price.index.to_period("M")).mean()
+                pm = metrics.calendar_months(price, first, before)
                 out["core_self_paid_txs"]["price_usd_by_month"] = {m: float(pm[pd.Period(m, "M")]) for m in months
                                                                     if pd.Period(m, "M") in pm.index}
             if seg is not None and deletion_months:
@@ -230,6 +258,8 @@ def step(daily: pd.DataFrame, fees: pd.DataFrame | None = None, census: pd.DataF
         s = segments.series(seg)
         out["regular_self_paying_accounts"] = pair(s["regular_accounts"])
         out["heavy_self_paying_accounts"] = pair(s["heavy_accounts"])
+    if unavailable:
+        out["unavailable"] = unavailable
     return {k: v for k, v in out.items() if v is not None}
 
 
@@ -268,6 +298,10 @@ def _measure(metric: str, on: pd.Timestamp, daily: pd.DataFrame, fees: pd.DataFr
         weeks = pd.date_range(first, on, freq="W-SUN")
         if not len(weeks) or any(c not in d for c in (*A5_CONTINUING, "active_accounts", "new_accounts")):
             return None
+        for c, start in A5_HISTORY_START.items():
+            history = _window(d[c], pd.Timestamp(start), pd.Timestamp(FROZEN_DATA_THROUGH))
+            if history is None or (c == "price_usd" and (history <= 0).any()):
+                return None
         derived = metrics.add_derived(d)
         for c in A5_CONTINUING:
             have = metrics.weekly_log_diff(derived["fees_near" if c == "fees_usd" else c],
@@ -300,11 +334,27 @@ def _measure(metric: str, on: pd.Timestamp, daily: pd.DataFrame, fees: pd.DataFr
         if "total_supply_yocto" not in d or _window(d["total_supply_yocto"], start - pd.Timedelta(days=1), start - pd.Timedelta(days=1)) is None \
                 or _window(d["total_supply_yocto"], on, on) is None:
             return None
-        v = value.summarize(d, f)
+        # The supply is about 1e33 yoctoNEAR. Converting it to floats before subtraction can move exact 50% below
+        # the strict frozen threshold. Use source decimals, and no annualisation, for the prediction's arithmetic.
+        with localcontext() as context:
+            context.prec = 60
+
+            def supply_at(day):
+                observed = d.at[day, "total_supply_yocto"]
+                saved = d.attrs.get("exact_supply", {}).get(str(day.date()))
+                return Decimal(saved[0] if saved and saved[1] == observed else str(observed)) / Decimal(10**24)
+
+            new = supply_at(on) - supply_at(start - pd.Timedelta(days=1))
+            if not new:
+                return None
+            bought = _window(f["holders_revenue"], start, on)
+            prices = _window(d["price_usd"], start, on)
+            usd = _decimal_total(bought) / (new * _decimal_total(prices) / len(prices))
+            near = sum((Decimal(str(b)) / Decimal(str(p)) for b, p in zip(bought, prices)), Decimal(0)) / new
         # Two measurements of one flow: the ratio of USD (as the threshold was written) and the ratio of NEAR (each
         # day's buyback at that day's price over the new NEAR). From 2026-11-14 A4 is scored on both and left open
         # when they give different verdicts (PREDICTIONS.md).
-        return (float(v["buyback_coverage_of_new_supply"]), float(v["buyback_coverage_in_near"])) if v else None
+        return float(usd), float(near)
     return None
 
 
@@ -334,7 +384,9 @@ def holds_the_whole_month(table_txs: float, month: str, daily: pd.DataFrame | No
     days = daily["txns"].reindex(pd.date_range(period.start_time, period.end_time.normalize(), freq="D"))
     if not np.isfinite(days).all() or not np.isfinite(table_txs):
         return False
-    return float(days.sum() - table_txs) < float(days.min())
+    total = _decimal_total(days)
+    short = total - Decimal(str(table_txs))
+    return short <= 0 or short < Decimal(str(days.min()))
 
 
 @dataclass(frozen=True)
@@ -360,6 +412,8 @@ def _measure_committed(p: dict, census: pd.DataFrame | None, seg: pd.DataFrame |
     months = [str(x) for x in pd.period_range(first, last, freq="M")]
     name = m["name"]
     if name == "regular_self_paying_accounts" and seg is not None:
+        if not set(months) <= set(segments.complete_months(seg)):
+            return None
         regular = segments.series(seg)["regular_accounts"]
         if not set(months) <= set(regular.index):
             return None
@@ -378,6 +432,8 @@ def _measure_committed(p: dict, census: pd.DataFrame | None, seg: pd.DataFrame |
     if top and len(months) == 1 and {"via", "conc"} <= set(top.get(months[0], {})):
         month = top[months[0]]
         c = month["conc"]
+        if c["txs"] <= 0:
+            return None  # an observed idle month has no concentration or shares of transactions
         if not holds_the_whole_month(c["txs"], months[0], daily):
             return None  # the same for the largest accounts and the apps
         if name == "accounts_for_half_of_txs":

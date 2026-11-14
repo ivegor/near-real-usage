@@ -28,7 +28,7 @@ INK, ACCENT, MUTED = "#1f2328", "#00a27a", "#57606a"
 
 def slides(s: dict) -> list[dict]:
     """What each slide says: headline, one supporting line, the chart it shows, seconds on screen."""
-    p, c, v = s["population"]["segments"], s["clients"], s["value_capture"]
+    p, c, v = s["population"]["segments"], s["clients"], s.get("value_capture", {})
     al = p["all"]
     sg = s["segments"]["metrics"]
     latest = c["months"][c["latest_month"]]
@@ -45,7 +45,7 @@ def slides(s: dict) -> list[dict]:
          "chart": "population", "sec": 10},
         # the count of regular accounts is not the headline: part of its fall is one game moving its players to a relayer
         {"head": f"{sg['heavy_accounts']['latest']:,.0f} heavy accounts send "
-                 f"{s['segments']['heavy_share_of_independent_self_paid_txs']['latest'] * 100:.0f}% of the self-paid transactions.",
+                 f"{charts._number(s['segments']['heavy_share_of_independent_self_paid_txs']['latest'], '.0f', suffix='%', scale=100)} of the self-paid transactions.",
          "line": f"Outside reward apps. Regular accounts (10 to 999 a month) number {sg['regular_accounts']['latest']:,.0f}; "
                  f"their low was {s['segments']['regular_accounts_low']['value']:,.0f} in "
                  f"{datetime.strptime(s['segments']['regular_accounts_low']['month'], '%Y-%m'):%B %Y}.",
@@ -55,12 +55,24 @@ def slides(s: dict) -> list[dict]:
                  f"bridges {c['finance_share']['latest'] * 100:.0f}% ({c['finance_txs']['pct_change']:+.0f}% in a year).",
          "chart": "clients", "sec": 12},
         {"head": (f"Captured revenue equals {min(cov) * 100:.0f}-{max(cov) * 100:.0f}% of the new NEAR issued." if cov
-                  else f"Captured revenue equals {v['buyback_coverage_of_new_supply'] * 100:.0f}% of the new NEAR issued."),
-         "line": f"Intents fees are {v['intents_fees_vs_l1_fees']:.0f}x the network's own; NEAR keeps "
-                 f"{v['captured_share_of_gross_fees'] * 100:.0f}%, ${v['buyback_usd_annualized'] / 1e6:.1f}M a year, "
+                  else f"Captured revenue equals {charts._number(v.get('buyback_coverage_of_new_supply'), '.0f', suffix='%', scale=100)} of the new NEAR issued."),
+         "line": f"Intents fees are {charts._number(v.get('intents_fees_vs_l1_fees'), '.0f', suffix='x')} the network's own; NEAR keeps "
+                 f"{charts._number(v.get('captured_share_of_gross_fees'), '.0f', suffix='%', scale=100)}, {charts._number(v.get('buyback_usd_annualized'), '.1f', '$', 'M', 1e-6)} a year, "
                  f"which DefiLlama counts as buybacks.",
-         "chart": "value_capture", "sec": 10},
+         "chart": "value_capture" if v else None, "sec": 10},
     ]
+    share = s['segments']['heavy_share_of_independent_self_paid_txs']['latest']
+    if share is None or not math.isfinite(share):
+        out[2]["head"] = "The heavy accounts' share is unavailable: no independent self-paid transactions."
+    if not v:
+        out[-1].update(head="Value capture is unavailable.",
+                       line="Complete prices, supply endpoints and fee observations are needed.")
+    elif any(v.get(k) is None or not math.isfinite(v[k])
+             for k in ("intents_fees_vs_l1_fees", "captured_share_of_gross_fees", "buyback_usd_annualized")):
+        out[-1]["line"] = "Some ratios are unavailable because their denominators are zero or missing."
+    if v and not cov and (v.get("buyback_coverage_of_new_supply") is None
+                         or not math.isfinite(v["buyback_coverage_of_new_supply"])):
+        out[-1]["head"] = "Buyback coverage is unavailable."
     if cc:
         top10 = cc.get("top10_tx_share")  # present only while the file of largest accounts holds a month of the sample's window
         out.append({"head": "Checked a second way, with no API key.",
@@ -86,7 +98,7 @@ def _render(slide: dict, path: Path) -> None:
     fig = plt.figure(figsize=(12.8, 7.2), dpi=100)
     fig.patch.set_facecolor("white")
     big = slide["chart"] is None
-    fig.text(0.5 if big else 0.05, 0.60 if big else 0.90, "\n".join(textwrap.wrap(slide["head"], 54 if big else 70)),
+    fig.text(0.5 if big else 0.05, 0.60 if big else 0.90, "\n".join(textwrap.wrap(slide["head"], 54 if big else 60)),
              fontsize=34 if big else 25, color=INK, weight="bold", ha="center" if big else "left", va="center")
     fig.text(0.5 if big else 0.05, 0.40 if big else 0.795, "\n".join(textwrap.wrap(slide["line"], 80 if big else 120)),
              fontsize=17 if big else 14.5, color=MUTED, ha="center" if big else "left", va="center")

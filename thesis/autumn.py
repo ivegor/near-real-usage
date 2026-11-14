@@ -17,12 +17,12 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from . import clients
+from . import clients, metrics
 
 FIRST_HALF_ENDS = 15  # day of the month on which the first half ends
 NAMESPACES = (".kaiching", ".tg", ".sweat")
 COLUMNS = {  # what is averaged per day in each half-month
-    "txns": "transactions", "txns_less_deleted": "transactions less deleted accounts (each deletion is one transaction)",
+    "txns": "transactions", "txns_less_deleted": "scenario: transactions minus deleted accounts (one transaction per deletion assumed)",
     "fees_near": "network fees in NEAR", "gas_tgas": "gas used, in Tgas",
     "intents_volume_usd": "NEAR Intents volume in USD", "buyback_usd": "buybacks in USD", "buyback_near": "buybacks in NEAR",
     "price_usd": "NEAR price", "deleted_accounts": "deleted accounts", "active_accounts": "signers (active accounts)",
@@ -69,9 +69,12 @@ def series(daily: pd.DataFrame, fees: pd.DataFrame | None) -> pd.DataFrame:
     for c in ("txns", "intents_volume_usd", "price_usd", "deleted_accounts", "active_accounts", "new_contracts", "active_contracts"):
         if c in daily:
             d[c] = daily[c]
-    if "deleted_accounts" in daily:  # a one-off of mass deletions is not activity: the same count without it, every half-month
-        d["txns_less_deleted"] = daily["txns"] - daily["deleted_accounts"].fillna(0)
-    price = daily["price_usd"].where(daily["price_usd"] > 0)
+    if "deleted_accounts" in daily:
+        # A conditional scenario, not a count of transactions without deletions: one transaction may create
+        # several deletion receipts, on different days. Unknown deletions cannot be assumed to be zero.
+        d["txns_less_deleted"] = daily["txns"] - daily["deleted_accounts"]
+    price = daily["price_usd"].where(np.isfinite(daily["price_usd"]) & (daily["price_usd"] > 0))
+    d["price_usd"] = price
     if "fees_usd" in daily:
         d["fees_near"] = daily["fees_usd"] / price
     if "gas_used" in daily:
@@ -81,7 +84,7 @@ def series(daily: pd.DataFrame, fees: pd.DataFrame | None) -> pd.DataFrame:
     if fees is not None:
         d["buyback_usd"] = fees["holders_revenue"].reindex(d.index)
         d["buyback_near"] = d["buyback_usd"] / price
-    return d
+    return d.replace([np.inf, -np.inf], np.nan)
 
 
 def one_day_moves(s: pd.Series, first: pd.Timestamp, last: pd.Timestamp) -> dict:
@@ -121,7 +124,12 @@ def _price_after(price: pd.Series, day: pd.Timestamp) -> dict | None:
             out["day_before"] = {"date": str(prev.index[-1].date()), "value": float(prev.iloc[-1]),
                                  "pct_change_to_the_day": float((price[day] / prev.iloc[-1] - 1) * 100)}
         low = prev[prev <= price[day]]
-        out["lowest_since"] = str(low.index[-1].date()) if len(low) else None
+        last_low = low.index[-1] if len(low) else None
+        # An unknown intervening price could be a more recent low. Earlier gaps cannot invalidate a later known low.
+        history = price.loc[last_low:day] if last_low is not None else price.loc[:day]
+        out["lowest_since"] = str(last_low.date()) if last_low is not None and history.notna().all() else None
+        if history.isna().any():
+            out["lowest_since_unavailable"] = "Missing earlier daily prices prevent dating the previous low."
     later = price.loc[day + pd.Timedelta(days=1):]
     if len(later):  # how low the price went after the step: the volume after it was not seen at the step day's price
         out["lowest_after_it"] = {"date": str(later.idxmin().date()), "value": float(later.min()),
@@ -149,24 +157,28 @@ def intents_step(daily: pd.DataFrame, fees: pd.DataFrame | None, top: float, aft
         return None
     day = rise.idxmax()
     before = day - pd.Timedelta(days=1)
-    month = vol[vol.index.to_period("M") == day.to_period("M")]
+    period = day.to_period("M")
+    start, end = period.start_time, period.end_time.normalize()
+    month = metrics.calendar_window(vol, start, end)
     out = {"line": float(top), "weekly_mean_above_it_since": str(since.date()), "last_day_at_or_below": str(not_above.index.max().date()),
            "lowest_weekly_mean_since": float(week.loc[since:].min()), "day": str(day.date()),
            "volume": {"day_before": float(vol[before]), "day": float(vol[day])},
            "month": str(day.to_period("M")), "days_of_the_month_from_it": int((month.index >= day).sum()),
-           "share_of_the_month_volume_from_it": float(month[month.index >= day].sum() / month.sum())}
+           "share_of_the_month_volume_from_it": metrics.finite_ratio(month.loc[day:].sum(), month.sum()) if month.notna().all() else float("nan")}
+    missing = {"volume": int(month.isna().sum())}
     price = _price_after(daily["price_usd"], day)
     if price is not None:
         out["price_usd"] = price
     if fees is not None:
-        bb = fees["holders_revenue"].dropna()
-        bb = bb[bb.index.to_period("M") == day.to_period("M")]
-        if bb.sum():
-            out["share_of_the_month_buybacks_from_it"] = float(bb[bb.index >= day].sum() / bb.sum())
-        start = vol.index[vol.index.to_period("M") == day.to_period("M")].min()
+        bb = metrics.calendar_window(fees["holders_revenue"], start, end)
+        missing["buybacks"] = int(bb.isna().sum())
+        out["share_of_the_month_buybacks_from_it"] = (metrics.finite_ratio(bb.loc[day:].sum(), bb.sum())
+                                                       if bb.notna().all() else float("nan"))
         out["per_day_before_and_from_it"] = {
-            "volume_usd": [float(vol.loc[start:before].mean()), float(vol.loc[day:month.index.max()].mean())],
-            "buyback_usd": [float(fees["holders_revenue"].loc[start:before].mean()), float(fees["holders_revenue"].loc[day:month.index.max()].mean())]}
+            "volume_usd": [metrics.complete_mean(month.loc[:before]), metrics.complete_mean(month.loc[day:])],
+            "buyback_usd": [metrics.complete_mean(bb.loc[:before]), metrics.complete_mean(bb.loc[day:])]}
+    if any(missing.values()):
+        out["month_days_without_data"] = missing
     return out
 
 
@@ -195,18 +207,28 @@ def summarize(daily: pd.DataFrame, fees: pd.DataFrame | None, plateau: tuple[str
     """The half-months of the reference range after the fall and every half-month since, and the two dated events."""
     last = daily.index.max()
     step_month = pd.Period(plateau[1], "M") + 1
-    if last < step_month.end_time.normalize() or not fall_date:
+    if last < step_month.end_time.normalize():
         return None
+    step = intents_step(daily, fees, line, plateau[0]) if line is not None and "intents_volume_usd" in daily else None
+
+    def unavailable(reason: str) -> dict:
+        return {"reference": {"from": None, "through": None, "top": {}}, "reference_unavailable": reason,
+                **({"intents_step": step} if step else {})}
+
+    if not fall_date:
+        return unavailable("A complete transaction history is needed to date the largest daily fall.")
     fall = pd.Timestamp(fall_date)
     # the first half-month that starts after the fall day
     first = (fall.to_period("M").start_time + pd.Timedelta(days=FIRST_HALF_ENDS) if fall.day <= FIRST_HALF_ENDS
              else (fall.to_period("M") + 1).start_time)
     t = table(daily, fees, str(first.date()), last)
-    step = intents_step(daily, fees, line, plateau[0]) if line is not None and "intents_volume_usd" in daily else None
     reference_end = pd.Period(plateau[1], "M").end_time.normalize()
     if step:  # the reference stops before the half-month in which Intents volume stepped up
         day = pd.Timestamp(step["day"])
-        reference_end = min(reference_end, next(a for a, b in halves(first, last) if a <= day <= b) - pd.Timedelta(days=1))
+        half_start = day.replace(day=1 if day.day <= FIRST_HALF_ENDS else FIRST_HALF_ENDS + 1)
+        reference_end = min(reference_end, half_start - pd.Timedelta(days=1))
+    if first > min(reference_end, last):
+        return unavailable("No complete half-month lies after the largest fall and before the reference end.")
     ref = t[[pd.Timestamp(k.split("..")[1]) <= reference_end for k in t.index]]
     after = t[[pd.Timestamp(k.split("..")[0]) > reference_end for k in t.index]]
     out: dict = {"rule": "calendar half-months (1-15, 16-end); reference: the half-months after the largest one-day fall of "
@@ -218,6 +240,12 @@ def summarize(daily: pd.DataFrame, fees: pd.DataFrame | None, plateau: tuple[str
                                "top_half": {c: str(ref[c].idxmax()) for c in COLUMNS if c in ref and ref[c].notna().all()}},
                  "half_months": {k: {c: (float(v[c]) if pd.notna(v[c]) else None) for c in [*COLUMNS, "days"] if c in v}
                                  for k, v in t.iterrows()}}
+    out["deletion_scenario"] = {
+        "metric": "txns_less_deleted", "formula": "transactions - deleted_accounts",
+        "assumption": "one transaction per deleted account, counted on the same day",
+        "limitation": "Receipts can delete several accounts per transaction or execute on another day. "
+                      "This scenario is not a measured count of transactions without deletions; missing deletions stay unknown.",
+    }
     out["above_reference_top"] = {c: [k for k, v in after[c].items() if v > out["reference"]["top"][c]]
                                   for c in COLUMNS if c in out["reference"]["top"] and c not in NOT_COMPARED}
     # The same by the median day. A half-month's mean can rest on a day or two, the reference top's too: the largest

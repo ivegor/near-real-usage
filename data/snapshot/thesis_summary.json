@@ -7,79 +7,170 @@
       "recent": 3.5810076891111104,
       "prior": 2.5734899455555555,
       "pct_change": 39.1498612728427,
-      "median_pct_change": 49.314169758928884
+      "median_pct_change": 49.314169758928884,
+      "from": "2026-08-14",
+      "through": "2026-11-11",
+      "prior_from": "2025-08-14",
+      "prior_through": "2025-11-11",
+      "expected_days": 90,
+      "recent_days": 90,
+      "prior_days": 90
     },
     "active_accounts": {
       "recent": 71692.54444444444,
       "prior": 290216.4222222222,
       "pct_change": -75.29686849025083,
-      "median_pct_change": -76.26689364529054
+      "median_pct_change": -76.26689364529054,
+      "from": "2026-08-14",
+      "through": "2026-11-11",
+      "prior_from": "2025-08-14",
+      "prior_through": "2025-11-11",
+      "expected_days": 90,
+      "recent_days": 90,
+      "prior_days": 90
     },
     "new_accounts": {
       "recent": 10946.211111111112,
       "prior": 248770.66666666666,
       "pct_change": -95.59987869237888,
-      "median_pct_change": -95.44032350298178
+      "median_pct_change": -95.44032350298178,
+      "from": "2026-08-14",
+      "through": "2026-11-11",
+      "prior_from": "2025-08-14",
+      "prior_through": "2025-11-11",
+      "expected_days": 90,
+      "recent_days": 90,
+      "prior_days": 90
     },
     "returning_accounts": {
       "recent": 60746.333333333336,
       "prior": 44235.688888888886,
       "pct_change": 37.32426205889063,
-      "median_pct_change": 10.569018479691849
+      "median_pct_change": 10.569018479691849,
+      "from": "2026-08-14",
+      "through": "2026-11-11",
+      "prior_from": "2025-08-14",
+      "prior_through": "2025-11-11",
+      "expected_days": 90,
+      "recent_days": 90,
+      "prior_days": 90
     },
     "returning_share": {
       "recent": 0.8322492725663384,
       "prior": 0.15402149743616184,
       "pct_change": 440.34617661816037,
-      "median_pct_change": 373.65246646985673
+      "median_pct_change": 373.65246646985673,
+      "from": "2026-08-14",
+      "through": "2026-11-11",
+      "prior_from": "2025-08-14",
+      "prior_through": "2025-11-11",
+      "expected_days": 90,
+      "recent_days": 90,
+      "prior_days": 90
     },
     "txns": {
       "recent": 744388.5222222222,
       "prior": 4635569.544444445,
       "pct_change": -83.9418109234421,
-      "median_pct_change": -84.54780329123905
+      "median_pct_change": -84.54780329123905,
+      "from": "2026-08-14",
+      "through": "2026-11-11",
+      "prior_from": "2025-08-14",
+      "prior_through": "2025-11-11",
+      "expected_days": 90,
+      "recent_days": 90,
+      "prior_days": 90
     },
     "tx_per_active": {
       "recent": 11.221772873004117,
       "prior": 16.03699140302938,
       "pct_change": -30.025697520269734,
-      "median_pct_change": -32.795363060572726
+      "median_pct_change": -32.795363060572726,
+      "from": "2026-08-14",
+      "through": "2026-11-11",
+      "prior_from": "2025-08-14",
+      "prior_through": "2025-11-11",
+      "expected_days": 90,
+      "recent_days": 90,
+      "prior_days": 90
     },
     "fees_usd": {
       "recent": 4122.070308892556,
       "prior": 8651.517561379333,
       "pct_change": -52.35436696917062,
-      "median_pct_change": -61.58450470642297
+      "median_pct_change": -61.58450470642297,
+      "from": "2026-08-14",
+      "through": "2026-11-11",
+      "prior_from": "2025-08-14",
+      "prior_through": "2025-11-11",
+      "expected_days": 90,
+      "recent_days": 90,
+      "prior_days": 90
     },
     "fees_near": {
       "recent": 1074.1000000096114,
       "prior": 3359.2444449520235,
       "pct_change": -68.02554807752456,
-      "median_pct_change": -72.64970058306955
+      "median_pct_change": -72.64970058306955,
+      "from": "2026-08-14",
+      "through": "2026-11-11",
+      "prior_from": "2025-08-14",
+      "prior_through": "2025-11-11",
+      "expected_days": 90,
+      "recent_days": 90,
+      "prior_days": 90
     },
     "fees_per_active_usd": {
       "recent": 0.0658335274338487,
       "prior": 0.029886200805869637,
       "pct_change": 120.28068358865815,
-      "median_pct_change": 52.51034446126515
+      "median_pct_change": 52.51034446126515,
+      "from": "2026-08-14",
+      "through": "2026-11-11",
+      "prior_from": "2025-08-14",
+      "prior_through": "2025-11-11",
+      "expected_days": 90,
+      "recent_days": 90,
+      "prior_days": 90
     },
     "fees_per_active_near": {
       "recent": 0.016699451664010354,
       "prior": 0.011645449118873885,
       "pct_change": 43.39894918217797,
-      "median_pct_change": 19.852197087636235
+      "median_pct_change": 19.852197087636235,
+      "from": "2026-08-14",
+      "through": "2026-11-11",
+      "prior_from": "2025-08-14",
+      "prior_through": "2025-11-11",
+      "expected_days": 90,
+      "recent_days": 90,
+      "prior_days": 90
     },
     "intents_volume_usd": {
       "recent": 134939214.53333333,
       "prior": 41742869.05555555,
       "pct_change": 223.26291313072622,
-      "median_pct_change": 509.3689868326062
+      "median_pct_change": 509.3689868326062,
+      "from": "2026-08-14",
+      "through": "2026-11-11",
+      "prior_from": "2025-08-14",
+      "prior_through": "2025-11-11",
+      "expected_days": 90,
+      "recent_days": 90,
+      "prior_days": 90
     },
     "intents_per_active_usd": {
       "recent": 2096.5529001497875,
       "prior": 155.2150559702408,
       "pct_change": 1250.740678502063,
-      "median_pct_change": 2462.5131781027403
+      "median_pct_change": 2462.5131781027403,
+      "from": "2026-08-14",
+      "through": "2026-11-11",
+      "prior_from": "2025-08-14",
+      "prior_through": "2025-11-11",
+      "expected_days": 90,
+      "recent_days": 90,
+      "prior_days": 90
     }
   },
   "qoq_90d": {
@@ -87,79 +178,170 @@
       "recent": 3.5810076891111104,
       "prior": 1.9679464997777782,
       "pct_change": 81.96671959910901,
-      "median_pct_change": 99.37787988700104
+      "median_pct_change": 99.37787988700104,
+      "from": "2026-08-14",
+      "through": "2026-11-11",
+      "prior_from": "2026-05-16",
+      "prior_through": "2026-08-13",
+      "expected_days": 90,
+      "recent_days": 90,
+      "prior_days": 90
     },
     "active_accounts": {
       "recent": 71692.54444444444,
       "prior": 102672.14444444445,
       "pct_change": -30.17332516782384,
-      "median_pct_change": -35.464993202335194
+      "median_pct_change": -35.464993202335194,
+      "from": "2026-08-14",
+      "through": "2026-11-11",
+      "prior_from": "2026-05-16",
+      "prior_through": "2026-08-13",
+      "expected_days": 90,
+      "recent_days": 90,
+      "prior_days": 90
     },
     "new_accounts": {
       "recent": 10946.211111111112,
       "prior": 15430.711111111112,
       "pct_change": -29.062173270620494,
-      "median_pct_change": -29.74163703307423
+      "median_pct_change": -29.74163703307423,
+      "from": "2026-08-14",
+      "through": "2026-11-11",
+      "prior_from": "2026-05-16",
+      "prior_through": "2026-08-13",
+      "expected_days": 90,
+      "recent_days": 90,
+      "prior_days": 90
     },
     "returning_accounts": {
       "recent": 60746.333333333336,
       "prior": 87241.43333333333,
       "pct_change": -30.36985866425089,
-      "median_pct_change": -37.06503699509878
+      "median_pct_change": -37.06503699509878,
+      "from": "2026-08-14",
+      "through": "2026-11-11",
+      "prior_from": "2026-05-16",
+      "prior_through": "2026-08-13",
+      "expected_days": 90,
+      "recent_days": 90,
+      "prior_days": 90
     },
     "returning_share": {
       "recent": 0.8322492725663384,
       "prior": 0.8497273558368043,
       "pct_change": -2.056904859000752,
-      "median_pct_change": -0.6535720560857938
+      "median_pct_change": -0.6535720560857938,
+      "from": "2026-08-14",
+      "through": "2026-11-11",
+      "prior_from": "2026-05-16",
+      "prior_through": "2026-08-13",
+      "expected_days": 90,
+      "recent_days": 90,
+      "prior_days": 90
     },
     "txns": {
       "recent": 744388.5222222222,
       "prior": 772023.7222222222,
       "pct_change": -3.5795791249074393,
-      "median_pct_change": -5.481850365070439
+      "median_pct_change": -5.481850365070439,
+      "from": "2026-08-14",
+      "through": "2026-11-11",
+      "prior_from": "2026-05-16",
+      "prior_through": "2026-08-13",
+      "expected_days": 90,
+      "recent_days": 90,
+      "prior_days": 90
     },
     "tx_per_active": {
       "recent": 11.221772873004117,
       "prior": 7.572483389421237,
       "pct_change": 48.191449170835284,
-      "median_pct_change": 42.41732761010706
+      "median_pct_change": 42.41732761010706,
+      "from": "2026-08-14",
+      "through": "2026-11-11",
+      "prior_from": "2026-05-16",
+      "prior_through": "2026-08-13",
+      "expected_days": 90,
+      "recent_days": 90,
+      "prior_days": 90
     },
     "fees_usd": {
       "recent": 4122.070308892556,
       "prior": 1728.6965345138888,
       "pct_change": 138.44961950199584,
-      "median_pct_change": 114.7929856364176
+      "median_pct_change": 114.7929856364176,
+      "from": "2026-08-14",
+      "through": "2026-11-11",
+      "prior_from": "2026-05-16",
+      "prior_through": "2026-08-13",
+      "expected_days": 90,
+      "recent_days": 90,
+      "prior_days": 90
     },
     "fees_near": {
       "recent": 1074.1000000096114,
       "prior": 867.0777778042902,
       "pct_change": 23.875853758997923,
-      "median_pct_change": 9.598080562493072
+      "median_pct_change": 9.598080562493072,
+      "from": "2026-08-14",
+      "through": "2026-11-11",
+      "prior_from": "2026-05-16",
+      "prior_through": "2026-08-13",
+      "expected_days": 90,
+      "recent_days": 90,
+      "prior_days": 90
     },
     "fees_per_active_usd": {
       "recent": 0.0658335274338487,
       "prior": 0.016749034030318202,
       "pct_change": 293.05865230603973,
-      "median_pct_change": 177.49545594673924
+      "median_pct_change": 177.49545594673924,
+      "from": "2026-08-14",
+      "through": "2026-11-11",
+      "prior_from": "2026-05-16",
+      "prior_through": "2026-08-13",
+      "expected_days": 90,
+      "recent_days": 90,
+      "prior_days": 90
     },
     "fees_per_active_near": {
       "recent": 0.016699451664010354,
       "prior": 0.008518159709708427,
       "pct_change": 96.04529890391042,
-      "median_pct_change": 64.94651719215605
+      "median_pct_change": 64.94651719215605,
+      "from": "2026-08-14",
+      "through": "2026-11-11",
+      "prior_from": "2026-05-16",
+      "prior_through": "2026-08-13",
+      "expected_days": 90,
+      "recent_days": 90,
+      "prior_days": 90
     },
     "intents_volume_usd": {
       "recent": 134939214.53333333,
       "prior": 73138477.83333333,
       "pct_change": 84.49825390245395,
-      "median_pct_change": 84.00750131927015
+      "median_pct_change": 84.00750131927015,
+      "from": "2026-08-14",
+      "through": "2026-11-11",
+      "prior_from": "2026-05-16",
+      "prior_through": "2026-08-13",
+      "expected_days": 90,
+      "recent_days": 90,
+      "prior_days": 90
     },
     "intents_per_active_usd": {
       "recent": 2096.5529001497875,
       "prior": 716.2370434100386,
       "pct_change": 192.71774190399307,
-      "median_pct_change": 161.72119418510385
+      "median_pct_change": 161.72119418510385,
+      "from": "2026-08-14",
+      "through": "2026-11-11",
+      "prior_from": "2026-05-16",
+      "prior_through": "2026-08-13",
+      "expected_days": 90,
+      "recent_days": 90,
+      "prior_days": 90
     }
   },
   "month_yoy": {
@@ -167,37 +349,61 @@
       "month": "2026-10",
       "recent": 4.901668658709677,
       "prior": 2.492930509999999,
-      "pct_change": 96.6227553895868
+      "pct_change": 96.6227553895868,
+      "recent_days": 31,
+      "expected_days": 31,
+      "prior_days": 31,
+      "prior_expected_days": 31
     },
     "txns": {
       "month": "2026-10",
       "recent": 729933.3870967742,
       "prior": 4547819.516129033,
-      "pct_change": -83.94981629090523
+      "pct_change": -83.94981629090523,
+      "recent_days": 31,
+      "expected_days": 31,
+      "prior_days": 31,
+      "prior_expected_days": 31
     },
     "active_accounts": {
       "month": "2026-10",
       "recent": 72046.48387096774,
       "prior": 273738.87096774194,
-      "pct_change": -73.6805797378123
+      "pct_change": -73.6805797378123,
+      "recent_days": 31,
+      "expected_days": 31,
+      "prior_days": 31,
+      "prior_expected_days": 31
     },
     "fees_usd": {
       "month": "2026-10",
       "recent": 6329.277097460645,
       "prior": 8322.14871347871,
-      "pct_change": -23.946599425583102
+      "pct_change": -23.946599425583102,
+      "recent_days": 31,
+      "expected_days": 31,
+      "prior_days": 31,
+      "prior_expected_days": 31
     },
     "fees_near": {
       "month": "2026-10",
       "recent": 1271.7741935908516,
       "prior": 3335.451612573057,
-      "pct_change": -61.87100455012236
+      "pct_change": -61.87100455012236,
+      "recent_days": 31,
+      "expected_days": 31,
+      "prior_days": 31,
+      "prior_expected_days": 31
     },
     "intents_volume_usd": {
       "month": "2026-10",
       "recent": 128569083.90322581,
       "prior": 55583937.03225806,
-      "pct_change": 131.3061844262865
+      "pct_change": 131.3061844262865,
+      "recent_days": 31,
+      "expected_days": 31,
+      "prior_days": 31,
+      "prior_expected_days": 31
     }
   },
   "month_to_date_yoy": {
@@ -252,6 +458,25 @@
         0.783927655309,
         0.639792954192,
         0.267749542537
+      ],
+      "lags": [
+        -8,
+        -7,
+        -6,
+        -5,
+        -4,
+        -3,
+        -2,
+        -1,
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
       ]
     },
     "active_accounts": {
@@ -296,6 +521,25 @@
         0.840965885216,
         0.764463911407,
         0.400701212129
+      ],
+      "lags": [
+        -8,
+        -7,
+        -6,
+        -5,
+        -4,
+        -3,
+        -2,
+        -1,
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
       ]
     },
     "intents_volume_usd": {
@@ -331,6 +575,25 @@
         0.816167692359,
         0.425256514749,
         0.841810878993
+      ],
+      "lags": [
+        -8,
+        -7,
+        -6,
+        -5,
+        -4,
+        -3,
+        -2,
+        -1,
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
       ]
     },
     "fees_near": {
@@ -366,6 +629,25 @@
         0.0872434905303,
         0.133769662068,
         0.624382080614
+      ],
+      "lags": [
+        -8,
+        -7,
+        -6,
+        -5,
+        -4,
+        -3,
+        -2,
+        -1,
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
       ]
     },
     "txns": {
@@ -414,6 +696,25 @@
         0.543299708656,
         0.132490338844,
         0.12429597404
+      ],
+      "lags": [
+        -8,
+        -7,
+        -6,
+        -5,
+        -4,
+        -3,
+        -2,
+        -1,
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
       ]
     }
   },
@@ -424,6 +725,7 @@
     "smallest_p": 0.00562516440434,
     "threshold_for_the_smallest_p": 0.0005882352941176471
   },
+  "lead_vs_price_holm_leads": [],
   "lead_fees_usd_mechanical": {
     "lag_weeks": 0,
     "corr": 0.38169799453,
@@ -470,6 +772,25 @@
       0.0491905074478,
       0.26250139809,
       0.645371588566
+    ],
+    "lags": [
+      -8,
+      -7,
+      -6,
+      -5,
+      -4,
+      -3,
+      -2,
+      -1,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
     ]
   },
   "lead_vs_price_lag1_autocorrelation": {
@@ -3164,6 +3485,23 @@
         }
       }
     },
+    "complete_months": [
+      "2025-08",
+      "2025-09",
+      "2025-10",
+      "2025-11",
+      "2025-12",
+      "2026-01",
+      "2026-02",
+      "2026-03",
+      "2026-04",
+      "2026-05",
+      "2026-06",
+      "2026-07",
+      "2026-08",
+      "2026-09",
+      "2026-10"
+    ],
     "heavy_share_of_independent_self_paid_txs": {
       "latest": 0.910858325940776,
       "prior": 0.8494570445553881
@@ -6154,6 +6492,12 @@
         "active_contracts": 84520.36363636363,
         "days": 11.0
       }
+    },
+    "deletion_scenario": {
+      "metric": "txns_less_deleted",
+      "formula": "transactions - deleted_accounts",
+      "assumption": "one transaction per deleted account, counted on the same day",
+      "limitation": "Receipts can delete several accounts per transaction or execute on another day. This scenario is not a measured count of transactions without deletions; missing deletions stay unknown."
     },
     "above_reference_top": {
       "txns": [

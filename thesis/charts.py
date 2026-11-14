@@ -59,6 +59,10 @@ def _pct(x: float) -> str:
     return "n/a" if x is None or not np.isfinite(x) else f"{x:+.0f}%"
 
 
+def _number(x: float, spec: str, prefix: str = "", suffix: str = "", scale: float = 1) -> str:
+    return "unavailable" if x is None or not np.isfinite(x) else prefix + format(x * scale, spec) + suffix
+
+
 def _save(fig, out: Path, slug: str):
     fig.tight_layout()
     fig.savefig(out / f"{slug}.png", dpi=140, bbox_inches="tight")
@@ -135,13 +139,15 @@ def _population_chart(pop: pd.DataFrame, summary: dict, out: Path) -> Chart:
                       f"{quota['last_month']}), by its monthly totals: a job with a daily quota, as far as monthly totals can show.")
     check, checked = ps.get("totals_check"), ""
     if check:  # the same transactions counted by a second, independent source
-        short = [abs(v["share"]) * 100 for v in check["differ"].values()]
+        short = [abs(v["share"]) * 100 for v in check["differ"].values() if v["share"] is not None and np.isfinite(v["share"])]
         checked = (f" Checked against NearBlocks month by month: in {check['agree']['months']} of {check['months']} months the two "
                    f"transaction counts differ by at most {check['agree']['largest_difference_txs']:,} transactions")
         if short:
             checked += (f"; in the other {len(short)} ({', '.join(check['differ'])}) BigQuery is lower by "
                         f"{min(short):.1f}% to {max(short):.1f}%")
         checked += "."
+        if check.get("excluded_months"):
+            checked += " Incomplete daily coverage excluded from this comparison: " + ", ".join(check["excluded_months"]) + "."
     pace, so_far = (ps.get("partial_month") or {}).get("core_direct_txs"), ""
     if pace and "latest_complete_month" in pace:  # the days of the unfinished month the scan covers: where the series is heading
         was, year = pace["latest_complete_month"], pace.get("same_month_a_year_earlier")
@@ -206,16 +212,17 @@ def _value_chart(d: pd.DataFrame, fees: pd.DataFrame, vc: dict, out: Path) -> Ch
                  "ratios use those same totals. ") if missing else ""
     return Chart(
         "value_capture", "Does it reach the token?",
-        f"Over the 90 days to {vc['window'][1]} NEAR Intents charged ${vc['intents_gross_fees_usd'] / 1e6:.1f}M in fees "
-        f"({vc['intents_fees_vs_l1_fees']:.0f}x the network's own transaction fees) and NEAR captured "
-        f"${vc['captured_revenue_usd'] / 1e6:.2f}M of it ({vc['captured_share_of_gross_fees'] * 100:.0f}%), all of it, by DefiLlama's "
-        f"description, used to buy NEAR on the market since {vc['buyback_start']}. That is ${vc['buyback_usd_annualized'] / 1e6:.1f}M a year against "
-        f"${vc['new_supply_value_usd_annualized'] / 1e6:.0f}M a year of net new NEAR "
-        f"({vc['net_new_supply_near_annualized'] / 1e6:.1f}M NEAR at ${vc['mean_price_usd']:.2f}): the buybacks equal "
-        f"{vc['buyback_coverage_of_new_supply'] * 100:.0f}% of the net new supply (a ratio of flows in USD, not a measured offset; "
-        f"{vc['buyback_coverage_in_near'] * 100:.1f}% counted in NEAR at each day's price), and the market capitalisation is "
-        f"{vc['market_cap_to_annual_buyback']:.0f} times the annual buyback.",
-        estimates + "DefiLlama fee series for NEAR Intents (dailyFees, dailyRevenue, dailyHoldersRevenue); net new supply = change in "
+        f"Over the 90 days to {vc['window'][1]} NEAR Intents charged {_number(vc['intents_gross_fees_usd'], '.1f', '$', 'M', 1e-6)} in fees "
+        f"({_number(vc['intents_fees_vs_l1_fees'], '.0f', suffix='x')} the network's own transaction fees) and NEAR captured "
+        f"{_number(vc['captured_revenue_usd'], '.2f', '$', 'M', 1e-6)} of it ({_number(vc['captured_share_of_gross_fees'], '.0f', suffix='%', scale=100)}), all of it, by DefiLlama's "
+        f"description, used to buy NEAR on the market since {vc['buyback_start'] or 'an unknown start date'}. That is {_number(vc['buyback_usd_annualized'], '.1f', '$', 'M', 1e-6)} a year against "
+        f"{_number(vc['new_supply_value_usd_annualized'], '.0f', '$', 'M', 1e-6)} a year of net new NEAR "
+        f"({_number(vc['net_new_supply_near_annualized'], '.1f', suffix='M', scale=1e-6)} NEAR at {_number(vc['mean_price_usd'], '.2f', '$')}): the buybacks equal "
+        f"{_number(vc['buyback_coverage_of_new_supply'], '.0f', suffix='%', scale=100)} of the net new supply (a ratio of flows in USD, not a measured offset; "
+        f"{_number(vc['buyback_coverage_in_near'], '.1f', suffix='%', scale=100)} counted in NEAR at each day's price), and the market capitalisation is "
+        f"{_number(vc['market_cap_to_annual_buyback'], '.0f')} times the annual buyback.",
+        estimates + ("Ratios with zero or unknown denominators are unavailable. "
+                     if any(not np.isfinite(vc[k]) for k in ("captured_share_of_gross_fees", "buyback_coverage_of_new_supply", "market_cap_to_annual_buyback", "intents_fees_vs_l1_fees")) else "") + "DefiLlama fee series for NEAR Intents (dailyFees, dailyRevenue, dailyHoldersRevenue); net new supply = change in "
         "NearBlocks' daily total supply (already net of burned fees) valued at the mean price of the period. The window ends "
         "on the last day both sources cover. The bought NEAR is not burned, so supply itself does not shrink. What is checked "
         "here is the NEAR arriving at the revenue wallets and staying there; the purchases on the market are not."
@@ -226,7 +233,7 @@ def _value_chart(d: pd.DataFrame, fees: pd.DataFrame, vc: dict, out: Path) -> Ch
 
 def _segments_chart(seg: pd.DataFrame, sg: dict, out: Path) -> Chart:
     """Accounts by who pays the fee and how often they act."""
-    s = segments.series(seg)
+    s = segments.series(seg[seg["month"].isin(sg.get("complete_months", segments.complete_months(seg)))])
     x = pd.to_datetime(s.index)
     fig, axes = plt.subplots(1, 2, figsize=(11, 3.8))
     ax = axes[0]
@@ -287,6 +294,10 @@ def _segments_chart(seg: pd.DataFrame, sg: dict, out: Path) -> Chart:
                     f"failed. Without them the change is {_pct(adj['pct_change_without_both'])} if every caller of those contracts "
                     f"is outside the reward namespaces; how many are inside them the tables do not say, and the two ends are "
                     f"{_pct(adj['pct_change_without_both_both_ends'][0])} and {_pct(adj['pct_change_without_both_both_ends'][1])}.")
+    share = sg['heavy_share_of_independent_self_paid_txs']['latest']
+    share_note = (f"and they send {share * 100:.0f}% of those self-paid transactions, which changed {both('independent_self_paid_txs')}"
+                  if share is not None and np.isfinite(share)
+                  else "and their share of self-paid transactions is unavailable because there are none")
     return Chart(
         "segments", "Who pays, and how often",
         f"Accounts whose fees an app paid: {m['sponsored_accounts']['prior'] / 1e6:.1f}M in {sg['prior_month']}, "
@@ -294,12 +305,11 @@ def _segments_chart(seg: pd.DataFrame, sg: dict, out: Path) -> Chart:
         f"reward app's namespace, acting 10 to 999 times a month: {m['regular_accounts']['prior']:,.0f} to "
         f"{m['regular_accounts']['latest']:,.0f}, {both('regular_accounts')}; their low was {sg['regular_accounts_low']['value']:,.0f} in "
         f"{sg['regular_accounts_low']['month']}.{game_note} Accounts sending 1,000 or more a month: {m['heavy_accounts']['prior']:,.0f} to "
-        f"{m['heavy_accounts']['latest']:,.0f}, and they send {sg['heavy_share_of_independent_self_paid_txs']['latest'] * 100:.0f}% of "
-        f"those self-paid transactions, which changed {both('independent_self_paid_txs')}.{adj_note}",
+        f"{m['heavy_accounts']['latest']:,.0f}, {share_note}.{adj_note}",
         "sql/payer_frequency.sql on the NEAR BigQuery public dataset (91.28 GB), result in data/bq/payer_frequency.csv. "
         "Sponsored = every transaction of the account that month was submitted by a relayer. Frequency classes are powers "
         "of ten of the monthly transaction count; 1,000 a month is more than 30 a day. Occasional accounts (under 10 a "
-        "month) swing with one-off events and are not read as a trend.",
+        "month) swing with one-off events and are not read as a trend. " + sg.get("coverage_note", ""),
         source="sql/payer_frequency.sql",
     )
 
@@ -402,9 +412,12 @@ def _takeaway(slug: str, s: dict) -> str:
         if slug == "segments":
             sg = s["segments"]
             sponsored = sg['metrics']['sponsored_accounts']
+            share = sg['heavy_share_of_independent_self_paid_txs']['latest']
+            if share is None or not np.isfinite(share):
+                return "The heavy accounts' share is unavailable: no independent self-paid transactions."
             return (f"Accounts whose fees an app pays changed {_pct(sponsored['pct_change'])}; outside the reward apps, "
                     f"{sg['metrics']['heavy_accounts']['latest']:,.0f} heavy accounts send "
-                    f"{sg['heavy_share_of_independent_self_paid_txs']['latest'] * 100:.0f}% of the transactions that senders pay for themselves.")
+                    f"{_number(sg['heavy_share_of_independent_self_paid_txs']['latest'], '.0f', suffix='%', scale=100)} of the transactions that senders pay for themselves.")
         if slug == "clients":
             c = s["clients"]
             month = c['months'][c['latest_month']]
@@ -412,11 +425,11 @@ def _takeaway(slug: str, s: dict) -> str:
             return f"{clients.half_txs_text(month)} accounts {verb} half of all NEAR transactions."
         if slug == "value_capture":
             v = s["value_capture"]
-            first = f"The revenue NEAR Intents captures for buybacks equals {v['buyback_coverage_of_new_supply'] * 100:.0f}% of the new NEAR issued."
+            first = f"The revenue NEAR Intents captures for buybacks equals {_number(v['buyback_coverage_of_new_supply'], '.0f', suffix='%', scale=100)} of the new NEAR issued."
             lengths = (v.get("windows") or {}).get("by_length")
             cov = [x["coverage"] for x in (lengths or {}).values() if x.get("coverage") is not None and np.isfinite(x["coverage"])]
             if cov:  # only windows with a defined denominator contribute to the range
-                first = (f"The revenue NEAR Intents captures for buybacks equals {v['buyback_coverage_of_new_supply'] * 100:.0f}% of the new NEAR "
+                first = (f"The revenue NEAR Intents captures for buybacks equals {_number(v['buyback_coverage_of_new_supply'], '.0f', suffix='%', scale=100)} of the new NEAR "
                          f"issued over the 90 days to {v['window'][1]}, and {min(cov) * 100:.0f}% to {max(cov) * 100:.0f}% over the other "
                          f"available windows.")
             if any(v.get("days_without_data", {}).values()):
@@ -425,8 +438,8 @@ def _takeaway(slug: str, s: dict) -> str:
             if not w:
                 return first
             return (f"{first} Read from the chain, the three revenue wallets grew by {w['change_near_all_wallets'] / 1e6:.2f}M NEAR "
-                    f"from {w['window'][0]} to {w['window'][1]}, {w['coverage_of_new_supply'] * 100:.1f}% of the new supply "
-                    f"of those days ({w['last_days']['coverage_of_new_supply'] * 100:.1f}% over the last {w['last_days']['days']} of them)."
+                    f"from {w['window'][0]} to {w['window'][1]}, {_number(w['coverage_of_new_supply'], '.1f', suffix='%', scale=100)} of the new supply "
+                    f"of those days ({_number(w['last_days']['coverage_of_new_supply'], '.1f', suffix='%', scale=100)} over the last {w['last_days']['days']} of them)."
                     if "last_days" in w else first)
         if slug == "accounts":
             if "population" not in s:
@@ -443,9 +456,14 @@ def _takeaway(slug: str, s: dict) -> str:
             return f"Total network fees changed {_pct(s['yoy_90d']['fees_usd']['pct_change'])} in a year."
         if slug == "intents":
             mi = s["month_yoy"]["intents_volume_usd"]
+            if mi.get("recent") is None or not np.isfinite(mi["recent"]):
+                return f"The mean NEAR Intents volume for {mi['month']} is unavailable because daily observations are missing."
             st = (s.get("predictions") or {}).get("step") or {}
             v = st.get("intents_volume_usd_a_day") or {}
-            if v.get("range_top"):  # a year-on-year figure depends on where last year's ramp-up was; the range does not
+            if "intents_reference" in st.get("unavailable", {}):
+                return (f"In {mi['month']} NEAR Intents volume averaged ${mi['recent'] / 1e6:,.0f}M a day. "
+                        + st["unavailable"]["intents_reference"])
+            if v.get("range_top") is not None:  # a year-on-year base moves; the reference range does not
                 where = "above" if mi["recent"] > v["range_top"] else "inside" if mi["recent"] >= v["range_low"] else "below"
                 return (f"In {mi['month']} NEAR Intents volume averaged ${mi['recent'] / 1e6:,.0f}M a day, {where} the "
                         f"${v['range_low'] / 1e6:,.0f}M to ${v['range_top'] / 1e6:,.0f}M range it held from "
@@ -454,11 +472,11 @@ def _takeaway(slug: str, s: dict) -> str:
         if slug == "signer_census":
             return "A sample of random blocks, taken without any API key, agrees with the full count."
         if slug == "lead_lag":
-            from . import predictions
-            # what was tested is a linear correlation of weekly changes at fixed lags: that finds no lead, it does not
-            # rule out every kind of one
-            return ("No usage metric leads price in these tests." if predictions.adjacent_positive_leads(s["lead_vs_price"]) == 0
-                    else "Some usage metrics move before price; see the lags.")
+            if not s.get("lead_vs_price_holm", {}).get("tests"):
+                return "There are not enough usable observations to test whether usage leads price."
+            return ("Some positive usage lags survive Holm's correction; this is not a causal or trading result."
+                    if s.get("lead_vs_price_holm_leads") else
+                    "This test found no convincing lead of usage over price after Holm's correction.")
     except (KeyError, TypeError):
         return ""
     return ""
@@ -575,9 +593,9 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
             "\"new accounts\" include accounts created in bulk by a handful of creator accounts.")
     charts.append(Chart(
         "accounts", proxy_title,
-        f"Over the last 90 days the proxy active - new averaged {yoy['returning_accounts']['recent']:,.0f}/day "
+        f"Over the last 90 days the proxy active - new averaged {_number(yoy['returning_accounts']['recent'], ',.0f', suffix='/day')} "
         f"({_pct(yoy['returning_accounts']['pct_change'])} vs a year earlier), new accounts "
-        f"{yoy['new_accounts']['recent']:,.0f}/day ({_pct(yoy['new_accounts']['pct_change'])}). "
+        f"{_number(yoy['new_accounts']['recent'], ',.0f', suffix='/day')} ({_pct(yoy['new_accounts']['pct_change'])}). "
         f"By medians it changed {_pct(yoy['returning_accounts'].get('median_pct_change'))}." + proxy_note,
         "returning_accounts = active_accounts - new_accounts (NearBlocks daily charts), 30-day rolling mean. "
         "This is a lower bound: new accounts that did not transact on their first day are subtracted anyway. "
@@ -616,7 +634,7 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
     _save(fig, out, "tx_per_active")
     charts.append(Chart(
         "tx_per_active", "Transactions per active account",
-        f"Each active account sent {yoy['tx_per_active']['recent']:.1f} transactions a day on average in the last 90 days "
+        f"Transactions per active account averaged {_number(yoy['tx_per_active']['recent'], '.1f')} a day in the last 90 days "
         f"({_pct(yoy['tx_per_active']['pct_change'])} YoY). This aggregate moved with the reward apps: relayers that signed "
         "millions of transactions for other accounts count as single active accounts here, and most of them are gone.",
         "txns / active_accounts (NearBlocks), 30-day rolling mean. NearBlocks' active accounts are transaction signers; "
@@ -636,18 +654,18 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
     fa, fn = yoy["fees_per_active_usd"], yoy["fees_per_active_near"]
     charts.append(Chart(
         "fees_per_active", "Fees per active account",
-        f"An active account paid ${fa['recent']:.3f} a day in fees over the last 90 days "
+        f"Fees per active account averaged {_number(fa['recent'], '.3f', prefix='$')} a day over the last 90 days "
         f"({_pct(fa['pct_change'])} YoY in USD, {_pct(fn['pct_change'])} in NEAR terms, "
         f"{_pct(fa.get('median_pct_change'))} by USD medians); total fees were "
-        f"${yoy['fees_usd']['recent']:,.0f}/day ({_pct(yoy['fees_usd']['pct_change'])} YoY).",
+        f"{_number(yoy['fees_usd']['recent'], ',.0f', prefix='$', suffix='/day')} ({_pct(yoy['fees_usd']['pct_change'])} YoY).",
         "txn_fee_usd / active_accounts (NearBlocks), 30-day rolling mean; NEAR terms = the same divided by the daily price. "
         "The denominator counts transaction signers only, so read the level with care; total fees do not depend on it.",
     ))
 
     # 5. Intents
     if "intents_volume_usd" in d and d["intents_volume_usd"].notna().any():
-        iv = d["intents_volume_usd"].dropna()
-        r7 = iv.rolling(7, min_periods=3).mean()
+        iv = d["intents_volume_usd"].loc[d["intents_volume_usd"].first_valid_index():].asfreq("D")
+        r7 = iv.rolling(7, min_periods=7).mean()
         fig, ax = plt.subplots(figsize=(8, 3.6))
         ax.plot(r7.index, r7, color=ACCENT, label="Intents volume, 7d avg (left)")
         ax.set_yscale("log")
@@ -665,14 +683,20 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
         mi = summary.get("month_yoy", {}).get("intents_volume_usd", {})
         qi = summary.get("qoq_90d", {}).get("intents_volume_usd", {})
         st, rally = (summary.get("predictions") or {}).get("step") or {}, ""
-        if st.get("intents_volume_usd_a_day"):  # the step up and the price rally are the same month: say so next to the chart
-            v, pr = st["intents_volume_usd_a_day"], st["price_usd"]
+        v, pr = st.get("intents_volume_usd_a_day", {}), st.get("price_usd", {})
+        if "before" in v and "month" in v:  # the measured volume step does not depend on complete price context
             rally = (f" The step up in {st['month']} (${v['before'] / 1e6:,.1f}M to ${v['month'] / 1e6:,.1f}M a day) came in the "
-                     f"month the NEAR price went from ${pr['first_day']:.2f} to ${pr['last_day']:.2f}.")
-            if v.get("range_mean"):  # last year's base was still rising, so say what the level in between was
-                was, rng = v["month_before_range"], st["reference_range"]
+                     f"month the NEAR price went from ${pr['first_day']:.2f} to ${pr['last_day']:.2f}."
+                     if all(pr.get(k) is not None and np.isfinite(pr[k]) for k in ("first_day", "last_day")) else
+                     f" The step up in {st['month']} was from ${v['before'] / 1e6:,.1f}M to ${v['month'] / 1e6:,.1f}M a day.")
+        if v.get("range_mean") is not None:
+            was, rng = v.get("month_before_range"), st["reference_range"]
+            if was:
                 rally += (f" A year earlier the base was still rising: {was['month']} already averaged ${was['value'] / 1e6:,.1f}M "
                           f"a day, and from {rng['first']} to {rng['last']} volume averaged ${v['range_mean'] / 1e6:,.1f}M.")
+            else:
+                rally += f" From {rng['first']} to {rng['last']} volume averaged ${v['range_mean'] / 1e6:,.1f}M a day."
+        rally += "".join(" " + note for key, note in st.get("unavailable", {}).items() if key != "intents_reference")
         step_day = (summary.get("autumn") or {}).get("intents_step")
         if step_day:  # by day the step came with the start of the price's move, before the price doubled
             pr = step_day.get("price_usd")
@@ -695,9 +719,9 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
                       f"${so_far['prior'] / 1e6:,.1f}M in the same days a year earlier ({_pct(so_far['pct_change'])}).")
         charts.append(Chart(
             "intents", "NEAR Intents volume",
-            f"In {mi.get('month')} Intents volume averaged ${mi.get('recent', float('nan')) / 1e6:,.1f}M a day against "
-            f"${mi.get('prior', float('nan')) / 1e6:,.1f}M in the same month a year earlier ({_pct(mi.get('pct_change'))}); "
-            f"the last 90 days averaged ${yi.get('recent', float('nan')) / 1e6:,.1f}M a day, {_pct(qi.get('pct_change'))} on the "
+            f"In {mi.get('month')} the daily mean Intents volume is {_number(mi.get('recent', float('nan')) / 1e6, ',.1f', '$', 'M')}, against "
+            f"{_number(mi.get('prior', float('nan')) / 1e6, ',.1f', '$', 'M')} in the same month a year earlier ({_pct(mi.get('pct_change'))}); "
+            f"the last 90 days averaged {_number(yi.get('recent', float('nan')) / 1e6, ',.1f', '$', 'M')} a day, {_pct(qi.get('pct_change'))} on the "
             f"90 days before and {_pct(yi.get('pct_change'))} on the same 90 days a year earlier." + rally,
             "DefiLlama dexs/near-intents totalDataChart, 7-day rolling mean. Both year-on-year figures shrink as their "
             "base moves through the ramp-up of autumn 2025: the 90-day one every day, the calendar-month one at each "
@@ -765,6 +789,8 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
         if first:
             c.sentence = f"{first} {c.sentence}"
         c.source = c.source or CHART_SOURCE.get(c.slug, "")
+        if c.slug in ("accounts", "usage_vs_price", "tx_per_active", "fees_per_active", "intents"):
+            c.method += " Calendar means require every daily observation; incomplete comparisons are unavailable."
     lead = ["population", "segments", "clients", "value_capture"]  # the full-chain counts lead the dashboard
     charts.sort(key=lambda c: lead.index(c.slug) if c.slug in lead else len(lead))
     return charts

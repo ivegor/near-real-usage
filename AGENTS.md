@@ -43,6 +43,8 @@ changes in another order and their last digits differ; nothing else in `summary.
   Predictions B1 to B4 are scored by the build from `data/bq/` once the files there hold January 2027, all of it:
   run the frequency and top-accounts queries after the month has ended, because a result that is short of
   NearBlocks' daily counts by a day or more is left unscored.
+  The frequency query also saves `query_end`; preserve it on import. Its summary and chart exclude unfinished
+  months. Only the legacy result without that column uses the fixed end date 2026-10-31.
 * **A later run of a query adds months and keeps the earlier ones.** `sql/account_age.sql` and
   `sql/payer_frequency.sql` are run again with only their last date moved (`bq-age` and `bq-freq` refuse a result
   that drops months); the rows of a later `sql/top_accounts.sql` run are added to `data/bq/top_accounts_result.csv`,

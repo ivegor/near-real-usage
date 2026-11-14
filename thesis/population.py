@@ -86,8 +86,20 @@ def one_day(daily: pd.DataFrame | None = None) -> dict | None:
     }
     if daily is not None and pd.Timestamp(ONE_DAY) in daily.index:
         row = daily.loc[pd.Timestamp(ONE_DAY)]
-        out["nearblocks"] = {k: int(row[k]) for k in ("txns", "active_accounts", "new_accounts")}
+        out["nearblocks"] = observed_counts(row, ("txns", "active_accounts", "new_accounts"))
     return out
+
+
+def observed_counts(row: pd.Series, columns: tuple[str, ...]) -> dict:
+    """Keep unknown context unknown, without discarding other counts on the same day."""
+    return {k: int(row[k]) if np.isfinite(row.get(k, np.nan)) else None for k in columns}
+
+
+def observed_interval(series: pd.Series, start, end) -> pd.Series | None:
+    """A calendar interval is observed only if every expected day has a finite value."""
+    days = pd.date_range(start, end, freq="D")
+    values = series.reindex(days)
+    return values if len(days) and np.isfinite(values).all() else None
 
 
 def complete_months(df: pd.DataFrame, query_end: str | None = None) -> list[str]:
@@ -458,20 +470,22 @@ def days_of(daily: pd.DataFrame, partial: str, query_end: str, columns=("txns", 
     return {c: {str(k.date()): int(v) for k, v in d[c].dropna().items()} for c in columns if c in d}
 
 
-def largest_daily_fall(df: pd.DataFrame, daily: pd.DataFrame) -> dict | None:
+def largest_daily_fall(df: pd.DataFrame, daily: pd.DataFrame, query_end: str | None = None) -> dict | None:
     """The largest one-day fall in the aggregator's daily transactions, and KaiChing's months on either side of it.
 
     Analyses built on daily aggregates see a step in the transaction count on one day and a flat count of active
     accounts across it, and cannot name the cause. The day is found by a rule (the largest relative one-day fall
-    inside the months of the census), and the census says what stopped in that month.
+    inside the census interval, through its exact query end), and the census says what stopped in that month.
     """
-    if "txns" not in daily:
+    if "txns" not in daily or df.empty:
         return None
     months = sorted(df["month"].unique())
-    x = daily["txns"].dropna()
-    x = x[(x.index >= pd.Timestamp(months[0] + "-01")) & (x.index.to_period("M") <= pd.Period(months[-1], "M"))]
-    rel = (x / x.shift(1) - 1).dropna()
-    if rel.empty:
+    end = min(pd.Timestamp(query_end or QUERY_END), pd.Period(months[-1], "M").end_time.normalize())
+    x = observed_interval(daily["txns"], months[0] + "-01", end)
+    if x is None:
+        return None  # an unobserved day could contain the largest fall; do not bridge it or choose a smaller one
+    rel = (x / x.shift(1) - 1).replace([np.inf, -np.inf], np.nan).dropna()
+    if rel.empty or rel.min() >= 0:
         return None
     day = rel.idxmin()
     before = day - pd.Timedelta(days=1)
@@ -480,9 +494,16 @@ def largest_daily_fall(df: pd.DataFrame, daily: pd.DataFrame) -> dict | None:
     first_seen = df[(df["family"] == "kaiching") & (df["age"] == "m0")].groupby("month")["accounts"].sum()
 
     def month(m: pd.Period) -> dict:
+        if str(m) not in months or m.start_time > end:
+            return {"month": str(m), **dict.fromkeys(("accounts", "txs", "relayed_txs", "txs_per_day", "first_seen_accounts"))}
         row = k.loc[str(m)] if str(m) in k.index else pd.Series({"accounts": 0, "txs": 0, "relayed_txs": 0})
-        return {"month": str(m), "accounts": int(row["accounts"]), "txs": int(row["txs"]), "relayed_txs": int(row["relayed_txs"]),
-                "txs_per_day": float(row["txs"] / m.days_in_month), "first_seen_accounts": int(first_seen.get(str(m), 0))}
+        through = min(end, m.end_time.normalize())
+        days = (through - m.start_time).days + 1
+        result = {"month": str(m), "accounts": int(row["accounts"]), "txs": int(row["txs"]), "relayed_txs": int(row["relayed_txs"]),
+                  "txs_per_day": float(row["txs"] / days), "first_seen_accounts": int(first_seen.get(str(m), 0))}
+        if days < m.days_in_month:
+            result.update(through=str(through.date()), days=days)
+        return result
 
     out = {"date": str(day.date()), "day_before": str(before.date()),
            "txns": {"before": int(x[before]), "after": int(x[day])}, "pct_change": float(rel[day] * 100),
@@ -493,21 +514,32 @@ def largest_daily_fall(df: pd.DataFrame, daily: pd.DataFrame) -> dict | None:
     # was sent by other accounts that stopped on the same day.
     fall, sent = int(x[before] - x[day]), month(before.to_period("M"))["txs"]
     out["fall_txs"] = fall
-    out["kaiching_share_of_the_fall_at_most"] = min(1.0, sent / fall) if fall > 0 else float("nan")
-    out["other_accounts_in_the_fall_at_least"] = max(0, fall - sent)
+    out["kaiching_share_of_the_fall_at_most"] = min(1.0, sent / fall) if sent is not None and fall > 0 else None
+    out["other_accounts_in_the_fall_at_least"] = max(0, fall - sent) if sent is not None else None
     # The level on either side of the fall is a different question: the median day of the month before and of the month
     # after (a median is not moved by a burst of a few days), next to what KaiChing sent per day in the same two months.
-    by_month = x.groupby(x.index.to_period("M")).median()
     lb, la = day.to_period("M") - 1, day.to_period("M") + 1
-    if lb in by_month.index and la in by_month.index:  # (lb, la are used for the fees below as well)
+    def full_month(series: pd.Series, period: pd.Period) -> pd.Series | None:
+        return observed_interval(series, period.start_time, period.end_time.normalize())
+
+    xb, xa = full_month(x, lb), full_month(x, la)
+    if xb is not None and xa is not None and str(lb) in months and str(la) in months:
         app = out["kaiching"]
-        drop, less = float(by_month[lb] - by_month[la]), app["month_before"]["txs_per_day"] - app["month_after"]["txs_per_day"]
-        out["median_day"] = {"month_before": float(by_month[lb]), "month_after": float(by_month[la]), "fall": drop,
+        drop, less = float(xb.median() - xa.median()), app["month_before"]["txs_per_day"] - app["month_after"]["txs_per_day"]
+        out["median_day"] = {"month_before": float(xb.median()), "month_after": float(xa.median()), "fall": drop,
                              "kaiching_share_of_it": less / drop if drop > 0 else float("nan")}
-    if "active_accounts" in daily:
+    def pair_known(column: str) -> bool:
+        return column in daily and np.isfinite(daily[column].reindex([before, day])).all()
+
+    missing = [c for c in ("active_accounts", "active_contracts", "fees_usd", "price_usd", "new_accounts")
+               if c in daily and not pair_known(c)]
+    if missing:
+        out["unavailable_context"] = missing
+    if pair_known("active_accounts"):
         a = daily["active_accounts"]
-        out["active_accounts"] = {"before": int(a[before]), "after": int(a[day]), "pct_change": float((a[day] / a[before] - 1) * 100)}
-    if "active_contracts" in daily:
+        out["active_accounts"] = {"before": int(a[before]), "after": int(a[day]),
+                                  "pct_change": float((a[day] / a[before] - 1) * 100) if a[before] else float("nan")}
+    if pair_known("active_contracts"):
         # NearBlocks' column `active_contracts` is not defined in the API's reply. On the one day the census has by action
         # kind it is within a fraction of a percent of the users behind relayers, so it is read as tracking them, no
         # more. Its fall over the two days is set against KaiChing's relayed transactions in the month of the fall: if
@@ -516,9 +548,9 @@ def largest_daily_fall(df: pd.DataFrame, daily: pd.DataFrame) -> dict | None:
         drop = int(ac[before] - ac[day])
         k_rel = out["kaiching"]["month_of"]["relayed_txs"]
         out["active_contracts"] = {"before": int(ac[before]), "after": int(ac[day]), "fall": drop,
-                                   "kaiching_relayed_txs_in_the_month_of": int(k_rel),
+                                   "kaiching_relayed_txs_in_the_month_of": k_rel,
                                    "fall_over_kaiching_relayed": drop / k_rel if k_rel else float("nan")}
-        if pd.Timestamp(ONE_DAY) in ac.index and ONE_DAY_CSV.exists():
+        if np.isfinite(ac.get(pd.Timestamp(ONE_DAY), np.nan)) and ONE_DAY_CSV.exists():
             users = one_day()["relayed_users"]
             out["active_contracts"]["one_day"] = {"date": ONE_DAY, "value": int(ac[pd.Timestamp(ONE_DAY)]), "relayed_users": int(users),
                                                   "ratio": float(ac[pd.Timestamp(ONE_DAY)] / users)}
@@ -528,7 +560,7 @@ def largest_daily_fall(df: pd.DataFrame, daily: pd.DataFrame) -> dict | None:
         # it sent in the month without them. The difference is the least its part of the one-day fall can then be.
         sent_of = out["kaiching"]["month_of"]["txs"]
         out["kaiching_share_of_the_fall_at_least_if_relayer_ended_the_day_before"] = (
-            min(1.0, max(0, k_rel - (sent_of - k_rel)) / fall) if fall > 0 else float("nan"))
+            min(1.0, max(0, k_rel - (sent_of - k_rel)) / fall) if k_rel is not None and fall > 0 else None)
         # The burst of sponsored accounts of the month before, dated: the run of days at the end of that month above its
         # median day, and their transactions above the median of the days before the run. The column tracking relayed
         # users is given over the same days.
@@ -539,7 +571,8 @@ def largest_daily_fall(df: pd.DataFrame, daily: pd.DataFrame) -> dict | None:
             if not above[d_]:
                 break
             run_start = d_
-        if run_start is not None and run_start > prev.index.min():
+        if (run_start is not None and run_start > prev.index.min()
+                and np.isfinite(ac.reindex(prev.index)).all()):
             run = prev.loc[run_start:]
             base = prev.loc[:run_start - pd.Timedelta(days=1)].median()
             in_month = run[run.index.to_period("M") == day.to_period("M") - 1]
@@ -550,21 +583,25 @@ def largest_daily_fall(df: pd.DataFrame, daily: pd.DataFrame) -> dict | None:
                 "active_contracts_range": [int(ac.loc[run.index].min()), int(ac.loc[run.index].max())],
                 "active_contracts_range_before": [int(ac.loc[prev.index.min():run_start - pd.Timedelta(days=1)].min()),
                                                   int(ac.loc[prev.index.min():run_start - pd.Timedelta(days=1)].max())]}
-    if "fees_usd" in daily and "price_usd" in daily:
+    if pair_known("fees_usd") and pair_known("price_usd") and (daily["price_usd"].reindex([before, day]) > 0).all():
         # network fees in NEAR on the two days and on the median day of the months either side, as for transactions
-        f = (daily["fees_usd"] / daily["price_usd"].where(daily["price_usd"] > 0)).dropna()
-        med = f.groupby(f.index.to_period("M")).median()
+        price = daily["price_usd"].where(np.isfinite(daily["price_usd"]) & (daily["price_usd"] > 0))
+        f = (daily["fees_usd"] / price).dropna()
+        fb, fa = full_month(f, lb), full_month(f, la)
         out["fees_near"] = {"before": float(f[before]), "after": float(f[day])}
-        if lb in med.index and la in med.index:
-            out["fees_near"]["median_day"] = {"month_before": float(med[lb]), "month_after": float(med[la]),
-                                              "fall": float(med[lb] - med[la])}
-    if "new_accounts" in daily:
+        out["fees_near"]["median_day"] = {"month_before": float(fb.median()) if fb is not None else None,
+                                          "month_after": float(fa.median()) if fa is not None else None,
+                                          "fall": float(fb.median() - fa.median()) if fb is not None and fa is not None else None}
+    if pair_known("new_accounts"):
         # the accounts created each day, on the two days and as a mean per day of the two months
         n = daily["new_accounts"].dropna()
-        mean = {p: n[n.index.to_period("M") == p].mean() for p in (day.to_period("M") - 1, day.to_period("M"))}
+        mean = {}
+        for p in (day.to_period("M") - 1, day.to_period("M")):
+            values = full_month(n, p)
+            mean[p] = float(values.mean()) if values is not None else None
         out["new_accounts"] = {"before": int(n[before]), "after": int(n[day]),
-                               "per_day_month_before": float(mean[day.to_period("M") - 1]),
-                               "per_day_month_of": float(mean[day.to_period("M")])}
+                               "per_day_month_before": mean[day.to_period("M") - 1],
+                               "per_day_month_of": mean[day.to_period("M")]}
     return out
 
 
@@ -638,8 +675,18 @@ def totals_check(df: pd.DataFrame, daily: pd.DataFrame, query_end: str | None = 
     """
     end = pd.Timestamp(query_end or QUERY_END)
     bq = df.groupby("month")["txs"].sum()
-    d = daily.loc[:end, "txns"].dropna()
-    nb = d.groupby(d.index.strftime("%Y-%m")).sum().reindex(bq.index).dropna()
+    totals, excluded = {}, {}
+    for m in bq.index:
+        period = pd.Period(m, "M")
+        through = min(end, period.end_time.normalize())
+        values = observed_interval(daily["txns"], period.start_time, through)
+        if values is None:
+            days = pd.date_range(period.start_time, through)
+            excluded[m] = {"observed_days": int(np.isfinite(daily["txns"].reindex(days)).sum()),
+                           "expected_days": len(days)}
+        else:
+            totals[m] = values.sum()
+    nb = pd.Series(totals, dtype=float)
     if len(nb) < 2:
         return None
     diff = (bq.reindex(nb.index) - nb).astype(int)
@@ -647,15 +694,18 @@ def totals_check(df: pd.DataFrame, daily: pd.DataFrame, query_end: str | None = 
     jumps = (size.iloc[1:].to_numpy() + 1) / (size.iloc[:-1].to_numpy() + 1)
     cut = int(jumps.argmax()) + 1
     close, apart = list(size.index[:cut]), sorted(size.index[cut:])
-    return {
+    out = {
         "months": int(len(nb)), "first_month": str(nb.index.min()), "last_month": str(nb.index.max()),
-        "last_month_through": str(min(end, d.index.max()).date()),
+        "last_month_through": str(min(end, pd.Period(nb.index.max(), "M").end_time.normalize()).date()),
         "agree": {"months": len(close), "largest_difference_txs": int(size[close].max()),
-                  "largest_difference_share": float((size[close] / nb[close]).max())},
-        "differ": {m: {"bigquery_minus_nearblocks": int(diff[m]), "share": float(diff[m] / nb[m])} for m in apart},
+                  "largest_difference_share": float((size[close] / nb[close].where(nb[close] != 0)).max())},
+        "differ": {m: {"bigquery_minus_nearblocks": int(diff[m]), "share": float(diff[m] / nb[m]) if nb[m] else None} for m in apart},
         "jump_between_the_groups": float(jumps.max()),
         "difference_by_month": {m: int(v) for m, v in diff.items()},
     }
+    if excluded:
+        out["excluded_months"] = excluded
+    return out
 
 
 def cross_check(sample: dict, df: pd.DataFrame, top: dict | None = None) -> dict:

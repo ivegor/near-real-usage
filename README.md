@@ -156,8 +156,20 @@ rerunning them. See the limitation in THESIS.md.
 | Who pays (account) | sponsored: a relayer submitted every transaction of the account in the month; self-paying: the account paid for at least one | Separates accounts an app is paying for from accounts that paid the fee of at least one transaction themselves. The line is the fee payer, not a threshold; who funded the account, whether rewards repaid the fees and who holds its keys is not checked |
 | How often (account) | transactions in the month by powers of ten: occasional under 10, regular 10 to 999, heavy 1,000 or more | 1,000 a month is over 30 a day, which we read as likely automated (not checked account by account); the lines are powers of ten, not tuned |
 | Self-paid vs sponsored (transaction) | a transaction is sponsored when a relayer signs it for the user (meta transaction), self-paid otherwise | Separates transactions whose fee the sender paid from those a relayer paid; it does not show where the sender's NEAR came from |
-| YoY change | accounts: last complete month vs the same month a year earlier, and the same on three-month means; Intents: calendar month vs the same month a year earlier, and vs its level between the two autumns; prices and fees: last 90-day mean vs the 90 days a year earlier | One month can be an outlier; a 90-day window drifts as its base moves, and for Intents so does the calendar month, because last year's base was a ramp-up |
+| YoY change | accounts: last complete month vs the same month a year earlier, and the same on three-month means; Intents: calendar month vs the same month a year earlier, and vs its level between the two autumns; prices and fees: last 90-day mean vs the 90 days a year earlier | Daily means require every calendar day; a missing observation makes the comparison unavailable. One month can be an outlier; a 90-day window drifts as its base moves, and for Intents so does the calendar month, because last year's base was a ramp-up |
 | Lead-lag vs price | `corr(Δlog metric_t, Δlog price_{t+k})`, weekly, k = −8…+8; fees are taken in NEAR | Does usage move before price? ±2/√n noise band shown. Fees in USD contain the price, so their correlation with it is mechanical |
+
+Zero and negative prices are unavailable quotes, including in daily means and charts; observed zero activity or
+revenue remains valid. Ratios with a zero denominator are unavailable. The take-rate step requires all three full
+reference months, with complete daily volume, fees and revenue. Monthly buyback means, medians, largest-day shares
+and the volume-step month's shares require every day of their stated span. Missing days do not become a shorter
+month. Value-capture totals retain the documented estimate (observed daily mean times calendar days); the captured
+share uses those same estimated totals in every window, with missing-day counts alongside affected windows.
+The largest daily fall needs an unbroken calendar history; missing context on its two days stays unavailable.
+If no half-month fits the autumn reference, its comparisons are unavailable while the independently dated volume
+step remains available. A4 uses the source's exact supply decimals when comparing coverage with its frozen threshold;
+take-rate crossings also use decimal sums. A real zero-transaction day does not invalidate an otherwise complete
+query result. Price comparisons ending early disclose their last usable date on the dashboard.
 
 ## Data sources
 

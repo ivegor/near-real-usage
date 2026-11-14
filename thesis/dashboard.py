@@ -13,7 +13,7 @@ from pathlib import Path
 
 from . import census, value
 from .charts import Chart
-from .sources import NEARBLOCKS_V3, SOURCES, V1_SUNSET
+from .sources import NEARBLOCKS_V3, SOURCES
 
 ROOT = Path(__file__).resolve().parent.parent
 NEARBLOCKS, DEFILLAMA = SOURCES["nearblocks_charts"], SOURCES["defillama_intents"]
@@ -150,9 +150,10 @@ def render(charts: list[Chart], summary: dict, out: Path) -> Path:
     ended_note = ""
     if ended:
         cols = ", ".join(f"{html.escape(c.replace('_', ' '))} ({html.escape(d)})" for c, d in sorted(ended.items()))
-        ended_note = (f'<p class="sub"><b>Some series ended.</b> NearBlocks switched off the API they came from on {V1_SUNSET}, and '
-                      f"the API that replaced it does not carry them. Last day with a value: {cols}. Figures built on "
-                      "them cover the days up to that date; transactions, fees, price and supply continue.</p>")
+        ended_note = ('<p class="sub"><b>Some series ended.</b> '
+                      f"Last day with a usable value: {cols}. Each affected comparison ends on its stated date, "
+                      "which can be earlier than the dashboard date. Missing or invalid observations do not establish "
+                      "that a source continued; the replacement NearBlocks API also omits some old series.</p>")
     src += "".join(f'<li><code>{html.escape(k)}</code>: <a href="{html.escape(v)}">{html.escape(v)}</a></li>'
                    for k, v in NEARBLOCKS_V3.items())
     method_block = (f'<h2 class="part">Method notes: the daily aggregates</h2><p class="sub">{html.escape(METHOD_INTRO)}</p>'

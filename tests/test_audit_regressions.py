@@ -36,6 +36,8 @@ def test_actual_sql_counts_mixed_delegate_once_and_matches_the_block_parser(file
     query = ("WITH " + flags + ", " + agg + " SELECT * FROM " + aggregation).replace(
         "`bigquery-public-data.crypto_near_mainnet_us.transaction_actions`", "actions").replace(
         "DATE_TRUNC(block_date, MONTH)", "substr(block_date, 1, 7)")
+    for name, date in re.findall(r"DECLARE (\w+) DATE DEFAULT '([^']+)';", sql):
+        query = re.sub(rf"\b{name}\b", f"'{date}'", query)
     db = sqlite3.connect(":memory:")
     db.row_factory = sqlite3.Row
     db.create_function("IF", 3, lambda cond, a, b: a if cond else b)
@@ -217,6 +219,7 @@ def test_headlines_and_video_follow_reversed_evidence(tmp_path):
     s["population"]["segments"]["all"]["accounts"]["pct_change"] = 25
     s["segments"]["metrics"]["sponsored_accounts"]["pct_change"] = 30
     s["lead_vs_price_holm"]["significant"] = 3
+    s["lead_vs_price_holm_leads"] = [{"metric": "txns", "lag_weeks": 1, "p": .00001}]
     s["lead_vs_price"]["txns"]["outside_band"] = [{"lag_weeks": k, "corr": .5} for k in (1, 2)]
     month = s["clients"]["months"][s["clients"]["latest_month"]]
     month["accounts_for_half_of_txs"] = None
@@ -227,7 +230,7 @@ def test_headlines_and_video_follow_reversed_evidence(tmp_path):
     assert "At least 210 accounts are needed" in page
     text = " ".join(x["head"] + " " + x["line"] for x in video.slides(s))
     assert "NEAR gained 25%" in text and "Sponsored accounts changed +30%" in text
-    assert "3 survive Holm" in text and "Some usage metrics move before price" in text
+    assert "3 survive Holm" in text and "Some positive usage lags survive Holm" in text
     assert "None accounts" not in text and "none survives" not in text
 
 

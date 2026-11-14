@@ -30,7 +30,8 @@ def later_tables(tmp_path, census=True, frequency=True, top=True):
     age.to_csv(paths["census"], index=False)
     freq = segments.load()
     if frequency:
-        freq = pd.concat([freq] + [freq[freq["month"] == "2026-10"].assign(month=m) for m in LATER])
+        freq = pd.concat([freq] + [freq[freq["month"] == "2026-10"].assign(month=m) for m in LATER + ["2027-02"]])
+        freq["query_end"] = "2027-02-05"  # the frequency query can also end inside February
     paths["frequency"] = tmp_path / "payer_frequency.csv"
     freq.to_csv(paths["frequency"], index=False)
     result = pd.read_csv(clients.CSV)
@@ -128,6 +129,9 @@ def test_a_later_run_of_all_three_queries_scores_the_four_predictions(later, cap
     for part in ("population", "segments", "clients"):
         assert (s[part]["latest_month"], s[part]["prior_month"]) == ("2027-01", "2026-01"), part
     assert "not_combined_with" not in s["clients"] and "three_parts" in s["clients"]
+    assert s["segments"]["excluded_months"] == ["2027-02"]
+    assert "2027-02" not in s["segments"]["heavy_by_month"]
+    assert "Frequency classes need a complete month; excluded months: 2027-02." in page
     assert s["population"]["partial_month"]["month"] == "2027-02" and s["population"]["partial_month"]["core_direct_txs"]["days"] == 5
     # the sample of autumn 2026 is still set against the months it covers: the file kept its October rows
     assert s["cross_check"]["recent"]["top10_tx_share"]["bigquery_month"] == "2026-10"

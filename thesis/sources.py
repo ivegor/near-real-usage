@@ -10,8 +10,10 @@ from __future__ import annotations
 import json
 import time
 from pathlib import Path
+from collections.abc import Mapping
 
 import pandas as pd
+import numpy as np
 import requests
 
 RAW_DIR = Path(__file__).resolve().parent.parent / "data" / "raw"
@@ -176,7 +178,36 @@ def _v3_frame(raw: dict) -> pd.DataFrame:
     df = pd.DataFrame(raw["data"])
     df["date"] = pd.to_datetime(df["date"]).dt.normalize()
     df = df.drop_duplicates("date").set_index("date").sort_index()
-    return df.apply(pd.to_numeric, errors="coerce")
+    out = df.apply(pd.to_numeric, errors="coerce")
+    if "total_supply" in df:
+        out.attrs["exact_supply"] = _exact_supply(df["total_supply"], out["total_supply"])
+    return out
+
+
+class ExactSupply(Mapping):
+    """Immutable source provenance, shared by pandas copies instead of copying the entire history per slice."""
+    def __init__(self, values):
+        self._values = dict(values)
+
+    def __getitem__(self, key):
+        return self._values[key]
+
+    def __iter__(self):
+        return iter(self._values)
+
+    def __len__(self):
+        return len(self._values)
+
+    def __deepcopy__(self, memo):
+        return self
+
+
+def _exact_supply(raw: pd.Series, parsed: pd.Series) -> ExactSupply:
+    """Keep source decimals for threshold arithmetic without changing the numeric plotting table.
+
+    The parsed value travels with each decimal so consumers can reject stale provenance after an in-memory edit.
+    """
+    return ExactSupply({str(day.date()): (str(raw.loc[day]), float(v)) for day, v in parsed.items() if pd.notna(v)})
 
 
 def parse_nearblocks_v3(raw: dict[str, dict]) -> pd.DataFrame:
@@ -198,6 +229,7 @@ def parse_nearblocks_v3(raw: dict[str, dict]) -> pd.DataFrame:
     out["fees_usd"] = txns["txn_fee"] * out["price_usd"]
     out["transfer_volume_usd"] = txns["txn_volume"] * out["price_usd"]
     out.index.name = "date"
+    out.attrs = blocks.attrs.copy()
     return out
 
 
@@ -206,21 +238,29 @@ def continue_with_v3(daily: pd.DataFrame, v3: pd.DataFrame) -> pd.DataFrame:
     later = v3[v3.index > daily.index.max()].dropna(subset=["txns"])
     if later.empty:
         return daily
-    return pd.concat([daily, later.reindex(columns=daily.columns)])
+    out = pd.concat([daily, later.reindex(columns=daily.columns)])
+    out.attrs["exact_supply"] = ExactSupply({**daily.attrs.get("exact_supply", {}),
+                                  **{str(d.date()): v3.attrs["exact_supply"][str(d.date())]
+                                     for d in later.index if str(d.date()) in v3.attrs.get("exact_supply", {})}})
+    return out
 
 
 def series_ended(daily: pd.DataFrame) -> dict:
     """Columns whose last value is earlier than the table's last day: {column: last day with a value}.
 
     After /v1 is switched off the table goes on from v3, which has no count of signers, of new or of deleted accounts.
-    Those columns end; a mean over "the last 90 days" of one of them then covers fewer days, and the page says so.
+    Those columns end; their 90-day comparisons end earlier than the table, and the page says so.
+    Invalid prices and non-finite observations do not extend a series' coverage either.
     """
     last = daily.index.max()
     out = {}
     for col in daily.columns:
         if col == "intents_volume_usd":  # another source; it may trail by a day and is handled where it is used
             continue
-        end = daily[col].last_valid_index()
+        valid = daily[col].where(np.isfinite(daily[col]))
+        if col == "price_usd":
+            valid = valid.where(valid > 0)
+        end = valid.last_valid_index()
         if end is not None and end < last:
             out[col] = str(end.date())
     return out
@@ -262,9 +302,13 @@ def parse_nearblocks(raw: dict) -> pd.DataFrame:
     df["date"] = pd.to_datetime(df["date"], utc=True).dt.tz_localize(None).dt.normalize()
     keep = {k: v for k, v in NUMERIC_FIELDS.items() if k in df.columns}
     df = df[["date", *keep]].rename(columns=keep)
+    df = df.drop_duplicates("date").set_index("date").sort_index()
+    supply = df["total_supply_yocto"].copy() if "total_supply_yocto" in df else None
     for col in keep.values():
         df[col] = pd.to_numeric(df[col], errors="coerce")
-    return df.drop_duplicates("date").set_index("date").sort_index()
+    if supply is not None:
+        df.attrs["exact_supply"] = _exact_supply(supply, df["total_supply_yocto"])
+    return df
 
 
 def parse_defillama(raw: dict) -> pd.Series:
@@ -288,7 +332,9 @@ def load_daily(offline: bool = False) -> pd.DataFrame:
         daily = continue_with_v3(daily, drop_unfinished_days(parse_nearblocks_v3(raw), v3_day))
     intents = parse_defillama(raw["defillama_intents"])
     day = fetched_on("defillama_intents")
-    return daily.join(intents[intents.index < day] if day is not None else intents, how="left")
+    out = daily.join(intents[intents.index < day] if day is not None else intents, how="left")
+    out.attrs = daily.attrs.copy()
+    return out
 
 
 def fetched_on(name: str) -> pd.Timestamp | None:

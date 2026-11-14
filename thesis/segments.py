@@ -18,6 +18,7 @@ import pandas as pd
 from . import population
 
 CSV = Path(__file__).resolve().parent.parent / "data" / "bq" / "payer_frequency.csv"
+LEGACY_QUERY_END = "2026-10-31"  # the saved result without per-query metadata; not inferred from its last row
 CLASS = {"1": "occasional", "2-9": "occasional", "10-99": "regular", "100-999": "regular",
          "1,000-9,999": "heavy", "10,000+": "heavy"}
 APP_NAMESPACES = ("kaiching", "tg")
@@ -43,9 +44,28 @@ def unpack(result_csv: Path, out: Path | None = None) -> pd.DataFrame:
             assert namespace in (*APP_NAMESPACES, "rest") and payer in ("self", "sponsored") and freq in FREQUENCY, cell
             rows.append((str(m)[:7], namespace, payer, FREQUENCY[freq], int(accounts), int(txs), int(self_paid)))
     df = pd.DataFrame(rows, columns=COLUMNS)
+    if "query_end" in raw:
+        ends = raw["query_end"].dropna().unique()
+        if len(ends) != 1 or raw["query_end"].isna().any():
+            raise ValueError("The frequency result must record one query_end for every month")
+        df["query_end"] = str(pd.Timestamp(ends[0]).date())
+    elif df["month"].max() > LEGACY_QUERY_END[:7]:
+        raise ValueError("Later frequency results need query_end from sql/payer_frequency.sql")
     population.keeps_months(out or CSV, df)
     df.to_csv(out or CSV, index=False)
     return df
+
+
+def complete_months(df: pd.DataFrame) -> list[str]:
+    """The saved query end, not the last month present, establishes which months could be complete."""
+    if "query_end" in df:
+        ends = df["query_end"].dropna().unique()
+        if len(ends) != 1 or df["query_end"].isna().any():
+            raise ValueError("The frequency table must record one query_end")
+        end = pd.Timestamp(ends[0])
+    else:
+        end = pd.Timestamp(LEGACY_QUERY_END)
+    return sorted(m for m in df["month"].unique() if pd.Period(m, "M").end_time.normalize() <= end)
 
 
 def series(df: pd.DataFrame) -> pd.DataFrame:
@@ -74,6 +94,9 @@ def _change(now: float, then: float) -> dict:
 
 
 def summarize(df: pd.DataFrame) -> dict:
+    complete = complete_months(df)
+    omitted = sorted(set(df["month"]) - set(complete))
+    df = df[df["month"].isin(complete)]
     s = series(df)
     latest = s.index.max()
     prior = (pd.Period(latest, "M") - 12).strftime("%Y-%m")
@@ -81,13 +104,18 @@ def summarize(df: pd.DataFrame) -> dict:
     then3 = [(pd.Period(prior, "M") - k).strftime("%Y-%m") for k in range(3)]
     out: dict = {"source": "sql/payer_frequency.sql on bigquery-public-data.crypto_near_mainnet_us (91.28 GB scanned)",
                  "latest_month": latest, "prior_month": prior, "first_month": s.index.min(), "metrics": {}}
+    out["complete_months"] = complete
+    if omitted:
+        out["excluded_months"] = omitted
+        out["coverage_note"] = "Frequency classes need a complete month; excluded months: " + ", ".join(omitted) + "."
     for col in s.columns:
         out["metrics"][col] = {**_change(s.loc[latest, col], s.loc[prior, col]),
                                "three_month_mean": _change(s.loc[now3, col].mean(), s.loc[then3, col].mean())}
     out["heavy_share_of_independent_self_paid_txs"] = {
-        k: float(s.loc[m, "heavy_self_paid_txs"] / s.loc[m, "independent_self_paid_txs"]) for k, m in (("latest", latest), ("prior", prior))}
+        k: float(s.loc[m, "heavy_self_paid_txs"] / s.loc[m, "independent_self_paid_txs"]) if s.loc[m, "independent_self_paid_txs"] else None
+        for k, m in (("latest", latest), ("prior", prior))}
     out["sponsored_share_of_accounts_outside_app_namespaces"] = {
-        k: float(s.loc[m, "sponsored_accounts_outside_app_namespaces"] / s.loc[m, "accounts_outside_app_namespaces"])
+        k: float(s.loc[m, "sponsored_accounts_outside_app_namespaces"] / s.loc[m, "accounts_outside_app_namespaces"]) if s.loc[m, "accounts_outside_app_namespaces"] else None
         for k, m in (("latest", latest), ("prior", prior))}
     low = s["regular_accounts"].idxmin()
     out["regular_accounts_low"] = {"month": low, "value": float(s.loc[low, "regular_accounts"])}

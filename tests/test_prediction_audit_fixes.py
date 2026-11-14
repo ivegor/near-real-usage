@@ -33,8 +33,8 @@ def test_a3_decimal_total_at_the_frozen_threshold(tmp_path, cent_change, expecte
 
 
 def a5_daily():
-    index = pd.date_range("2025-01-01", "2027-02-11")
-    weeks = pd.date_range("2024-12-30", "2027-02-22", freq="W-MON")
+    index = pd.date_range("2020-07-21", "2027-02-11")
+    weeks = pd.date_range("2020-07-20", "2027-02-22", freq="W-MON")
     returns = np.random.default_rng(2).normal(0, .12, len(weeks))
 
     def levels(changes, scale):

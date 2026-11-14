@@ -7,11 +7,12 @@ of NEAR from NearBlocks. Net new supply is the change in total supply, so it is 
 from __future__ import annotations
 
 import json
+from decimal import Decimal
 
 import numpy as np
 import pandas as pd
 
-from . import sources
+from . import metrics, sources
 
 URLS = {
     "defillama_intents_fees": "https://api.llama.fi/summary/fees/near-intents?dataType=dailyFees",
@@ -215,8 +216,16 @@ def windows(daily: pd.DataFrame, fees: pd.DataFrame, step_day: str | None = None
         return bought / new if new else float("nan")
 
     def captured(a: pd.Timestamp, b: pd.Timestamp) -> float:
-        f = fees.loc[a:b]
-        return float(f["revenue"].sum() / f["fees"].sum()) if f["fees"].sum() else float("nan")
+        return metrics.finite_ratio(window_total(fees["revenue"], a, b), window_total(fees["fees"], a, b))
+
+    def gaps(a: pd.Timestamp, b: pd.Timestamp) -> dict:
+        counts = {c: int(metrics.calendar_window(fees[c], a, b).isna().sum()) for c in fees}
+        counts["price_usd"] = int(metrics.calendar_window(price, a, b).isna().sum())
+        return {"days_without_data": counts,
+                "total_estimation": "observed daily mean times calendar days"} if any(counts.values()) else {}
+
+    def mean(s: pd.Series, a: pd.Timestamp, b: pd.Timestamp) -> float:
+        return metrics.complete_mean(metrics.calendar_window(s, a, b))
 
     rolling = pd.Series({b: cover(b - pd.Timedelta(days=days - 1), b)
                          for b in pd.date_range(start + pd.Timedelta(days=days - 1), end, freq="D")}, dtype=float)
@@ -238,44 +247,50 @@ def windows(daily: pd.DataFrame, fees: pd.DataFrame, step_day: str | None = None
         a = end - pd.Timedelta(days=n - 1)
         if a >= start:
             lengths[str(n)] = {"coverage": cover(a, end), "captured_share": captured(a, end),
-                               "buyback_usd_annualized": window_total(fees["holders_revenue"], a, end) * 365 / n}
+                               "buyback_usd_annualized": window_total(fees["holders_revenue"], a, end) * 365 / n,
+                               **gaps(a, end)}
     n_all = int((end - start).days) + 1
     lengths["programme"] = {"days": n_all, "coverage": cover(start, end), "captured_share": captured(start, end),
-                            "buyback_usd_annualized": window_total(fees["holders_revenue"], start, end) * 365 / n_all}
+                            "buyback_usd_annualized": window_total(fees["holders_revenue"], start, end) * 365 / n_all,
+                            **gaps(start, end)}
     out["by_length"] = lengths
     months = {}
     for m in pd.period_range(start, end, freq="M"):
         a, b = max(start, m.start_time), min(end, m.end_time.normalize())
-        bb = fees["holders_revenue"].loc[a:b]
-        bn = (bb / price.reindex(bb.index)).dropna()
+        bb = metrics.calendar_window(fees["holders_revenue"], a, b)
+        bn = bb / price.reindex(bb.index)
+        complete = len(bn) and bn.notna().all()
         months[str(m)] = {"from": str(a.date()), "through": str(b.date()), "coverage": cover(a, b), "captured_share": captured(a, b),
-                          "buyback_usd_per_day": float(bb.mean()), "buyback_near_per_day": float(bn.mean()),
+                          "buyback_usd_per_day": metrics.complete_mean(bb), "buyback_near_per_day": metrics.complete_mean(bn),
                           # a month's mean can rest on one day: the median day, and the largest day with its share
-                          "buyback_near_per_day_median": float(bn.median()),
+                          "buyback_near_per_day_median": float(bn.median()) if complete else float("nan"),
                           "largest_day_near": {"date": str(bn.idxmax().date()), "value": float(bn.max()),
-                                               "share_of_the_month": float(bn.max() / bn.sum()) if bn.sum() else float("nan")} if len(bn) else None,
-                          "price_usd": float(price.loc[a:b].mean())}
+                                               "share_of_the_month": metrics.finite_ratio(bn.max(), bn.sum())} if complete else None,
+                          "price_usd": mean(price, a, b), **gaps(a, b)}
     out["by_month"] = months
     if step_day:
         day = pd.Timestamp(step_day)
         bb = fees["holders_revenue"].loc[start:end]
         near = bb / price.reindex(bb.index)
-        a_usd, b_usd = float(bb.loc[:day - pd.Timedelta(days=1)].mean()), float(bb.loc[day:].mean())
-        a_near, b_near = float(near.loc[:day - pd.Timedelta(days=1)].mean()), float(near.loc[day:].mean())
+        a_usd, b_usd = mean(bb, start, day - pd.Timedelta(days=1)), mean(bb, day, end)
+        a_near, b_near = mean(near, start, day - pd.Timedelta(days=1)), mean(near, day, end)
         out["buybacks_per_day_before_and_from_the_step"] = {
             "step_day": step_day, "usd": [a_usd, b_usd], "near": [a_near, b_near],
-            "usd_ratio": b_usd / a_usd if a_usd else float("nan"), "near_ratio": b_near / a_near if a_near else float("nan"),
-            "last_30_days_near": float(near.loc[end - pd.Timedelta(days=29):end].mean())}
+            "usd_ratio": metrics.finite_ratio(b_usd, a_usd), "near_ratio": metrics.finite_ratio(b_near, a_near),
+            "last_30_days_near": mean(near, end - pd.Timedelta(days=29), end), **gaps(start, end)}
         if threshold_month_usd and threshold_month:
             d = pd.Period(threshold_month, "M").days_in_month
             pace = out["buybacks_per_day_before_and_from_the_step"]["last_30_days_near"]
             out["threshold_price"] = {"month": threshold_month, "threshold_usd": float(threshold_month_usd),
-                                      "near_per_day": pace, "mean_price_that_meets_it": float(threshold_month_usd / (pace * d)),
+                                      "near_per_day": pace, "mean_price_that_meets_it": metrics.finite_ratio(threshold_month_usd, pace * d) if pace > 0 else float("nan"),
                                       "price_on_the_step_day": float(price[day])}
+            if not np.isfinite(pace) or pace <= 0:
+                out["threshold_price"]["unavailable_reason"] = ("no positive buyback pace" if np.isfinite(pace)
+                                                                else "incomplete last 30 days of buybacks or prices")
     if reference:
         a, b = pd.Period(reference[0], "M").start_time, pd.Period(reference[1], "M").end_time.normalize()
         out["reference_months"] = {"from": reference[0], "through": reference[1], "captured_share": captured(a, b),
-                                   "coverage": cover(a, b)}
+                                   "coverage": cover(a, b), **gaps(a, b)}
     return out
 
 
@@ -293,18 +308,19 @@ def take(daily: pd.DataFrame, fees: pd.DataFrame, step_day: str | None, days: in
     if step_day is None or "intents_volume_usd" not in daily:
         return None
     last = covered_through(fees)
-    volume = daily["intents_volume_usd"].dropna()
+    volume = daily["intents_volume_usd"].replace([np.inf, -np.inf], np.nan).dropna()
     if last is None or volume.empty:
         return None
     end = min(last, volume.index.max())
     step = pd.Timestamp(step_day)
-    frame = pd.DataFrame({"volume": volume, "fees": fees["fees"], "revenue": fees["revenue"]}).loc[:end]
-    frame["revenue_near"] = frame["revenue"] / daily["price_usd"].reindex(frame.index)
+    frame = pd.DataFrame({"volume": volume, "fees": fees["fees"], "revenue": fees["revenue"]}).loc[:end].replace([np.inf, -np.inf], np.nan)
+    price = daily["price_usd"].where(np.isfinite(daily["price_usd"]) & (daily["price_usd"] > 0))
+    frame["revenue_near"] = frame["revenue"] / price.reindex(frame.index)
 
     def part(a: pd.Timestamp, b: pd.Timestamp) -> dict | None:
-        w = frame.loc[a:b]
+        w = frame.reindex(pd.date_range(a, b, freq="D"))
         n = int((b - a).days) + 1
-        if len(w.dropna(subset=["volume", "fees", "revenue"])) != n or not w["volume"].sum():
+        if n <= 0 or len(w.dropna(subset=["volume", "fees", "revenue"])) != n or not w["volume"].sum():
             return None  # a hole in a series: no figure
         return {"from": str(a.date()), "through": str(b.date()), "days": n,
                 "volume_usd_per_day": float(w["volume"].mean()), "revenue_usd_per_day": float(w["revenue"].mean()),
@@ -316,12 +332,18 @@ def take(daily: pd.DataFrame, fees: pd.DataFrame, step_day: str | None, days: in
     if not before or not after:
         return None
     out = {"step_day": str(step.date()), "before": before, "after": after,
-           "volume_ratio": after["volume_usd_per_day"] / before["volume_usd_per_day"],
-           "revenue_ratio": after["revenue_usd_per_day"] / before["revenue_usd_per_day"],
-           "take_ratio": after["take_bps"] / before["take_bps"]}
-    monthly = frame.resample("MS").sum()
-    monthly = monthly[(monthly.index >= step.to_period("M").start_time - pd.DateOffset(months=3)) & (monthly.index < end.to_period("M").start_time)]
-    out["take_bps_by_month"] = {str(m.to_period("M")): float(r["revenue"] / r["volume"] * 1e4) for m, r in monthly.iterrows() if r["volume"]}
+           "volume_ratio": metrics.finite_ratio(after["volume_usd_per_day"], before["volume_usd_per_day"]),
+           "revenue_ratio": metrics.finite_ratio(after["revenue_usd_per_day"], before["revenue_usd_per_day"]),
+           "take_ratio": metrics.finite_ratio(after["take_bps"], before["take_bps"])}
+    reference = pd.period_range(step.to_period("M") - 3, step.to_period("M") - 1, freq="M")
+    last_month = (end + pd.Timedelta(days=1)).to_period("M") - 1
+    monthly = {str(m): part(m.start_time, m.end_time.normalize())
+               for m in pd.period_range(reference[0], last_month, freq="M")}
+    out["take_bps_by_month"] = {m: row["take_bps"] if row else float("nan") for m, row in monthly.items()}
+    unavailable = [str(m) for m in reference if not monthly.get(str(m))]
+    if unavailable:
+        out["take_step_unavailable"] = {"reason": "reference months need complete volume, fees and revenue and nonzero volume",
+                                         "months": unavailable}
     # Volume and take need not step on the same day, and a mean over everything since the volume step hides when the
     # take moved. So: the take in each calendar half-month from the step, and the first of them above the highest
     # full month before the step month (the months published just above). The period since the step is then cut there.
@@ -334,9 +356,15 @@ def take(daily: pd.DataFrame, fees: pd.DataFrame, step_day: str | None, days: in
         a = b + pd.Timedelta(days=1)
     out["take_bps_by_half_month"] = halves
     earlier_months = {m: bps for m, bps in out["take_bps_by_month"].items() if m < str(step.to_period("M"))}
-    if earlier_months and halves:
-        top = max(earlier_months, key=earlier_months.get)
-        rose = next((k for k, bps in halves.items() if bps > earlier_months[top]), None)
+    if not unavailable and earlier_months and halves:
+        def exact_take(a, b):
+            w = frame.loc[a:b]
+            return (sum((Decimal(str(x)) for x in w.revenue), Decimal(0)) /
+                    sum((Decimal(str(x)) for x in w.volume), Decimal(0)))
+
+        reference_rates = {m: exact_take(pd.Period(m).start_time, pd.Period(m).end_time.normalize()) for m in earlier_months}
+        top = max(reference_rates, key=reference_rates.get)
+        rose = next((k for k in halves if exact_take(*k.split("..")) > reference_rates[top]), None)
         if rose:
             first = pd.Timestamp(rose.split("..")[0])
             until, since = part(step, first - pd.Timedelta(days=1)) if first > step else None, part(first, end)
@@ -348,7 +376,7 @@ def take(daily: pd.DataFrame, fees: pd.DataFrame, step_day: str | None, days: in
     if len(recent.dropna()) == 30 and len(earlier.dropna()) == 30:
         out["last_30_days_vs_the_30_before"] = {
             "through": str(end.date()),
-            **{f"{k}_pct_change": float((recent[c].sum() / earlier[c].sum() - 1) * 100)
+            **{f"{k}_pct_change": float((metrics.finite_ratio(recent[c].sum(), earlier[c].sum()) - 1) * 100)
                for k, c in (("volume", "volume"), ("gross_fees", "fees"), ("revenue_usd", "revenue"), ("revenue_near", "revenue_near"))}}
     return out
 

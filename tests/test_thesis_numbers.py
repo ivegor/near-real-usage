@@ -856,7 +856,7 @@ def test_the_texts_quote_the_readings_by_window_half_month_and_family():
         f"{thousand(sep2['txns_less_deleted'])} a day against a top of {thousand(top['txns_less_deleted'])}, and "
         f"{thousand(oct1['txns_less_deleted'])} in the first half of October, when the deletion of old KaiChing accounts lifted the "
         f"count as reported to {thousand(oct1['txns'])}",
-        f"back at {thousand(oct2['txns_less_deleted'])} transactions and {oct2['fees_near']:,.0f} NEAR of fees a day, when the price was "
+        f"back at a scenario rate of {thousand(oct2['txns_less_deleted'])} transactions and {oct2['fees_near']:,.0f} NEAR of fees a day, when the price was "
         f"still ${oct2['price_usd']:.2f} on average",
         f"the exchange rose earlier, from 1 September: {thousand(ex[0]['per_day'])} transactions a day (95% interval "
         f"{k(ex[0]['per_day_ci95'][0])} to {thousand(ex[0]['per_day_ci95'][1])}) from 14 to 31 August, "
