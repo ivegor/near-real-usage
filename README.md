@@ -2,6 +2,48 @@
 
 **Track:** Investment Thesis (`thesis`), NEAR HACKATHON, November 2026.
 
+**Who actually uses NEAR, and does that use reach the token?** A census of the accounts acting on NEAR, month by
+month over the whole chain (every transaction, not a sample), split by who pays the fee, with nine dated predictions.
+One command rebuilds every number below.
+
+[Live dashboard](https://ivegor.github.io/near-real-usage/) · [Thesis](THESIS.md) · [Appendix](APPENDIX.md) ·
+[Predictions](PREDICTIONS.md) · [Demo video, 73 s](demo/near-real-usage.mp4)
+
+## The answer in five lines
+
+Snapshot 2026-11-11; October 2026 against October 2025.
+
+1. **The collapse was accounts an app was paying for.** Accounts acting on NEAR fell 97% (43.6M → 1.38M a month);
+   those whose fees an app paid went from 43.05M to 0.55M, which is the whole fall.
+2. **What is left is in few hands.** 30 accounts send half of all transactions; outside the reward apps' namespaces
+   475 heavy accounts send 91% of the self-paid ones.
+3. **Self-paid activity grew only in autumn 2026.** It is up 28% October to October, after nine months averaging 17%
+   below the year before, and the jump came in the weeks of a price rally.
+4. **Little of it reaches the token so far.** The NEAR that Intents revenue brings in equals 18% of the net new NEAR
+   issued over the last 90 days; matching the issuance at this price needs 5.6 times the revenue.
+5. **Usage did not lead the price in this test.** 5 of 85 weekly lead-lag tests fall outside the noise band, where
+   about 4 are expected by chance, and none stands after Holm's correction.
+
+**Where that leaves a holder: a narrow case, not a valuation.** What the data supports is one product, NEAR Intents,
+and a few hundred heavy accounts; a broad base of accounts paying for themselves is not established. The case widens
+if Intents volume and self-paid activity stay above the range they left in autumn 2026, and closes if they fall back
+into it. Nine predictions with dates and thresholds, frozen on 2026-11-13 and timestamped in a Bitcoin block, say
+which it is; the build scores them, the first on 2026-11-17.
+
+## Check it
+
+| Do this | See this |
+|---|---|
+| `docker build -t near-real-usage . && docker run --rm -p 8000:8000 near-real-usage` | The tests and an offline rebuild of every chart run while the image is built; the dashboard is served on <http://localhost:8000> |
+| `make test` | Every figure quoted here, in THESIS.md, APPENDIX.md and PREDICTIONS.md is compared with the frozen copy of the summary |
+| `make offline` | `docs/` rebuilt from the committed data with no network, the same bytes as the committed files |
+| `ots verify predictions.csv.ots` | The predictions file existed before its first check date: its digest is in Bitcoin block 975705 |
+| Paste [`sql/account_age.sql`](sql/account_age.sql) into the BigQuery console | The census itself, counted from the public dataset (the saved result was a 482.64 GB scan; read the dry-run estimate first) |
+
+Every other command is in "Run it" below.
+
+## The findings in detail
+
 **Problem.** NEAR's headline activity (daily transactions, active accounts) is easy to inflate with reward apps and
 one-off accounts, so it is a weak basis for a long-term investment case. This project counts who actually acts on
 NEAR, account by account over the whole chain, and tests with re-runnable code whether usage leads the NEAR price.
@@ -44,8 +86,6 @@ the side analyses, the robustness checks and the history of our drafts (three re
 [`APPENDIX.md`](APPENDIX.md). Nine dated predictions, their
 thresholds reference levels taken from the data or natural lines such as parity, scored by the build (five from
 the daily series, four once the BigQuery queries are run again for January 2027): [`PREDICTIONS.md`](PREDICTIONS.md).
-
-**Demo video (73 s):** [`demo/near-real-usage.mp4`](demo/near-real-usage.mp4).
 
 **What it is.** A reproducible research pipeline: one command downloads public data, computes the metrics, renders the
 charts and a static dashboard, and writes the computed metrics to `docs/summary.json`; a test checks the figures quoted in [`THESIS.md`](THESIS.md),
