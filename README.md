@@ -33,7 +33,9 @@ window. That is a narrow case; nine dated predictions say what would widen it or
   means, the same on twelve). They jumped in the second half of September and the first half of October 2026, when the NEAR price went
   from $1.92 to $4.89 in one month, and in the first 11 days of November they run 12% below October's daily rate and
   5% below November 2025's (14% and 7% below without a one-off of dormant accounts on 10 November). Without
-  the reward-side calls in both Octobers and one account whose calls fail, the October change is +26%. Transactions
+  the reward-side calls in both Octobers and one account whose calls fail, the October change is +26% if every caller
+  of the reward-side contracts is outside the reward namespaces, and between +19% and +31% as far as the tables can
+  say. Transactions
   sponsored through relayers fell 75%. Transactions to the exchange, Intents, token contracts and bridges are up
   **37%** (+29% without that account); what is neither that group nor the reward apps is level (+3%). The keyless
   sample shows the group above the year before already in the second half of August 2026, before the price doubled (207
@@ -47,9 +49,10 @@ window. That is a narrow case; nine dated predictions say what would widen it or
   100 thousand in October. HOT's lowest month was September, at a change of relayer; the return began in October.
 * NEAR Intents volume: **$56M → $129M a day**, October to October, but that base was the middle of a ramp-up: the
   volume is level with November 2025 ($122M) and +73% on the nine months in between ($74.5M). It stepped up on 19
-  August, as the price began to move and a month before it doubled, and has held since. Usage does **not** lead price: 6 of 85 weekly
+  August, as the price began to move and a month before it doubled, and has held since. In our tests no usage metric leads price: 6 of 85 weekly
   lead-lag tests fall outside the noise band where about 4 are expected by chance, and none stands after Holm's
-  correction for testing them together.
+  correction for testing them together. These are linear correlations at fixed lags; they do not rule out a lead of
+  another kind.
 * Three readings from our own drafts ("returning accounts grew", "remaining accounts are busier", "the base outside
   reward apps fell by two thirds") did not survive closer measurement, and a fourth ("regular self-paying accounts
   fell by a third") turned out to be partly one game changing who pays; THESIS.md lists each with what replaced it.
@@ -58,7 +61,8 @@ window. That is a narrow case; nine dated predictions say what would widen it or
   over other windows; $11.2M a year at the pace of the whole programme). In NEAR their step was 1.6 times, in USD 3.5
   times: most of it is the price. That figure is DefiLlama's; read from the chain with no key, the three wallets the
   revenue arrives at grew by 1,456,744 NEAR over the same 90 days, 18.3% of the new supply (15.4% over the last 30).
-  The step in revenue since 19 August is 1.9 times more volume and a 1.6 times higher take (2.62 → 4.27 basis points
+  "Buybacks" is DefiLlama's name for the NEAR arriving there; the purchases on the market are not in the data, and
+  the balances show only that the NEAR arrives and stays. The step in revenue since 19 August is 1.9 times more volume and a 1.6 times higher take (2.62 → 4.27 basis points
   of volume), which two other entries trace to one new, incentivised channel; over the last 30 days volume is down 22%
   and captured revenue 20%. At the issuance the approved HSP-029 ends at (1.6% a year, not yet in force) the 18% would
   be 28%.

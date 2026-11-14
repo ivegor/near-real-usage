@@ -170,12 +170,20 @@ def test_self_paid_transactions_are_also_published_without_what_is_not_independe
     assert abs(a["pct_change_without_reward_side_direct_txs"] - (65_000 / 50_000 - 1) * 100) < 1e-9
     assert abs(a["pct_change_without_failing_senders"] - ((txs["latest"] - 5_000) / txs["prior"] - 1) * 100) < 1e-9
     assert abs(a["pct_change_without_both"] - (60_000 / 50_000 - 1) * 100) < 1e-9
+    # a caller inside the app namespaces is not in the series at all: from none of the calls in it to all of them,
+    # the most out of this year and none of last year's, and the other way round
+    lo, hi = a["pct_change_without_reward_side_direct_txs_both_ends"]
+    assert abs(lo - (65_000 / 56_840 - 1) * 100) < 1e-9 and abs(hi - (68_840 / 50_000 - 1) * 100) < 1e-9
+    lo, hi = a["pct_change_without_both_both_ends"]
+    assert abs(lo - (60_000 / 56_840 - 1) * 100) < 1e-9 and abs(hi - (63_840 / 50_000 - 1) * 100) < 1e-9
     c = charts._segments_chart(df, sg, tmp_path)                         # and the caption says so
     assert "Without them the change is +20%" in c.sentence and "nan" not in c.sentence.lower()
+    assert f"the two ends are {charts._pct(a['pct_change_without_both_both_ends'][0])} and" in c.sentence
     # no failing sender known: only the reward-side figure; no reward-side table: nothing at all
     plain = segments.summarize(df)
     segments.add_self_paid_adjustments(plain, {"reward_side_direct_calls": cl["reward_side_direct_calls"]})
-    assert set(plain["self_paid_txs_adjustments"]) == {"pct_change_as_counted", "reward_side_direct_txs", "pct_change_without_reward_side_direct_txs"}
+    assert set(plain["self_paid_txs_adjustments"]) == {"pct_change_as_counted", "reward_side_direct_txs", "pct_change_without_reward_side_direct_txs",
+                                                       "pct_change_without_reward_side_direct_txs_both_ends"}
     none = segments.summarize(df)
     segments.add_self_paid_adjustments(none, {})
     assert "self_paid_txs_adjustments" not in none

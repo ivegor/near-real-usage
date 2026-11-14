@@ -200,15 +200,16 @@ def _value_chart(d: pd.DataFrame, fees: pd.DataFrame, vc: dict, out: Path) -> Ch
         "value_capture", "Does it reach the token?",
         f"Over the 90 days to {vc['window'][1]} NEAR Intents charged ${vc['intents_gross_fees_usd'] / 1e6:.1f}M in fees "
         f"({vc['intents_fees_vs_l1_fees']:.0f}x the network's own transaction fees) and NEAR captured "
-        f"${vc['captured_revenue_usd'] / 1e6:.2f}M of it ({vc['captured_share_of_gross_fees'] * 100:.0f}%), all used to buy NEAR "
-        f"on the market since {vc['buyback_start']}. That is ${vc['buyback_usd_annualized'] / 1e6:.1f}M a year against "
+        f"${vc['captured_revenue_usd'] / 1e6:.2f}M of it ({vc['captured_share_of_gross_fees'] * 100:.0f}%), all of it, by DefiLlama's "
+        f"description, used to buy NEAR on the market since {vc['buyback_start']}. That is ${vc['buyback_usd_annualized'] / 1e6:.1f}M a year against "
         f"${vc['new_supply_value_usd_annualized'] / 1e6:.0f}M a year of net new NEAR "
-        f"({vc['net_new_supply_near_annualized'] / 1e6:.1f}M NEAR at ${vc['mean_price_usd']:.2f}): buybacks cover "
-        f"{vc['buyback_coverage_of_new_supply'] * 100:.0f}% of dilution, and the market capitalisation is "
+        f"({vc['net_new_supply_near_annualized'] / 1e6:.1f}M NEAR at ${vc['mean_price_usd']:.2f}): the buybacks equal "
+        f"{vc['buyback_coverage_of_new_supply'] * 100:.0f}% of the dilution, and the market capitalisation is "
         f"{vc['market_cap_to_annual_buyback']:.0f} times the annual buyback.",
         "DefiLlama fee series for NEAR Intents (dailyFees, dailyRevenue, dailyHoldersRevenue); net new supply = change in "
         "NearBlocks' daily total supply (already net of burned fees) valued at the mean price of the period. The window ends "
-        "on the last day both sources cover. The bought NEAR is not burned, so supply itself does not shrink."
+        "on the last day both sources cover. The bought NEAR is not burned, so supply itself does not shrink. What is checked "
+        "here is the NEAR arriving at the revenue wallets and staying there; the purchases on the market are not."
         + (f" The fee series ends {vc['days_behind_the_daily_series']} days before the daily data."
            if vc.get("days_behind_the_daily_series", 0) > 1 else ""),
     )
@@ -274,7 +275,9 @@ def _segments_chart(seg: pd.DataFrame, sg: dict, out: Path) -> Chart:
         adj_note = (f" Both months hold transactions that are not independent use: direct calls to reward-side contracts "
                     f"({side['prior'] / 1e6:.2f}M in {sg['prior_month']}, {side['latest'] / 1e6:.2f}M in {sg['latest_month']}) and, in "
                     f"{sg['latest_month']}, {adj['failing_sender_txs_latest'] / 1e6:.2f}M from an account whose sampled calls all "
-                    f"failed. Without them the change is {_pct(adj['pct_change_without_both'])}.")
+                    f"failed. Without them the change is {_pct(adj['pct_change_without_both'])} if every caller of those contracts "
+                    f"is outside the reward namespaces; how many are inside them the tables do not say, and the two ends are "
+                    f"{_pct(adj['pct_change_without_both_both_ends'][0])} and {_pct(adj['pct_change_without_both_both_ends'][1])}.")
     return Chart(
         "segments", "Who pays, and how often",
         f"Accounts whose fees an app paid: {m['sponsored_accounts']['prior'] / 1e6:.1f}M in {sg['prior_month']}, "
@@ -389,11 +392,11 @@ def _takeaway(slug: str, s: dict) -> str:
             return f"{c['months'][c['latest_month']]['accounts_for_half_of_txs']} accounts send half of all NEAR transactions."
         if slug == "value_capture":
             v = s["value_capture"]
-            first = f"Buybacks funded by NEAR Intents cover {v['buyback_coverage_of_new_supply'] * 100:.0f}% of the new NEAR issued."
+            first = f"The revenue NEAR Intents captures for buybacks equals {v['buyback_coverage_of_new_supply'] * 100:.0f}% of the new NEAR issued."
             lengths = (v.get("windows") or {}).get("by_length")
             if lengths:  # one window is not the figure: the range over windows of other lengths ending on the same day
                 cov = [x["coverage"] for x in lengths.values()]
-                first = (f"Buybacks funded by NEAR Intents cover {v['buyback_coverage_of_new_supply'] * 100:.0f}% of the new NEAR "
+                first = (f"The revenue NEAR Intents captures for buybacks equals {v['buyback_coverage_of_new_supply'] * 100:.0f}% of the new NEAR "
                          f"issued over the last 90 days, and {min(cov) * 100:.0f}% to {max(cov) * 100:.0f}% over windows from a "
                          f"week to the whole programme.")
             w = v.get("wallets")
@@ -430,7 +433,9 @@ def _takeaway(slug: str, s: dict) -> str:
             return "A sample of random blocks, taken without any API key, agrees with the full count."
         if slug == "lead_lag":
             from . import predictions
-            return ("Usage does not lead price." if predictions.adjacent_positive_leads(s["lead_vs_price"]) == 0
+            # what was tested is a linear correlation of weekly changes at fixed lags: that finds no lead, it does not
+            # rule out every kind of one
+            return ("No usage metric leads price in these tests." if predictions.adjacent_positive_leads(s["lead_vs_price"]) == 0
                     else "Some usage metrics move before price; see the lags.")
     except (KeyError, TypeError):
         return ""

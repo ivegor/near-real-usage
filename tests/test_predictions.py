@@ -247,12 +247,17 @@ def test_a_result_that_misses_a_day_of_its_month_is_not_scored(tmp_path):
     assert set(status(days_of_january(idx, JANUARY_TXS + 31_000)).values()) == {waiting}
     # short by less than a day is how two sources differ in a month they both hold: scored
     assert status(days_of_january(idx, JANUARY_TXS + 29_000)) == {"B1": "held", "B3": "held", "B4": "failed"}
-    # the rule itself: nothing to compare with means the result is taken as it is
+    # a day missing from the aggregator's count: nothing shows the result holds the whole month, so it waits too
+    gap = days_of_january(idx)
+    gap["2027-01-15"] = np.nan
+    assert set(status(gap).values()) == {waiting}
+    # the rule itself: nothing to compare with means the result is not scored yet
     days = pd.DataFrame({"txns": days_of_january(idx)}, index=idx)
     assert predictions.holds_the_whole_month(JANUARY_TXS, "2027-01", days)
     assert not predictions.holds_the_whole_month(JANUARY_TXS - 31_000, "2027-01", days)
-    assert predictions.holds_the_whole_month(1, "2027-01", None) and predictions.holds_the_whole_month(1, "2027-01", days[["txns"]].rename(columns={"txns": "x"}))
-    assert predictions.holds_the_whole_month(1, "2027-03", days)             # the daily series does not reach that month
+    assert not predictions.holds_the_whole_month(1, "2027-01", None)
+    assert not predictions.holds_the_whole_month(1, "2027-01", days[["txns"]].rename(columns={"txns": "x"}))
+    assert not predictions.holds_the_whole_month(1, "2027-03", days)         # the daily series does not reach that month
     # and the committed results as they stand: every month the frequency table holds is a whole one
     from thesis import sources
     real, table = sources.load_daily(offline=True), snapshot.frequency()
@@ -296,7 +301,8 @@ def test_accounts_for_half_is_a_lower_bound_when_the_ranked_group_is_too_small(t
     """The query ranks accounts with 1,000+ transactions. If they send less than half, the count is only bounded from below."""
     p = tmp_path / "p.csv"
     p.write_text(BQ_HEADER + "B3,q,2027-02-01,accounts_for_half_of_txs_2027_01,<,100,b,bigquery,a few dozen accounts\n")
-    daily = pd.DataFrame({"intents_volume_usd": 1.0, "price_usd": 1.0}, index=pd.date_range("2026-06-01", "2027-02-05", freq="D"))
+    idx = pd.date_range("2026-06-01", "2027-02-05", freq="D")
+    daily = pd.DataFrame({"intents_volume_usd": 1.0, "price_usd": 1.0, "txns": days_of_january(idx)}, index=idx)
     _, _, many = bq_results(tmp_path, half_reached=False, heavy=150)      # 150 accounts send 40%: more than 150 are needed
     out = predictions.evaluate(daily, None, p, top=many)["items"][0]
     assert (out["status"], out["measured"]) == ("failed", 151.0)
@@ -328,6 +334,17 @@ def test_buyback_predictions_wait_for_a_day_that_is_missing(tmp_path):
     other.loc["2025-11-20", "fees"] = np.nan                       # another series, another month: only the coverage waits
     assert status(other)["W3"] == ("failed", 31.0) and status(other)["W4"] == waiting
     assert status(fees.loc[:"2026-01-08"])["W4"] == waiting       # the series stops two days short of the window
+    # the other side of the ratio: the price of every day and the supply on the day before the 90 days and on the last
+    full_daily = daily.copy()
+    daily.loc["2025-10-13":"2026-01-09", "price_usd"] = np.nan    # 89 of the 90 prices missing
+    assert status(fees)["W4"] == waiting
+    for day in ("2025-10-12", "2026-01-10"):
+        daily = full_daily.copy()
+        daily.loc[day, "total_supply_yocto"] = np.nan
+        assert status(fees)["W4"] == waiting, day
+    daily = full_daily.copy()
+    daily.loc["2025-11-20", "total_supply_yocto"] = np.nan         # a supply missing inside the window is not read
+    assert status(fees)["W4"][0] == "held"
 
 
 def test_step_reports_what_the_series_did_in_the_range_before_it():

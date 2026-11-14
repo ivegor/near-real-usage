@@ -231,6 +231,8 @@ def test_the_build_goes_on_from_v3_when_v1_is_switched_off(tmp_path, monkeypatch
     import json
     import shutil
 
+    import pytest
+
     from thesis import __main__ as cli
     from thesis import value
     saved = sources.RAW_DIR
@@ -270,6 +272,16 @@ def test_the_build_goes_on_from_v3_when_v1_is_switched_off(tmp_path, monkeypatch
     assert summary["series_ended"]["active_accounts"] == cut and "txns" not in summary["series_ended"]
     page = (tmp_path / "docs" / "index.html").read_text(encoding="utf-8")
     assert "Some series ended" in page and f"active accounts ({cut})" in page
+    # and an offline build from the same saved replies builds the same table and summary, the v3 days included
+    built = {p: p.read_bytes() for p in (tmp_path / "data" / "daily.csv", tmp_path / "docs" / "summary.json")}
+    sources.CONTINUED_FROM_V3.clear()
+    cli.build(offline=True)
+    assert sources.CONTINUED_FROM_V3
+    assert all(p.read_bytes() == b for p, b in built.items()), [p.name for p, b in built.items() if p.read_bytes() != b]
+    # a saved v3 copy missing while _meta.json says the table went on from v3 is an error, not a shorter table
+    (raw / "nearblocks_v3_txns.json").unlink()
+    with pytest.raises(FileNotFoundError):
+        sources.fetch_all(offline=True)
     sources.CONTINUED_FROM_V3.clear()
 
 

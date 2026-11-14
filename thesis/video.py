@@ -50,10 +50,11 @@ def slides(s: dict) -> list[dict]:
          "line": f"Reward and wallet apps are still {c['reward_apps_share']['latest'] * 100:.0f}% of them; trading, Intents, tokens and "
                  f"bridges are {c['finance_share']['latest'] * 100:.0f}% and grew {c['finance_txs']['pct_change']:+.0f}% in a year.",
          "chart": "clients", "sec": 12},
-        {"head": (f"Buybacks cover {min(cov) * 100:.0f}-{max(cov) * 100:.0f}% of the new NEAR issued." if cov
-                  else f"Buybacks cover {v['buyback_coverage_of_new_supply'] * 100:.0f}% of the new NEAR issued."),
-         "line": f"Intents fees are {v['intents_fees_vs_l1_fees']:.0f}x the network's own fees; NEAR keeps "
-                 f"{v['captured_share_of_gross_fees'] * 100:.0f}% of them and buys NEAR with it: ${v['buyback_usd_annualized'] / 1e6:.1f}M a year.",
+        {"head": (f"Captured revenue equals {min(cov) * 100:.0f}-{max(cov) * 100:.0f}% of the new NEAR issued." if cov
+                  else f"Captured revenue equals {v['buyback_coverage_of_new_supply'] * 100:.0f}% of the new NEAR issued."),
+         "line": f"Intents fees are {v['intents_fees_vs_l1_fees']:.0f}x the network's own; NEAR keeps "
+                 f"{v['captured_share_of_gross_fees'] * 100:.0f}%, ${v['buyback_usd_annualized'] / 1e6:.1f}M a year, "
+                 f"which DefiLlama counts as buybacks.",
          "chart": "value_capture", "sec": 10},
     ]
     if cc:
@@ -65,8 +66,9 @@ def slides(s: dict) -> list[dict]:
                     "chart": "signer_census", "sec": 9})
     n_out = sum(len(x["outside_band"]) for x in s["lead_vs_price"].values())
     out += [
-        {"head": "Usage does not lead price.",
-         "line": f"{n_out} of {17 * len(s['lead_vs_price'])} weekly lead-lag tests fall outside the noise band; about 4 are expected by chance.",
+        {"head": "No usage metric leads price in these tests.",
+         "line": f"{n_out} of {17 * len(s['lead_vs_price'])} weekly lead-lag tests fall outside the noise band, about 4 by chance; "
+                 f"none survives Holm's correction.",
          "chart": "lead_lag", "sec": 8},
         {"head": "Every number is rebuilt by one command.",
          "line": f"python -m thesis build    |    github.com/ivegor/near-real-usage    |    "

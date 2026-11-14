@@ -3428,9 +3428,17 @@
         31.54704763281826,
         33.15174428671117
       ],
+      "pct_change_without_reward_side_direct_txs_both_ends": [
+        24.37606503861385,
+        36.550248259386024
+      ],
       "failing_sender_txs_latest": 513339,
       "pct_change_without_failing_senders": 22.577790220815828,
-      "pct_change_without_both": 26.28017298198686
+      "pct_change_without_both": 26.28017298198686,
+      "pct_change_without_both_both_ends": [
+        19.1231894535429,
+        30.939063644996946
+      ]
     }
   },
   "sponsors": {

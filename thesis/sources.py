@@ -94,7 +94,19 @@ def fetch_all(offline: bool = False) -> dict[str, dict]:
                 stale.append(name)
             out[name] = data
     CONTINUED_FROM_V3.clear()
-    if "nearblocks_charts" in stale:
+    if offline:
+        # An offline build rebuilds what the last build with the network built, from the same saved replies. If that
+        # build carried the daily table on from v3 (its _meta.json says so), the saved v3 copies are read too; without
+        # them the table would end on the last day of the saved /v1 copy and the offline build would differ from it.
+        meta_path = RAW_DIR / "_meta.json"
+        last_run = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else {}
+        if (last_run.get("nearblocks_charts") or {}).get("continued_from"):
+            missing = [k for k in NEARBLOCKS_V3 if not (RAW_DIR / f"{k}.json").exists()]
+            if missing:
+                raise FileNotFoundError(f"_meta.json says the daily table went on from v3, but {missing} are missing")
+            out.update({k: json.loads((RAW_DIR / f"{k}.json").read_text(encoding="utf-8")) for k in NEARBLOCKS_V3})
+            CONTINUED_FROM_V3.append(True)
+    elif "nearblocks_charts" in stale:
         v3 = fetch_v3()
         if v3:
             # the daily table is fresh after all: the saved /v1 copy up to its last day, v3 from there on

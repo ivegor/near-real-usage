@@ -265,6 +265,12 @@ def add_self_paid_adjustments(sg: dict, cl: dict) -> None:
     the upper end. The second is a sender whose sampled calls all failed (clients.add_failing_senders), in this
     year's month. Each amount is the most that can be inside the series: the tables give a contract's direct calls
     and an account's total, not the namespace of every sender. The figures are published next to the counted one.
+
+    A direct call from an account inside the app namespaces is not in this series at all, and the keyless sample has
+    one (a `.tg` account calling the game a year ago). How many of the calls came from there the tables do not say,
+    from none to all of them, so the change without the calls is published with both ends of that as well
+    (`..._both_ends`): the most taken out of this year and none of last year's, and the other way round. The figure
+    that takes every call out of both years is the one for "every caller is outside the namespaces", not a bound.
     """
     txs = sg["metrics"].get("independent_self_paid_txs")
     side = cl.get("reward_side_direct_calls")
@@ -282,13 +288,19 @@ def add_self_paid_adjustments(sg: dict, cl: dict) -> None:
     # Reward-side contracts that are not among a month's 40 largest received at most as many calls as the smallest of
     # them each: what the figure above can be missing, in either month, and the range that leaves.
     unseen = side.get("outside_the_40") or {}
+    more_then = more_now = 0
     if unseen:
         more_then, more_now = (unseen[k]["transactions_at_most"] for k in ("prior", "latest"))
         out["reward_side_direct_txs_outside_the_40_at_most"] = {"prior": int(more_then), "latest": int(more_now)}
         out["pct_change_without_reward_side_direct_txs_range"] = [
             change(txs["latest"] - now - more_now, txs["prior"] - then), change(txs["latest"] - now, txs["prior"] - then - more_then)]
+    # and with the namespace of the callers left open, from none of the calls in the series to all of them
+    out["pct_change_without_reward_side_direct_txs_both_ends"] = [
+        change(txs["latest"] - now - more_now, txs["prior"]), change(txs["latest"], txs["prior"] - then - more_then)]
     if failed:
         out.update({"failing_sender_txs_latest": int(failed),
                     "pct_change_without_failing_senders": change(txs["latest"] - failed, txs["prior"]),
-                    "pct_change_without_both": change(txs["latest"] - now - failed, txs["prior"] - then)})
+                    "pct_change_without_both": change(txs["latest"] - now - failed, txs["prior"] - then),
+                    "pct_change_without_both_both_ends": [change(txs["latest"] - now - more_now - failed, txs["prior"]),
+                                                          change(txs["latest"] - failed, txs["prior"] - then - more_then)]})
     sg["self_paid_txs_adjustments"] = out

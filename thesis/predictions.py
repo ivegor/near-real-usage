@@ -231,6 +231,13 @@ def _measure(metric: str, on: pd.Timestamp, daily: pd.DataFrame, fees: pd.DataFr
         start = on - pd.Timedelta(days=89)
         if any(_window(f[c], start, on) is None for c in f.columns):
             return None  # a day without fee data inside the 90 days: wait for it, do not score on part of the window
+        # The other side of the ratio: the mean price of the 90 days and the supply on the day before them and on the
+        # last day. A missing price would leave a mean of fewer days, a missing supply the value of an earlier day.
+        if "price_usd" not in d or _window(d["price_usd"], start, on) is None:
+            return None
+        if "total_supply_yocto" not in d or _window(d["total_supply_yocto"], start - pd.Timedelta(days=1), start - pd.Timedelta(days=1)) is None \
+                or _window(d["total_supply_yocto"], on, on) is None:
+            return None
         v = value.summarize(d, f)
         return float(v["buyback_coverage_of_new_supply"]) if v else None
     return None
@@ -253,14 +260,15 @@ def holds_the_whole_month(table_txs: float, month: str, daily: pd.DataFrame | No
     aggregator does: NearBlocks counts the same transactions day by day, and the two sources agree to a few hundred
     transactions in a month (population.totals_check). A result that misses a day is short by at least the month's
     quietest day, so that is the line; no tolerance is chosen. Without a daily count for every day of the month there
-    is nothing to compare with, and the result is taken as it is.
+    is nothing to compare with, so nothing shows that the result holds the whole month: it is not scored (False) until
+    the daily series has every day of it. After /v1 is switched off the count goes on from v3 (thesis/sources.py).
     """
     if daily is None or "txns" not in daily:
-        return True
+        return False
     period = pd.Period(month, "M")
     days = daily["txns"].reindex(pd.date_range(period.start_time, period.end_time.normalize(), freq="D"))
     if days.isna().any():
-        return True
+        return False
     return float(days.sum() - table_txs) < float(days.min())
 
 

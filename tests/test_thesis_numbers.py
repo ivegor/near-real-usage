@@ -137,6 +137,8 @@ def test_thesis_quotes_the_committed_summary():
     assert side["prior"]["transactions"] == game_txs["game_direct_txs_prior"]      # a year ago the game was all of it
     fast, ember_calls = (side["latest"]["by_contract"][k] for k in ("fast-auth.near", "embr.playember_reserve.near"))
     side_range = adj["pct_change_without_reward_side_direct_txs_range"]
+    side_lo, side_hi = adj["pct_change_without_reward_side_direct_txs_both_ends"]
+    both_lo, both_hi = adj["pct_change_without_both_both_ends"]
     failed_txs, finance_change = failing["transactions_latest_all"], c["finance_txs"]["pct_change"]
     # the unfinished month for the reward apps' namespaces too, not only where self-paid transactions slow down
     rates = p["partial_month"]["txs_per_day"]
@@ -201,18 +203,25 @@ def test_thesis_quotes_the_committed_summary():
         f"{M(pace['whole_month_at_that_rate'])} a month, or {M(pace['without_dormant_implicit']['whole_month_at_that_rate'])} without the "
         f"one-off of {spike_day} (B2 checks November to January)",
         # what is inside the self-paid series and the financial group without being independent use
-        f"without them the October change is {pct(adj['pct_change_without_both'])}",
+        f"without them the October change is {pct(adj['pct_change_without_both'])} if every caller of the reward-side contracts "
+        f"is outside the reward namespaces, and between {pct(both_lo)} and {pct(both_hi)} as far as the tables can say",
         f"are up {finance_change:.0f}% October to October ({failing['finance_pct_change_without_them']:.0f}% without that account)",
         f"This year's holds {side['latest']['transactions']:,} direct calls to reward-side contracts",
         f"and the {failed_txs:,} transactions of `escrow.ai.near`, whose sampled calls all failed. With the reward-side calls out of both "
-        f"years the change is {pct(adj['pct_change_without_reward_side_direct_txs'])} ({pct(side_range[0])} to {pct(side_range[1])} allowing "
-        f"for such contracts outside the 40 largest); with that account out as well, {pct(adj['pct_change_without_both'])}",
+        f"years the change is {pct(adj['pct_change_without_reward_side_direct_txs'])} if all their callers are outside the reward "
+        f"namespaces ({pct(side_range[0])} to {pct(side_range[1])} allowing for such contracts outside the 40 largest)",
+        f"so the change lies between {pct(side_lo)} and {pct(side_hi)}. With that account out as well, "
+        f"{pct(adj['pct_change_without_both'])} on the same assumption, and between {pct(both_lo)} and {pct(both_hi)} without it",
+        f"the change lies between {pct(side_range[0])} and {pct(side_range[1])} if every caller is outside the reward namespaces",
+        f"the change lies between {pct(side_lo)} (none of last year's calls in the series, all of this year's) and {pct(side_hi)} "
+        f"(the other way round); with `escrow.ai.near` out as well, between {pct(both_lo)} and {pct(both_hi)}",
         f"The count holds the {failed_txs:,} transactions of `escrow.ai.near`, whose sampled calls to Intents all failed: without them the "
         f"group is {pct(failing['finance_pct_change_without_them'])}, and Intents itself {pct(failing['target_pct_change_without_them'])} "
         f"instead of {pct(c['apps']['NEAR Intents']['pct_change'])}",
         f"without its {failed_txs:,} transactions the count is down {abs(failing['target_pct_change_without_them']):.0f}%",
-        f"Taken out, the financial group is up {failing['finance_pct_change_without_them']:.0f}%, not {finance_change:.0f}%, and self-paid "
+        f"the financial group is then up {failing['finance_pct_change_without_them']:.0f}%, not {finance_change:.0f}%, and self-paid "
         f"transactions outside the reward namespaces {adj['pct_change_without_failing_senders']:.0f}%, not {adj['pct_change_as_counted']:.0f}%",
+        f"That account sent {failed_txs:,} transactions in October, about a quarter of what NEAR Intents",
         f"that is {side['prior']['transactions']:,} calls a year ago (the game) and {side['latest']['transactions']:,} now: "
         f"{fast['transactions']:,} to `fast-auth.near`, whose main caller is Sweat's relayer, and {ember_calls['transactions']:,} to Ember's "
         f"contract from {ember_calls['accounts']} accounts",
@@ -407,7 +416,7 @@ def test_thesis_quotes_the_committed_summary():
         f"low of {s['segments']['regular_accounts_low']['value']:,.0f} in August 2026",
         f"{pct(s['population']['core_direct_txs_change_by_window']['6'])} (six months), {pct(s['population']['core_direct_txs_change_by_window']['9'])} (nine)",
         f"${s['value_capture']['buyback_usd_annualized'] / 1e6:.1f}M a year",
-        f"**Buybacks cover {s['value_capture']['buyback_coverage_of_new_supply'] * 100:.0f}% of dilution.**",
+        f"**The buybacks equal {s['value_capture']['buyback_coverage_of_new_supply'] * 100:.0f}% of the dilution.**",
         f"{s['value_capture']['growth_needed_to_cover_new_supply']:.1f} times the captured revenue",
         f"{sum(w['blocks_found'] for w in s['signer_census']['windows'].values())} random blocks",
         f"each of the {sum(w['accounts'] for w in s['signer_census']['windows'].values()):,} accounts",
@@ -481,7 +490,7 @@ def test_thesis_quotes_the_checks_read_from_the_chain():
         f"all {bot['transactions']} sent by `escrow.ai.near` in the sample of autumn 2026 failed",
         f"against {own['failed']} failed of the {own['transactions']} that `intents.near` signed itself and none of the "
         f"{out['other_senders']['transactions']} from other accounts",
-        f"(all {bot['transactions']} in the keyless sample failed)",
+        f"(all {bot['transactions']} in the keyless sample failed, over 90 days)",
     ]
     missing = [q for q in quoted if q not in text]
     assert not missing, f"THESIS.md does not quote these summary values: {missing}"
@@ -584,7 +593,10 @@ def test_readme_key_findings_quote_the_same_summary():
         f"{core_step['range_months_below_a_year_earlier']} of the {step['reference_range']['months']} months)",
         f"in the first {pace['days']} days of November they run {abs(pace['latest_complete_month']['pct_change']):.0f}% below October's "
         f"daily rate and {abs(pace['same_month_a_year_earlier']['pct_change']):.0f}% below November 2025's",
-        f"the October change is {pct(s['segments']['self_paid_txs_adjustments']['pct_change_without_both'])}",
+        f"the October change is {pct(s['segments']['self_paid_txs_adjustments']['pct_change_without_both'])} if every caller "
+        f"of the reward-side contracts is outside the reward namespaces, and between "
+        f"{pct(s['segments']['self_paid_txs_adjustments']['pct_change_without_both_both_ends'][0])} and "
+        f"{pct(s['segments']['self_paid_txs_adjustments']['pct_change_without_both_both_ends'][1])} as far as the tables can say",
         f"The revenue it earns covers {min(cov):.0f}% to {max(cov):.0f}% of the new NEAR issued, depending on the window",
         f"level with November 2025 (${iv_step['month_before_range']['value'] / 1e6:.0f}M) and {pct(vs_range)} on the nine months "
         f"in between (${iv_step['range_mean'] / 1e6:.1f}M)",
