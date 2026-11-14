@@ -5,6 +5,26 @@ quoted here. THESIS.md is the argument; this file holds what it shortens: every 
 the readings behind each section under the same headings, the side analyses (one game's players, the half-months of
 the autumn, HOT's change of relayer, the one-off bursts, other groupings of the apps) and the history of our own drafts.*
 
+## The long-term case, in full
+
+*The paragraph THESIS.md opened with before its five lines; the sections it points to ("Limits", "What would change
+our mind") are those of THESIS.md.*
+
+After the largest reward app left, NEAR's transactions come from few hands. The reward and wallet apps that stayed
+still account for 43% of October's transactions (close to their lowest month), counted by the contract or relayer each
+transaction goes through, and the exchange, Intents, token contracts and bridges for 41%. Self-paid transactions
+outside the reward namespaces are 55% of all transactions, and most come from a few hundred heavy accounts: 475 of
+them send 91% of the self-paid transactions outside `.kaiching` and `.tg`. That activity rose in autumn 2026 in two
+steps with different dates: NEAR Intents volume and the revenue it brings in stepped up on 19 August and have stayed
+above their earlier range (the date is set by a rule, see "Limits"), while the load on the chain itself (its fees and
+gas) ran high for the four weeks of the price rally, from 16 September to 15 October, and has come back down. What
+stayed up is the volume and the revenue in USD; in NEAR the revenue has held by the median day and not by the mean
+(see "Does it reach the token?"). The NEAR that revenue brings in equals 18% of the new NEAR issued over the last 90
+days (17.9% to 18.7% by three measurements that are not the same), close to the best window since the buybacks
+began; the median 90-day window gives 13%. That is a narrow case,
+and it is not a valuation of NEAR. Nine dated predictions say what would widen it or close it (see "What would change
+our mind").
+
 ## Our own drafts, and what replaced them
 
 Three readings from our earlier drafts did not survive closer measurement; claims 2, 4 and 5 below are what is left
