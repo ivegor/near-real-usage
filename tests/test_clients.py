@@ -53,10 +53,10 @@ def test_group_contracts_outside_a_months_40_bound_the_change(tmp_path):
     s = clients.summarize(clients.load(write(tmp_path)))
     members = sum(len(clients.APPS[app]) for app in clients.FINANCE_APPS)
     out = s["groups_outside_the_40"]["finance"]      # both months list two finance contracts; their smallest entries are 40 and 100
-    assert out["latest"] == {"contracts": members - 2, "transactions_each_at_most": 40, "transactions_at_most": (members - 2) * 40}
-    assert out["prior"]["transactions_at_most"] == (members - 2) * 100
+    assert out["latest"] == {"contracts": members - 2, "transactions_each_at_most": 40, "transactions_at_most": 60}
+    assert out["prior"]["transactions_at_most"] == 100  # at most the entire unlisted tail, not one allowance per contract
     lo, hi = s["finance_txs_change_range"]
-    assert abs(lo - (500 / (400 + (members - 2) * 100) - 1) * 100) < 1e-9 and abs(hi - ((500 + (members - 2) * 40) / 400 - 1) * 100) < 1e-9
+    assert abs(lo - (500 / 500 - 1) * 100) < 1e-9 and abs(hi - (560 / 400 - 1) * 100) < 1e-9
     assert lo < s["finance_txs"]["pct_change"] < hi
     gap = s["reward_minus_finance_share"]
     assert abs(gap["latest"] - (200 - 500) / 800) < 1e-12 and gap["latest_range"][0] < gap["latest"] < gap["latest_range"][1]

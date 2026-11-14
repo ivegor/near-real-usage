@@ -155,8 +155,12 @@ And the step in buybacks is mostly the price. In USD they went from $17,025 a da
 since (3.5 times); in NEAR, from 10,456 to 17,016 NEAR a day (1.6 times). Whether the buybacks in NEAR have held
 since depends on the statistic: by the mean of the last two half-months they have not, by the median day they have.
 
-**Where the step in revenue came from.** Revenue is volume times what is kept from each dollar of it, and the step of
-19 August is both: volume grew 1.9 times and the take 1.6 times, from 2.62 to 4.27 basis points. Our data does not say
+**Where the step in revenue came from.** Revenue is volume times what is kept from each dollar of it, and the two did
+not step together. Volume stepped on 19 August. The take stayed near its earlier level for four more weeks, 2.96 basis
+points from the step to 15 September against 2.62 in the 90 days before, and rose in the second half of September: 4.85
+from 16 September to 2026-11-11, with 3.78 in the first 11 days of November. Over the whole period since the step that
+is 1.9 times the volume and 1.6 times the take. An earlier version of this paragraph dated both to 19 August; the take
+by half-month, now computed by the build, shows that only the volume moved that day. Our data does not say
 what raised the take. Two other entries in this hackathon traced the NEAR arriving at the revenue wallets on the chain,
 and both name one cause: a confidential pool inside NEAR Intents, opened in these months
 ([Wilivms/near-revenue-audit](https://github.com/Wilivms/near-revenue-audit/blob/288ae4a94588d49c36ccdd3e4828b5021971c153/README.md#L121),
@@ -184,8 +188,8 @@ whether it is profit after the incentives paid to bring the volume and the costs
 
 Every account and transaction count above comes from one source, BigQuery. As a check we measured the chain a second way, with no key and no
 Google account (`python -m thesis census`): 449 random blocks from the FastNEAR block archive, 2,400 of their
-transactions, and for each of the 1,553 accounts behind them a `view_account` call on an archival RPC node to
-learn whether the account already existed 30 and 365 days before the window.
+transactions, and archival `view_account` calls for each of the 1,553 accounts behind them. The saved run checked existence
+30 days before the window and checked 365 days only when the nearer check found the account.
 
 | | Sample, Aug 14 – Nov 11, 2025 | BigQuery, Sep–Oct 2025 | Sample, Aug 14 – Nov 11, 2026 | BigQuery, Sep–Oct 2026 |
 |---|---|---|---|---|
@@ -198,6 +202,11 @@ window and asks whether the account existed, BigQuery measures it at the start o
 first appeared in a transaction. The 2026 old-account share is the one cell where the BigQuery figure falls just
 outside the sample's interval. The sample also reads what a relayed transaction finally calls, which the BigQuery
 tables above do not: a year ago 55% of sampled transactions were a single call, `earn.kaiching :: claim`.
+The age shares retain that original classification. Absence at 30 days does not establish absence at 365 days: an
+account may be deleted and recreated. The older check was inferred for 250 accounts / 252 transactions in the prior
+window and 109 accounts / 206 transactions in the recent window; these are unchecked observations, not measured
+errors, and the intervals do not cover that uncertainty. The parser also lacked historical `DelegateV2` support.
+Both code paths were corrected on 2026-11-14, but the saved sample has not been refreshed or revalidated.
 *(chart: signer_census)*
 
 ## Evidence for
@@ -278,13 +287,14 @@ tables above do not: a year ago 55% of sampled transactions were a single call, 
   in NEAR). Most of the fall in NEAR is the step of 2 April: fees in NEAR fell by about two
   thirds between the median days of March and May. The daily data have no fees by app, and KaiChing is at most half
   of that day's fall in transactions, so how much of the fees was KaiChing's is not measured.
-* **The revenue step leans on a higher take, and the last month is down.** Since 19 August NEAR keeps 4.27 basis
-  points of Intents volume against 2.62 before, and two other entries trace most of that revenue to one new,
+* **The revenue step leans on a higher take, and the last month is down.** Since the step in volume NEAR keeps 4.27 basis
+  points of Intents volume against 2.62 before, and all of that rise came four weeks after the step (2.96 up to 15
+  September, 4.85 from 16 September); two other entries trace most of that revenue to one new,
   incentivised channel (see "Does it reach the token?"). Over the last 30 days volume, gross fees and captured revenue
   are all a fifth to a quarter below the 30 days before.
 * **No usage metric leads price in our tests.** On weekly log-changes over ~6 years (complete weeks only), 5 of 85
   lag tests fall outside the noise band where about 4 are expected by chance, and none of the 85 stands after Holm's
-  correction for testing them together (the smallest p-value is 0.009; the first step of the correction asks for
+  correction for testing them together (the smallest p-value is 0.006; the first step of the correction asks for
   0.0006). Allowing for the dependence between weeks does not change that (see "Limits"). Fees in USD do
   correlate with price in the same week (r = 0.38), mostly because USD fees are NEAR fees multiplied by the price:
   in NEAR, fees show nothing outside the band.
@@ -332,8 +342,8 @@ PREDICTIONS.md says, prediction by prediction, what a hold shows and what it doe
   spike, not a new level, and the buybacks it funds fall with it (A1 checks the week to 17 November, A2 December).
 * **A re-run shows a lead** (A5): for any one metric, two neighbouring positive lags outside the noise band with
   correlations of one sign, with or against the price. A5 is a screen, not the test above: it has no correction for
-  testing many lags, and with no lead at all it would fail in 3.5% of runs if the lags were independent, more since
-  the weeks are not. A failure would call for the Holm-corrected test and a test on weeks after the snapshot; it would
+  testing many lags, and with no lead at all it would fail in 3.5% of runs if the lags were independent. Dependence can raise or lower that rate; 3.5% is an independent-null
+  illustration, not a lower bound. A failure would call for the Holm-corrected test and a test on weeks after the snapshot; it would
   not by itself make usage a timing signal for the price.
 
 ## Limits
@@ -359,6 +369,10 @@ PREDICTIONS.md says, prediction by prediction, what a hold shows and what it doe
   as a count of users. The same holds for transactions: direct calls to reward-side contracts outside the namespaces
   are inside "self-paid transactions outside the reward apps", and a call from inside the namespaces is not. How many
   of each the tables do not say, so with those calls out the October change lies between +24% and +37%.
+* **Relay classification was corrected on 2026-11-14.** The saved BigQuery tables recognised a meta transaction
+  only when Delegate was its first action. The queries now recognise Delegate in any position, as the block parser
+  already did. The saved data have not been refreshed, so the effect on this snapshot is unmeasured; matching total
+  transaction counts cannot detect misclassified actors or fee payers.
 * **A transaction is counted whether it succeeded or not.** None of the queries here reads how a transaction ended.
   That was checked on a sample for one contract only, NEAR Intents, where all sampled calls of one account failed
   (see "Evidence against"). How many transactions fail elsewhere on the chain is not measured.
@@ -390,11 +404,14 @@ PREDICTIONS.md says, prediction by prediction, what a hold shows and what it doe
 * **Lead-lag scans 17 lags × 5 metrics = 85 tests**; about 4 bars outside ±2/√n are expected by chance. A week counts
   only when all seven of its days are in the data: the snapshot ends on a Wednesday, and with its three days set
   against full weeks the count was 6, not 5. The p-values behind Holm's correction use Fisher's z, a normal
-  approximation. Band and p-values treat the weeks as independent, and they are not: weekly price changes correlate
+  approximation. Each of the seven daily prices must also be finite and positive; the source's zero placeholders
+  before trading began are missing prices, while a genuine zero activity day remains an observation. The statistical
+  band and p-values treat the weeks as independent, and they are not: weekly price changes correlate
   0.31 with the week before, the usage metrics' changes −0.10 to −0.27. Allowing for that by Bartlett's formula
-  (autocorrelations up to eight weeks, metric by metric) narrows the band, because the signs are opposite: 9 of 85
-  tests fall outside it, and still none stands after Holm's correction (smallest p-value 0.004). The formula uses
-  autocorrelations estimated from the same data, so this is a check, not an exact band. One of the five metrics is
+  (autocorrelations up to eight weeks, on the matched observations of each metric and lag) narrows the band, because
+  the signs are opposite: 7 of 85 tests fall outside it, and still none stands after Holm's correction (smallest
+  p-value 0.003). Calendar gaps stay gaps when computing lags and autocorrelations. The formula uses autocorrelations
+  estimated from the same data, so this is a check, not an exact band. One of the five metrics is
   the `active − new` proxy shown above to point the wrong way; it stays in the scan because A5 was frozen with it,
   and it is not read here as evidence about users.
 * **The app table is a manual grouping** of the 40 largest contracts and relayers, which cover 90% of October 2026

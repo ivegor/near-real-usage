@@ -1,3 +1,5 @@
+-- Revised relay detection: the saved results predate this correction and have not been re-queried.
+-- Scan costs below describe the original queries; obtain a new dry-run estimate before running this version.
 -- Who sends NEAR's transactions: the largest accounts, what they call, and how concentrated it is.
 -- Two months: October 2026 and October 2025.
 --
@@ -14,15 +16,21 @@
 --           equal to the group size when the group does not reach that share)
 --
 -- Cost: 13.53 GB (dry run, 2026-11-12). Result committed as data/bq/top_accounts_result.csv.
-WITH pairs AS (
-  SELECT
-    DATE_TRUNC(block_date, MONTH) AS m,
-    IF(action_kind = 'DELEGATE_ACTION', receiver_account_id, signer_account_id) AS a,
-    IF(action_kind = 'DELEGATE_ACTION', CONCAT('relayer:', signer_account_id), receiver_account_id) AS v,
-    COUNT(*) AS n
+WITH transaction_flags AS (
+  -- One row per transaction, including Delegate after another action. Do not filter to action zero.
+  SELECT block_date, transaction_hash, signer_account_id, receiver_account_id,
+    MAX(CASE WHEN action_kind = 'DELEGATE_ACTION' THEN 1 ELSE 0 END) AS relayed
   FROM `bigquery-public-data.crypto_near_mainnet_us.transaction_actions`
   WHERE (block_date BETWEEN '2025-10-01' AND '2025-10-31' OR block_date BETWEEN '2026-10-01' AND '2026-10-31')
-    AND index_in_transaction = 0
+  GROUP BY block_date, transaction_hash, signer_account_id, receiver_account_id
+),
+pairs AS (
+  SELECT
+    DATE_TRUNC(block_date, MONTH) AS m,
+    IF(relayed = 1, receiver_account_id, signer_account_id) AS a,
+    IF(relayed = 1, CONCAT('relayer:', signer_account_id), receiver_account_id) AS v,
+    COUNT(*) AS n
+  FROM transaction_flags
   GROUP BY 1, 2, 3
 ),
 tv AS (SELECT m, v, SUM(n) AS n, COUNT(DISTINCT a) AS actors FROM pairs GROUP BY 1, 2),

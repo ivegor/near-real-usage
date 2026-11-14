@@ -15,8 +15,9 @@ import json
 from datetime import datetime, timezone
 
 import pandas as pd
+import numpy as np
 
-from . import census, sources
+from . import census, sources, value
 
 # The wallets and their roles as the DefiLlama adapter gives them (its FEE_WALLETS list and comments).
 WALLETS = {
@@ -86,7 +87,9 @@ def _window(first: dict, last: dict, daily: pd.DataFrame, fees: pd.DataFrame | N
     if supply.empty or supply.index.max() < end or supply.index.min() > start - pd.Timedelta(days=1):
         return None
     days = int((end - start).days) + 1
-    new_supply = float(supply.asof(end) - supply.asof(start - pd.Timedelta(days=1)))
+    new_supply = value.supply_change(supply, start, end)
+    if not np.isfinite(new_supply):
+        return None
     change = {w: _held(last, w) - _held(first, w) for w in WALLETS}
     total = float(sum(change.values()))
     out = {
@@ -100,10 +103,10 @@ def _window(first: dict, last: dict, daily: pd.DataFrame, fees: pd.DataFrame | N
     }
     if fees is not None and "revenue" in fees:
         # DefiLlama's captured revenue of the same days in NEAR, each day at that day's price
-        f = fees["revenue"].loc[start:end]
-        price = daily["price_usd"].reindex(f.index)
-        reported = float((f / price).sum())
-        if f.notna().sum() == days and reported:
+        f = value.finite_window(fees["revenue"], start, end)
+        price = value.finite_window(daily["price_usd"], start, end, positive=True)
+        reported = float((f / price).sum()) if f is not None and price is not None else None
+        if reported is not None and np.isfinite(reported) and reported != 0:
             out["defillama_revenue_near"] = reported
             out["balance_growth_over_defillama_revenue"] = total / reported
     return out
@@ -130,9 +133,10 @@ def summarize(data: dict, daily: pd.DataFrame, fees: pd.DataFrame | None) -> dic
         # everything the series ever counted as captured revenue, in NEAR at each day's price, to the window's last day
         end = pd.Timestamp(full["window"][1])
         f = fees["revenue"].loc[:end].dropna()
-        f = f[f.index >= f[f > 0].index.min()] if (f > 0).any() else f
-        price = daily["price_usd"].reindex(f.index)
-        if len(f) and price.notna().all():
+        first = f[f > 0].index.min() if (f > 0).any() else f.index.min()
+        f = value.finite_window(fees["revenue"], first, end) if len(f) else None
+        price = value.finite_window(daily["price_usd"], first, end, positive=True) if f is not None else None
+        if f is not None and price is not None:
             ever = float((f / price).sum())
             out["defillama_revenue_near_all_time"] = {"from": str(f.index.min().date()), "through": str(end.date()), "near": ever,
                                                       "held_at_end_over_it": float(sum(held.values()) / ever) if ever else float("nan")}

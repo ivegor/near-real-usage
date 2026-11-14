@@ -312,10 +312,10 @@ def test_accounts_for_half_is_a_lower_bound_when_the_ranked_group_is_too_small(t
     daily = pd.DataFrame({"intents_volume_usd": 1.0, "price_usd": 1.0, "txns": days_of_january(idx)}, index=idx)
     _, _, many = bq_results(tmp_path, half_reached=False, heavy=150)      # 150 accounts send 40%: more than 150 are needed
     out = predictions.evaluate(daily, None, p, top=many)["items"][0]
-    assert (out["status"], out["measured"]) == ("failed", 151.0)
-    _, _, few = bq_results(tmp_path, half_reached=False, heavy=40)        # more than 40 are needed: under or over 100, unknown
+    assert (out["status"], out["measured"], out["measured_lower_bound"]) == ("failed", None, 320)
+    _, _, few = bq_results(tmp_path, half_reached=False, heavy=40)        # every unranked account sends at most 999
     out = predictions.evaluate(daily, None, p, top=few)["items"][0]
-    assert (out["status"], out["measured"]) == ("open (needs the census query for that month)", None)
+    assert (out["status"], out["measured"], out["measured_lower_bound"]) == ("failed", None, 210)
 
 
 def test_buyback_predictions_wait_for_a_day_that_is_missing(tmp_path):
@@ -469,6 +469,25 @@ def test_a5_waits_for_the_usage_series_to_reach_its_check_date():
     assert predictions._measure("metrics_with_adjacent_positive_leads", pd.Timestamp("2027-02-11"), full, None) is not None
 
 
+def test_a5_requires_usable_changes_for_every_completed_new_week(tmp_path):
+    from thesis import sources
+    daily = sources.load_daily(offline=True)
+    on = pd.Timestamp("2027-02-11")                       # Thursday: the last complete week ends on 7 February
+    full = daily.reindex(pd.date_range(daily.index.min(), on)).ffill()
+    path = tmp_path / "a5.csv"
+    path.write_text(BQ_HEADER + "A5,q,2027-02-11,metrics_with_adjacent_positive_leads,<=,0,b,automatic,q\n")
+    for c in predictions.A5_CONTINUING:
+        for missing in (full.index[(full.index > predictions.FROZEN_DATA_THROUGH) & (full.index.day_of_week == 3)],
+                        pd.DatetimeIndex(["2026-12-16"]), pd.DatetimeIndex(["2026-11-04"])):
+            hole = full.copy()
+            hole.loc[missing, c] = np.nan
+            row = predictions.evaluate(hole, None, path)["items"][0]
+            assert row["status"] == "open (waiting for complete data)" and row["measured"] is None
+    # An unfinished final week is not used, and must not prevent scoring the completed weeks.
+    full.loc["2027-02-08":, list(predictions.A5_CONTINUING)] = np.nan
+    assert predictions._measure("metrics_with_adjacent_positive_leads", on, full, None) is not None
+
+
 def test_b4_is_scored_only_when_the_contracts_outside_the_40_cannot_reverse_it(tmp_path):
     """Each side has one unlisted contract with at most 101 transactions. Keep both bounds, even when undecided;
     for the frozen > 0 rule, touching zero from above is undecided and touching it from below is a miss."""
@@ -512,3 +531,29 @@ def test_a4_is_scored_on_the_ratio_in_usd_and_in_near(tmp_path):
     row = predictions.evaluate(daily, fees, p)["items"][0]
     assert row["status"].startswith("open (undecided: the ratio in USD and the ratio in NEAR")
     assert row["measured"] is None and row["measured_range"] == pytest.approx([usd, near])
+
+
+def test_a4_waits_when_supply_growth_is_zero(tmp_path):
+    p = tmp_path / "p.csv"
+    p.write_text(BQ_HEADER + "A4,q,2027-02-11,buyback_coverage_90d,<,0.5,b,automatic,coverage\n")
+    idx = pd.date_range("2026-01-01", "2027-02-11", freq="D")
+    daily = pd.DataFrame({"price_usd": 3.0, "market_cap_usd": 3e9, "total_supply_yocto": 1e33,
+                          "fees_usd": 10.0, "intents_volume_usd": 1e8}, index=idx)
+    fees = pd.DataFrame({"fees": 1000.0, "revenue": 100.0, "holders_revenue": 100.0}, index=idx)
+    row = predictions.evaluate(daily, fees, p)["items"][0]
+    assert row["status"] == "open (waiting for complete data)"
+    assert row["measured"] is None and "measured_range" not in row
+    daily["total_supply_yocto"] = (1e9 + 1000 * np.arange(len(idx))) * 1e24
+    assert predictions.evaluate(daily, fees, p)["items"][0]["status"] == "held"
+
+
+def test_predictions_do_not_score_nonfinite_measurements(tmp_path, monkeypatch):
+    p = tmp_path / "p.csv"
+    p.write_text(BQ_HEADER + "A4,q,2027-02-11,buyback_coverage_90d,<,0.5,b,automatic,coverage\n")
+    daily = pd.DataFrame(index=pd.DatetimeIndex(["2027-02-11"]))
+    for bad in (np.nan, np.inf, -np.inf):
+        for measured in (bad, (bad, 0.1), (0.1, bad), (bad, bad)):
+            monkeypatch.setattr(predictions, "_measure", lambda *args: measured)
+            row = predictions.evaluate(daily, None, p)["items"][0]
+            assert row["status"] == "open (waiting for complete data)"
+            assert row["measured"] is None and "measured_range" not in row

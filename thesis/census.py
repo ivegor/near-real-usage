@@ -51,6 +51,7 @@ BOUND_TOLERANCE_NS = 5 * 60 * 10**9  # window edges are located to within 5 minu
 
 SAMPLE_FILE, EXIST_FILE, META_FILE = "census_sample.csv", "census_existence.csv", "census_meta.json"
 CACHE_DIR = RAW_DIR.parent / "census_cache"  # resumable downloads, not committed
+BLOCK_PARSER_VERSION = 2  # v2 adds the historical DelegateV2 action; old cached rows cannot be reparsed
 CLASSES = ["365d+", "30-365d", "new"]
 
 _session = requests.Session()
@@ -139,10 +140,21 @@ def parse_block(block: dict | None) -> list[dict]:
             tx = item["transaction"]
             actor, target, actions, relayed = tx["signer_id"], tx["receiver_id"], tx.get("actions", []), False
             for a in actions:
-                if isinstance(a, dict) and "Delegate" in a:
+                if not isinstance(a, dict):
+                    continue
+                if "Delegate" in a:
                     d = a["Delegate"]["delegate_action"]
-                    actor, target, actions, relayed = d["sender_id"], d["receiver_id"], d.get("actions", []), True
-                    break
+                elif "DelegateV2" in a:
+                    # nearcore 2.13 used a versioned payload on mainnet. Removal in 2.14 does not remove
+                    # those transactions from the archive. Keep the outer signer as the fee payer.
+                    payload = a["DelegateV2"]["delegate_action"]
+                    if not isinstance(payload, dict) or set(payload) != {"V2"}:
+                        raise ValueError("Unsupported DelegateV2 payload version")
+                    d = payload["V2"]
+                else:
+                    continue
+                actor, target, actions, relayed = d["sender_id"], d["receiver_id"], d.get("actions", []), True
+                break
             first = actions[0] if actions else "none"
             if isinstance(first, dict):
                 kind = next(iter(first))
@@ -171,7 +183,7 @@ def _block_rows(height: int) -> dict:
     def get():
         block = _get_json(BLOCK_URL.format(height=height))
         return {"found": block is not None, "rows": parse_block(block)}
-    return _cached(f"blocks/{height}.json", get)
+    return _cached(f"blocks_v{BLOCK_PARSER_VERSION}/{height}.json", get)
 
 
 def _exists(account: str, height: int) -> bool:
@@ -238,12 +250,14 @@ def fetch(last_date: str, seed: int = SEED, blocks: dict[str, int] | None = None
                   f"transactions, keeping {len(df)}, {len(actors)} accounts to check", flush=True)
             for i, a in enumerate(actors):
                 young = _exists(a, refs[0])
-                # an account that did not exist 30 days before the window did not exist 365 days before it either
-                old = _exists(a, refs[1]) if young else False
+                # Existence is not monotone: an account can be deleted and recreated with the same ID.
+                # Ask about both historical states independently, including when the nearer one is absent.
+                old = _exists(a, refs[1])
                 exist_rows.append({"window": label, "actor": a, "existed_30d": young, "existed_365d": old})
                 if i % 200 == 0:
                     print(f"[census] {label}: checked {i}/{len(actors)}", flush=True)
     meta = {"seed": seed, "window_days": WINDOW_DAYS, "max_tx_per_window": MAX_TX_PER_WINDOW,
+            "age_check_mode": "independent", "block_parser_version": BLOCK_PARSER_VERSION,
             "sources": {"blocks": BLOCK_URL, "rpc": RPC_URL},
             "fetched_at_utc": pd.Timestamp.now(tz="UTC").isoformat(), "windows": windows}
     pd.concat(samples).to_csv(RAW_DIR / SAMPLE_FILE, index=False)
@@ -391,7 +405,21 @@ def _block_bootstrap(per_block: pd.DataFrame, col: str, seed: int, n_boot: int =
 
 def summarize(sample: pd.DataFrame, exist: pd.DataFrame, meta: dict | None = None, seed: int = SEED) -> dict:
     df = classify(sample, exist)
-    out: dict = {"seed": (meta or {}).get("seed", seed), "windows": {}}
+    # Saved samples without the marker predate the independent checks. Keep their historical assignments,
+    # but identify the false values inferred from absence at 30 days; rebuilding does not validate them.
+    independent_ages = (meta or {}).get("age_check_mode") == "independent"
+    out: dict = {"seed": (meta or {}).get("seed", seed),
+                 "age_check_mode": "independent" if independent_ages else "legacy_30d_shortcut",
+                 "block_parser_version": (meta or {}).get("block_parser_version", 1), "windows": {}}
+    if not independent_ages:
+        out["age_check_note"] = (
+            "The saved sample uses the original age assignments: absence 30 days before the window was treated "
+            "as absence 365 days before it without checking that date. An account can be deleted and recreated. "
+            "The summary counts the observations using that shortcut; the published age shares have not been revalidated.")
+    if out["block_parser_version"] < BLOCK_PARSER_VERSION:
+        out["relay_parser_note"] = (
+            "The saved sample predates DelegateV2 support in the block parser. It has not been refreshed, "
+            "so the effect of that unsupported historical action on this sample is unmeasured.")
     for label, w in df.groupby("window"):
         pb = w.assign(**{c: (w["age"] == c).astype(int) for c in CLASSES}).groupby("height")[CLASSES].sum()
         pb["n"] = w.groupby("height").size()
@@ -399,6 +427,8 @@ def summarize(sample: pd.DataFrame, exist: pd.DataFrame, meta: dict | None = Non
         tx_share = {c: float((w["age"] == c).mean()) for c in CLASSES}
         tx_ci = {c: _block_bootstrap(pb, c, seed) for c in CLASSES}
         acc = w.drop_duplicates("actor")
+        inferred = (w["existed_30d"].eq(False) & w["existed_365d"].eq(False)
+                    if not independent_ages else pd.Series(False, index=w.index))
         by_actor = w["actor"].value_counts()
         targets = w["target"].value_counts(normalize=True).head(8)
         methods = (w["target"] + " :: " + w["method"]).value_counts(normalize=True).head(8)
@@ -407,6 +437,8 @@ def summarize(sample: pd.DataFrame, exist: pd.DataFrame, meta: dict | None = Non
             "transactions": n,
             "blocks_with_transactions": int(len(pb)),
             "accounts": int(len(acc)),
+            "age_checks": {"inferred_false_365d_accounts": int(w.loc[inferred, "actor"].nunique()),
+                           "inferred_false_365d_transactions": int(inferred.sum())},
             "tx_share_by_account_age": tx_share,
             "tx_share_ci95": {c: [round(lo, 4), round(hi, 4)] for c, (lo, hi) in tx_ci.items()},
             # distinct accounts in a transaction sample over-represent frequent senders; read with that in mind

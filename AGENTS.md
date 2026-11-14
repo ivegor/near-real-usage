@@ -13,7 +13,7 @@ each command in that image on the repository mounted at `/app`, as the current u
 
 ```bash
 make serve      # builds the image (tests + offline build inside), serves the dashboard on :8000
-make test       # 147 tests, no network
+make test       # full test suite, no network
 make offline    # rebuilds docs/ from the committed data, no network
 make build      # same, after refreshing data/raw/ from the public APIs
 make snapshot   # freezes docs/summary.json as data/snapshot/thesis_summary.json
@@ -32,6 +32,9 @@ changes in another order and their last digits differ; nothing else in `summary.
 
 ## Rules that are easy to break
 
+* **Relay detection was corrected on 2026-11-14.** The saved BigQuery results still use the old first-action rule;
+  the SQL now recognises Delegate in any position. Do not imply the saved tables were corrected without rerunning
+  the queries. The old cost estimates below do not price the revised queries; dry-run again before execution.
 * **BigQuery costs quota.** `sql/account_age.sql` scans 482.64 GB; the free tier is 1 TB a month. Read the dry-run
   estimate before running anything, and never query the `accounts` table of the NEAR dataset (1.03 TB per query).
   The build does not need BigQuery: results are committed in `data/bq/`.

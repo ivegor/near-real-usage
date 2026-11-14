@@ -134,3 +134,27 @@ def test_a_missing_day_of_revenue_is_not_a_day_without_revenue():
     assert holed["days_without_buyback_data"] == 1 and whole["days_without_buyback_data"] == 0
     assert holed["buyback_usd"] == pytest.approx(whole["buyback_usd"])
     assert holed["buyback_coverage_of_new_supply"] == pytest.approx(whole["buyback_coverage_of_new_supply"])
+
+
+def test_take_dates_its_own_step_apart_from_the_volume_step():
+    """Volume doubles on one day; the take rises a month later. Cut only at the volume step, both look simultaneous."""
+    idx = pd.date_range("2026-01-01", "2026-09-30", freq="D")
+    step, later = pd.Timestamp("2026-06-10"), pd.Timestamp("2026-07-16")
+    volume = pd.Series(100.0, index=idx)
+    volume[idx >= step] = 200.0
+    bps = pd.Series(2.0, index=idx)
+    bps[idx >= later] = 4.0
+    revenue = volume * bps / 1e4
+    daily = pd.DataFrame({"intents_volume_usd": volume, "price_usd": 2.0}, index=idx)
+    fees = pd.DataFrame({"fees": volume * 1e-3, "revenue": revenue, "holders_revenue": revenue}, index=idx)
+    t = value.take(daily, fees, str(step.date()), days=90)
+    assert t["take_ratio"] > 1.5                                             # the mean since the volume step: misleading alone
+    halves = t["take_bps_by_half_month"]
+    assert list(halves)[:3] == ["2026-06-10..2026-06-15", "2026-06-16..2026-06-30", "2026-07-01..2026-07-15"]
+    assert halves["2026-07-01..2026-07-15"] == pytest.approx(2.0) and halves["2026-07-16..2026-07-31"] == pytest.approx(4.0)
+    s = t["take_step"]
+    assert s["first_half_month_above"] == "2026-07-16..2026-07-31" and s["reference_top_bps"] == pytest.approx(2.0)
+    assert s["from_the_volume_step_until_it"]["take_bps"] == pytest.approx(2.0) and s["from_the_volume_step_until_it"]["days"] == 36
+    assert s["from_it"]["take_bps"] == pytest.approx(4.0)
+    flat = value.take(daily.assign(), fees.assign(revenue=volume * 2e-4), str(step.date()), days=90)
+    assert "take_step" not in flat                                           # no half-month above the earlier top: no date

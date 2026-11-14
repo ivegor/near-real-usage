@@ -135,11 +135,12 @@ status is on the dashboard and in `docs/summary.json` under `predictions`.
 those hold the month a prediction names: `sql/payer_frequency.sql` (B1), `sql/account_age.sql` (B2) and
 `sql/top_accounts.sql` (B3, B4) have to be run again by hand with later dates (the free BigQuery tier allows it once
 a month) and their results committed, with `QUERY_END` in `thesis/population.py` moved to the new end of the scan.
-Until then they are shown as open. A month counts only if the result holds all of it. For the census that is the day
-its scan stopped (`QUERY_END`). The other two queries name whole months, so their result is partial only if the
-query was run before the month ended; the build sets the month's transaction count in the result against NearBlocks'
-daily counts and leaves the prediction open while the result is short by a day or more (the line is the quietest
-day of that month, not a chosen tolerance). B4 is scored with the
+Until then they are shown as open. A month counts only if the result holds all of it. The census scan must reach
+the month's last day (`QUERY_END`), but its end date cannot rule out missing records inside the month. For every
+query, the build also sets each required month's transaction count against NearBlocks' complete daily counts and
+leaves the prediction open while the result is short by a day or more (the line is the quietest day of that month,
+not a chosen tolerance). B2 must pass this check for all three months. This is a consistency check, not proof that
+every transaction was indexed. B4 is scored with the
 app groups as they were on 2026-11-13: a contract or relayer that an app starts to use after that date is not in
 them and counts as "other". The list of the month's 40 largest is committed with the result, so what was left out
 can be seen.
@@ -155,6 +156,10 @@ price, market capitalisation, total supply), which is all that A1 to A4 and the 
 daily transaction counts need. The new API has no count of signers or of new accounts, so two of the five usage
 metrics behind A5 stop in November 2026; A5 is scored on the series as they then stand, and that is said here now,
 before the date, and not after it.
+A5 also requires all five original metrics to produce usable correlations: a series omitted from the general scan
+because its downloaded history is too short cannot count as having no lead. A3 sums decimal daily revenues before
+comparing its strict threshold, so a total exactly equal to the threshold fails rather than passing through rounding.
+These scoring corrections were made on 2026-11-14; the frozen statements and thresholds are unchanged.
 A5 counts both signs. A "positive lead" in its statement is a positive lag: the usage metric moves first. Until
 2026-11-14 the build counted a pair of neighbouring lags only when both correlations were above zero; two neighbours
 that both move against the price are as much a timing signal, so from that day a pair of either sign counts, as long
@@ -171,15 +176,31 @@ only; from that day it scores both, and leaves A4 open when they give different 
 prediction harder to hold, not easier; the dashboard and `predictions.items[].measured_range` show both values,
 USD first. The balances of the revenue wallets (18.3%) are a third measurement; they are read by a hand-run command
 and do not score A4.
-A5's window is the whole series, so "covers every day of the window" means for A5 that every week from 2026-11-12 (the
-day after the data it was frozen with) to the check date has a value of the price and of each usage series that goes
-on after `/v1` (transactions, fees, Intents volume). Until then it stays open; without that rule it could be scored
-on the old weeks alone. This rule was added on 2026-11-14, before the check date.
+Both ratios must be finite before A4 is scored. If either is undefined (for example, when the measured net new
+supply is zero), A4 stays open rather than treating the undefined comparison as a failure.
+A5's window is the whole series. Every completed week from 2026-11-12 (the day after the data it was frozen with)
+to the check date must supply a usable weekly change in price and each continuing usage series (transactions,
+fees in NEAR, Intents volume). This requires all seven days of that week and the preceding week; a single value
+somewhere in a week is not enough. The unfinished week containing the check date is excluded, so the last required
+week for 2027-02-11 ends on 2027-02-07. Until the completed weeks are usable A5 stays open; otherwise it could be
+scored on the old weeks alone. This rule was added and corrected on 2026-11-14, before the check date. Lags refer to
+calendar weeks even across gaps, rather than to positions in a series with missing weeks removed.
 What a miss on A5 would mean, said before the date: A5 is a screen, not the test of THESIS.md. It counts lags
 outside the noise band with no correction for testing many lags at once, and two neighbouring lags of one series are
 not two independent confirmations. With no lead at all it would fail in 3.5% of runs if the lags were independent
-(`predictions.a5_chance_without_a_lead` in the summary), and more often since the weeks are not. Its question reads
+(`predictions.a5_chance_without_a_lead` in the summary). Dependence can raise or lower that rate; this is an
+independent-null illustration, not a lower bound or an estimate of the actual false-positive rate. Its question reads
 "Can usage be used as a timing signal for the price?", but a miss would not answer yes: it would call for the
 Holm-corrected test and a test on weeks after the snapshot, and only a lead that stands in both would be a signal.
 GitHub switches a scheduled workflow off after 60 days without activity in a public repository. If that happens
 before a check date, the prediction is scored when the workflow is switched on again or the build is run by hand.
+
+Scoring safeguards corrected on 2026-11-14 do not change the frozen file, its operators, dates, thresholds or app
+membership. B3 uses the fact that an unranked account sent at most 999 transactions to bound how many are needed
+for half the total, and displays that result as a lower bound. B4 caps every unlisted group's possible transactions
+by the total outside the top 40. B2 treats an absent core subgroup in an otherwise complete month as zero.
+Daily windows require finite values; prices used in A4 must be positive. Decimal averaging prevents summation
+roundoff from turning exact equality at A1/A2's strict threshold into a hold. New fee downloads record their own
+UTC download times and exclude that unfinished day even when the cached response is reused later. Older saved
+fee files have no such metadata; their historical cutoff is preserved. The SQL relay correction described in
+THESIS.md has not been applied to the saved tables, and its effect is unknown until the queries are rerun.

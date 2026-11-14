@@ -52,14 +52,18 @@ def period_change(series: pd.Series, days: int = 90, lookback_days: int = 365) -
     }
 
 
-def weekly_log_diff(series: pd.Series) -> pd.Series:
+def weekly_log_diff(series: pd.Series, *, positive_only: bool = False) -> pd.Series:
     """Week-on-week log-change of the weekly mean, Monday to Sunday, over complete weeks only.
 
     A week counts only when all seven of its days have a value. The last week of a snapshot is usually unfinished (the
     data of 2026-11-11 end on a Wednesday, three days into the week), and a mean of three days is not the same
     observation as a mean of seven; the first week of a series is often partial too. A week left out leaves a gap: the
-    changes into and out of it are not computed, rather than one change spanning two weeks.
+    changes into and out of it are not computed, rather than one change spanning two weeks. For prices, positive_only
+    excludes non-positive or non-finite daily quotes before counting days: zero before trading began is not a price.
+    Activity may legitimately be zero on a day, so that restriction is not applied to activity series.
     """
+    if positive_only:
+        series = series.where(np.isfinite(series) & (series > 0))
     s = series.dropna()
     w = s.resample("W-SUN").mean().where(s.resample("W-SUN").count() == 7)
     w = w.where(w > 0)
@@ -72,6 +76,12 @@ def bartlett_factor(x: pd.Series, y: pd.Series, lags: int = 8) -> float:
     Under no true relation, var(r) ≈ (1/n) · (1 + 2 Σ_k ρx(k) ρy(k)), with ρ the autocorrelations of each series. Above 1
     the noise band is wider than 2/√n, below 1 narrower. The sum is cut at `lags` weeks, the longest lag tested.
     """
+    # Both autocorrelations describe the observations used by this lag's correlation. Missing calendar weeks must
+    # remain gaps: two adjacent surviving observations need not be one week apart.
+    pair = pd.concat([x, y], axis=1, keys=["x", "y"]).dropna()
+    if isinstance(pair.index, pd.DatetimeIndex) and len(pair):
+        pair = pair.asfreq("W-SUN")
+    x, y = pair["x"], pair["y"]
     total = 1.0
     for k in range(1, lags + 1):
         a, b = x.autocorr(k), y.autocorr(k)
@@ -92,6 +102,12 @@ def _sig(v: float) -> float:
     return float(f"{v:.{DIGITS}g}") if pd.notna(v) and math.isfinite(v) else v
 
 
+def _lag_pair(dx: pd.Series, dp: pd.Series, k: int) -> pd.DataFrame:
+    """Match changes k calendar weeks apart, even when an incomplete week has been removed."""
+    return pd.concat([dx, dp.shift(freq=pd.Timedelta(weeks=-k))], axis=1,
+                     keys=["x", "p"], sort=True).dropna()
+
+
 def lead_lag(x: pd.Series, price: pd.Series, max_lag: int = 8) -> pd.DataFrame:
     """Correlation of weekly log-changes of x with price shifted by k weeks.
 
@@ -99,10 +115,10 @@ def lead_lag(x: pd.Series, price: pd.Series, max_lag: int = 8) -> pd.DataFrame:
     k < 0  -> price leads x.
     `band` is the approximate 95% noise band 2/sqrt(n) for a zero true correlation.
     """
-    dx, dp = weekly_log_diff(x), weekly_log_diff(price)
+    dx, dp = weekly_log_diff(x), weekly_log_diff(price, positive_only=True)
     rows = []
     for k in range(-max_lag, max_lag + 1):
-        pair = pd.concat([dx, dp.shift(-k)], axis=1, keys=["x", "p"], sort=True).dropna()
+        pair = _lag_pair(dx, dp, k)
         n = len(pair)
         corr = pair["x"].corr(pair["p"]) if n > 5 else np.nan
         rows.append({"lag_weeks": k, "corr": _sig(corr), "n": n, "band": 2 / np.sqrt(n) if n else np.nan,
@@ -269,7 +285,8 @@ def summarize(daily: pd.DataFrame) -> dict:
         "lead_fees_usd_mechanical": best_lead(lead_lag(d["fees_usd"], d["price_usd"])),
         # The band and the p-values treat the weeks as independent. Correlation of each series' weekly change with the
         # week before: where both series of a pair have it of the same sign, the true noise band is wider than 2/sqrt(n).
-        "lead_vs_price_lag1_autocorrelation": {c: _sig(float(weekly_log_diff(d[c]).autocorr(1)))
+        "lead_vs_price_lag1_autocorrelation": {c: _sig(float(weekly_log_diff(d[c], positive_only=c == "price_usd")
+                                                           .asfreq("W-SUN").autocorr(1)))
                                                for c in ["price_usd", *leads] if c in d},
         # The same scan with the band and the p-values widened (or narrowed) for the autocorrelation of both series.
         "lead_vs_price_bartlett": bartlett_scan(d, leads),
@@ -278,19 +295,25 @@ def summarize(daily: pd.DataFrame) -> dict:
 
 
 def bartlett_scan(d: pd.DataFrame, leads: dict) -> dict:
-    """The lead-lag scan with the dependence between weeks allowed for, by Bartlett's formula, metric by metric.
+    """The lead-lag scan with Bartlett's formula on the matched observations of each metric and lag.
 
     The band becomes 2·√(factor/n) and each p-value is taken with n/factor weeks. This is an approximation too (the
     autocorrelations are estimated from the same data), published next to the plain scan, not in place of it.
     """
-    dp = weekly_log_diff(d["price_usd"])
+    dp = weekly_log_diff(d["price_usd"], positive_only=True)
     per, ps, outside = {}, [], 0
     for c in leads:
-        f = bartlett_factor(weekly_log_diff(d[c]), dp)
+        dx = weekly_log_diff(d[c])
         ll = lead_lag(d[c], d["price_usd"]).dropna(subset=["corr"])
-        out = [int(k) for k, r, n in zip(ll["lag_weeks"], ll["corr"], ll["n"]) if abs(r) > 2 * math.sqrt(f / n)]
-        ps += [_p_value(r, n / f) for r, n in zip(ll["corr"], ll["n"])]
-        per[c] = {"factor": _sig(f), "outside_band_lags": out}
+        factors, out = {}, []
+        for k, r, n in zip(ll["lag_weeks"], ll["corr"], ll["n"]):
+            pair = _lag_pair(dx, dp, int(k))
+            f = bartlett_factor(pair["x"], pair["p"])
+            factors[str(k)] = _sig(f)
+            if abs(r) > 2 * math.sqrt(f / n):
+                out.append(int(k))
+            ps.append(_p_value(r, n / f))
+        per[c] = {"factor_by_lag": factors, "outside_band_lags": out}
         outside += len(out)
     return {"metrics": per, "outside_band": outside, "tests": len(ps),
             "holm": {k: (_sig(v) if isinstance(v, float) else v) for k, v in holm(ps).items()}}

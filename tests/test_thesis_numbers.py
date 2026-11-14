@@ -532,6 +532,13 @@ def test_thesis_quotes_the_take_the_issuance_cut_and_the_relayed_users():
     cover, need = f"{v['buyback_coverage_of_new_supply'] * 100:.0f}%", f"{v['growth_needed_to_cover_new_supply']:.1f} times"
     cover_cut, need_cut = f"{cut['coverage_at_target'] * 100:.0f}%", f"{cut['growth_needed_at_target']:.1f}"
     ratios = f"{take['volume_ratio']:.1f} times more volume and a {take['take_ratio']:.1f} times higher take"
+    rose, halves = take["take_step"], list(take["take_bps_by_half_month"].values())
+    until, since = rose["from_the_volume_step_until_it"], rose["from_it"]
+    # the volume stepped on 19 August, the take four weeks later: the rule's date and the days on either side of it
+    assert (rose["reference_top_month"], rose["first_half_month_above"]) == ("2026-05", "2026-09-16..2026-09-30")
+    assert (until["from"], until["through"], until["days"], since["from"]) == (take["step_day"], "2026-09-15", 28, "2026-09-16")
+    assert list(take["take_bps_by_half_month"])[0] == "2026-08-19..2026-08-31" and len(halves) == 6
+    assert until["take_bps"] < rose["reference_top_bps"] < since["take_bps"]
     quoted = [
         f"{v3['relayed_users']:,} accounts acted for by {v3['relayers']} relayers in {v3['relayed_txns']:,} relayed transactions",
         f"{fall['relayed_users']['before']:,} on the first day and {fall['relayed_users']['after']:,} on the second",
@@ -551,6 +558,16 @@ def test_thesis_quotes_the_take_the_issuance_cut_and_the_relayed_users():
         f"is {ratios}",
         f"the {cover} would be {cover_cut} and the {need} {need_cut}",
         f"keeps {after['take_bps']:.2f} basis points of Intents volume against {before['take_bps']:.2f} before",
+        # the take did not step with the volume: by half-month, and cut at the first half-month above the earlier top
+        f"{until['take_bps']:.2f} basis points from the step to 15 September against {before['take_bps']:.2f} in the 90 days before",
+        f"{since['take_bps']:.2f} from 16 September to {since['through']}, with {halves[-1]:.2f} in the first 11 days of November",
+        f"is {take['volume_ratio']:.1f} times the volume and {take['take_ratio']:.1f} times the take",
+        "the take was " + ", ".join(f"{h:.2f}" for h in halves[:-1]).replace(f"{halves[0]:.2f},", f"{halves[0]:.2f} (19 to 31 August),", 1)
+        + f" and {halves[-1]:.2f} (1 to 11 November) basis points",
+        f"the highest full month before the step ({rose['reference_top_bps']:.2f} in May)",
+        f"the take was {until['take_bps']:.2f} on ${until['volume_usd_per_day'] / 1e6:.1f}M a day, and from 16 September "
+        f"{since['take_bps']:.2f} on ${since['volume_usd_per_day'] / 1e6:.1f}M a day",
+        f"({until['take_bps']:.2f} up to 15 September, {since['take_bps']:.2f} from 16 September)",
     ]
     missing = [q for q in quoted if q not in text]
     assert not missing, f"THESIS.md does not quote these summary values: {missing}"
@@ -1120,7 +1137,7 @@ def test_the_texts_quote_the_three_measurements_of_the_revenue_and_the_lead_lag_
                                                   v["wallets"]["coverage_of_new_supply"]))
     assert v["buyback_coverage_of_new_supply"] < v["wallets"]["coverage_of_new_supply"] < v["buyback_coverage_in_near"]
     assert b["holm"]["significant"] == 0 and s["lead_vs_price_holm"]["significant"] == 0
-    assert all(m["factor"] < 1 for m in b["metrics"].values())                  # opposite signs: the band narrows
+    assert all(f < 1 for m in b["metrics"].values() for f in m["factor_by_lag"].values())
     quoted = [
         f"That figure is a ratio of USD, {usd}",
         f"Counted in NEAR, each day's buyback at that day's price over the new NEAR, it is {near}",

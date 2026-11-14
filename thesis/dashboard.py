@@ -64,6 +64,8 @@ def summary_json(summary: dict) -> str:
 def measured_text(p: dict) -> str:
     """What a scored prediction was measured at, in the unit its statement uses."""
     v, metric = p.get("measured"), str(p.get("metric", ""))
+    if p.get("measured_lower_bound") is not None:
+        return f"at least {p['measured_lower_bound']:,.0f} accounts (lower bound)"
     if metric.startswith("reward_minus_finance") and p.get("measured_range") is not None:
         low, high = p["measured_range"]
         return f"{low * 100:+.1f} to {high * 100:+.1f} percentage points of all transactions (range)"
@@ -143,6 +145,8 @@ def render(charts: list[Chart], summary: dict, out: Path) -> Path:
             + html.escape(census.TX_URL) + "</code>; results in <code>data/raw/census_*</code> and "
             "<code>data/raw/revenue_wallets.json</code></li>")
     ended = summary.get("series_ended") or {}
+    value_note = (f'<p class="sub">{html.escape(summary["value_capture_unavailable"])}</p>'
+                  if summary.get("value_capture_unavailable") else "")
     ended_note = ""
     if ended:
         cols = ", ".join(f"{html.escape(c.replace('_', ' '))} ({html.escape(d)})" for c, d in sorted(ended.items()))
@@ -173,6 +177,7 @@ table{{border-collapse:collapse;font-size:13px;width:100%}} td,th{{border-top:1p
 The argument: {_repo_link('THESIS.md')} (its numbers are a snapshot as of {SNAPSHOT}; the daily figures on this page move on).
 Code and data: <a href="{REPO_URL}">{REPO_URL.split('//')[1]}</a>.</p>
 {ended_note}
+{value_note}
 {''.join(cards)}
 {pred_card}
 {method_block}

@@ -56,7 +56,7 @@ We kept the proxy on the dashboard, labelled as misleading, because every aggreg
 | 7 | Financial use of the chain is growing | **Supported only as more transactions to the group's contracts, October to October; users, successful operations and demand are not measured** | Transactions to the exchange, Intents, token contracts and bridges 6.72M → 9.18M a month (+37%); Ref/Rhea exchange +96%, token contracts +47%, bridges and chain signatures +43%. The count holds the 513,339 transactions of `escrow.ai.near`, whose sampled calls to Intents all failed: without them the group is +29%, and Intents itself −35% instead of −13%. On the keyless sample, which compares two 90-day windows and not two months, the same group is +108% (95% interval +36% to +229%), but the two windows do not stand on the same footing: the recent one runs at about October's level (306 thousand a day against 296 thousand by October's full count), while last year's window sits below October 2025 (147 against 217 thousand) because the group was still rising inside it, from 61 thousand a day in its days of August to 187 thousand in its days of November. The sample covers 14 to 31 August 2026, before the price doubled: 207 thousand a day (95% interval 169 to 247 thousand), above the 61 thousand (12 to 143 thousand) of the same days of 2025, a figure that rests on 4 sampled transactions, and close to October 2025's full count. That comparison is a side observation, not a second confirmation of the October count, and when the rise began it does not settle. From those days to the end of the window the exchange and the token contracts went from 56 to 174 thousand a day (+213%) and Intents and the bridges from 152 to 158 thousand (+4%): the rise inside the rally is in calls to the exchange and the token contracts. Which contracts were called is measured; what each call was for, and whether it succeeded, is not. The figure also depends on the grouping and on what a month's 40 largest contracts show (see "Limits") |
 | 8 | Cross-chain demand through NEAR is growing | **Higher since late August 2026; level with November 2025** | NEAR Intents volume $55.6M → $128.6M a day (+131%, October to October, DefiLlama); +84% on the previous 90 days. But October 2025 was the middle of a ramp-up: November 2025 already averaged $122.0M (October 2026 is +5% on it), and the first 11 days of November 2026 average $129.7M against $125.4M a year earlier (+3%). In the nine months in between volume averaged $74.5M; against that level October 2026 is +73%. The step came on 19 August, as the price began to move and a month before it doubled: $81M on 18 August, $134M on the 19th, at a price of $1.59 that rose 27% to $2.01 by 24 August and first stood at twice the step day's price on 19 September; the weekly mean has stayed above the top of the range before ($89.6M) since 21 August, its lowest since being $98.4M |
 | 9 | NEAR's transactions come from many independent accounts | **Refuted** | 30 accounts send 50% of transactions; the top 10 send 37% (17% a year earlier); 486 accounts with 1,000+ transactions send 70%. A relayed transaction is counted for the account the relayer acted for, not for the relayer. Counted by signer the year looks different: one relayer, KaiChing's, signed 44% of all transactions in October 2025, and the largest one now, Sweat's, signs 25%. Both counts describe the same event, an app with tens of millions of accounts leaving. Seven of the ten largest are relays or service accounts (Intents, Sweat, the bridges), so this counts who submits transactions; the people behind a relay are not visible on the chain |
-| 10 | Intents revenue offsets the dilution of NEAR holders | **No: the revenue equals 18% of the net new supply, and an offset to holders is not measured** | Buybacks (DefiLlama's name for the NEAR arriving at the revenue wallets) at $20.7M a year against $115M a year of net new NEAR: equal to 18% of the net new supply over the last 90 days as a ratio of USD (17.9%), 18.7% counted in NEAR at each day's price, a ratio of flows, not a measured offset; 15% to 18% over other windows ending on the same day, and 13% in the median 90-day window since the buybacks began; 5.6 times the captured revenue needed. Read from the chain, the three revenue wallets grew by 18.3% of the new supply of the same 90 days, and by 15.4% over the last 30. The step in revenue since 19 August is 1.9 times more volume and a 1.6 times higher take, and both have been falling for a month (see "Does it reach the token?"). At the issuance the approved HSP-029 ends at, the 18% would be 28% and the 5.6 times 3.6 |
+| 10 | Intents revenue offsets the dilution of NEAR holders | **No: the revenue equals 18% of the net new supply, and an offset to holders is not measured** | Buybacks (DefiLlama's name for the NEAR arriving at the revenue wallets) at $20.7M a year against $115M a year of net new NEAR: equal to 18% of the net new supply over the last 90 days as a ratio of USD (17.9%), 18.7% counted in NEAR at each day's price, a ratio of flows, not a measured offset; 15% to 18% over other windows ending on the same day, and 13% in the median 90-day window since the buybacks began; 5.6 times the captured revenue needed. Read from the chain, the three revenue wallets grew by 18.3% of the new supply of the same 90 days, and by 15.4% over the last 30. Revenue since 19 August is 1.9 times more volume and a 1.6 times higher take (the volume from that day, the take from the second half of September), and both have been falling for a month (see "Does it reach the token?"). At the issuance the approved HSP-029 ends at, the 18% would be 28% and the 5.6 times 3.6 |
 | 11 | Usage changes lead price changes | **This test found no convincing lead** | 5 of 85 lag tests outside the noise band, about 4 expected by chance; none stands after Holm's correction for testing 85 lags together. A linear screen at fixed lags, not proof that no relation exists |
 
 ## Who pays, and how often
@@ -169,10 +169,14 @@ is open. In USD the buybacks have held by both. (Who keeps the rest of the
 fees and what happens to the bought NEAR is DefiLlama's description of its own series, saved with the data under
 `methodology` in `data/raw/defillama_intents_fees.json`.) *(chart: value_capture)*
 
-**Where the step in revenue came from.** Revenue is volume times what is kept from each dollar of it, and the step of
-19 August is both. In the 90 days before it NEAR Intents carried $73.7M a day and NEAR kept 2.62 basis points of it;
+**Where the step in revenue came from.** Revenue is volume times what is kept from each dollar of it, and the two did
+not step together. In the 90 days before 19 August NEAR Intents carried $73.7M a day and NEAR kept 2.62 basis points of it;
 from the step to 2026-11-11 it carried $139.0M a day and NEAR kept 4.27. Volume grew 1.9 times and the take 1.6
-times, which together is the 3.1 times in revenue. By month the take was 2.3 to 3.1 basis points from May to August,
+times, which together is the 3.1 times in revenue. But only the volume stepped on 19 August. By calendar half-month
+from the step the take was 2.96 (19 to 31 August), 2.97, 4.48, 5.99, 4.97 and 3.78 (1 to 11 November) basis points.
+The first half-month above the highest full month before the step (3.10 in May) is the second half of September:
+from the step to 15 September the take was 2.96 on $130.6M a day, and from 16 September 4.85 on $143.1M a day. An
+earlier version of this paragraph dated both steps to 19 August. By month the take was 2.3 to 3.1 basis points from May to August,
 3.8 in September and 5.5 in October. So the new revenue is not only more swaps, and our data does not say what raised
 the take. Two other entries in this hackathon traced the NEAR arriving at the revenue wallets on the chain, and both
 name one cause: a confidential pool inside NEAR Intents, opened in these months. One finds none of the wallets'
@@ -367,23 +371,39 @@ why "buybacks" is its label and not a measurement here.
   743 on 2 April, and 2,564 NEAR on the median day of March against 844 on the median day of May, 1,720 of the 2,285
   NEAR a day the 90-day figure lost: fees in NEAR fell by about two thirds in the step in which KaiChing stopped. The daily data have no fees by app, and KaiChing is at most half of that day's fall in transactions, so how much of the fees was KaiChing's is not measured. Intents volume is not revenue for the token: NEAR keeps 27% of Intents fees and the buybacks they fund cover
   18% of new supply (see "Does it reach the token?").
-* **The revenue step leans on a higher take, and the last month is down.** Since 19 August NEAR keeps 4.27 basis
-  points of Intents volume against 2.62 before, and two other entries trace most of that revenue to one new,
+* **The revenue step leans on a higher take, and the last month is down.** Since the step in volume NEAR keeps 4.27 basis
+  points of Intents volume against 2.62 before, and all of that rise came four weeks after the step (2.96 up to 15
+  September, 4.85 from 16 September); two other entries trace most of that revenue to one new,
   incentivised channel (see "Does it reach the token?"). Over the last 30 days volume, gross fees and captured revenue
   are all a fifth to a quarter below the 30 days before.
-* **No usage metric leads price in our tests.** On weekly log-changes over ~6 years, complete weeks only (n = 283–316 weeks depending on the metric and
+* **No usage metric leads price in our tests.** On weekly log-changes over ~6 years, complete weeks only (n = 282–315 weeks depending on the metric and
   the lag, noise band ≈ ±0.11–0.12):
   Intents volume (n = 90–98 weeks, band ≈ ±0.20–0.21) and fees in NEAR show nothing outside the band at any lag from −8 to +8
-  weeks; active accounts r = 0.14 at lag 0 and 0.12 at −5 weeks (price first); transactions show three isolated bars
+  weeks; active accounts r = 0.15 at lag 0 and 0.12 at −5 weeks (price first); transactions show three isolated bars
   of mixed sign. In total 5 of 85 lag
   tests fall outside the band where about 4 are expected by chance, and none of the 85 stands after Holm's correction
-  for testing them together (the smallest p-value is 0.009; the first step of the correction asks for 0.0006). Fees in USD do correlate with price in the same
+  for testing them together (the smallest p-value is 0.006; the first step of the correction asks for 0.0006). Fees in USD do correlate with price in the same
   week (r = 0.38), mostly because USD fees are NEAR fees multiplied by the price: in NEAR, fees show nothing outside
   the band. What was tested is a linear
   correlation of weekly changes at fixed lags of up to eight weeks: it finds no lead that stands, and it does not rule
   out one that is non-linear or holds only in some periods. *(chart: lead_lag)*
 
+The weekly price mean requires seven finite, positive daily quotes. Zero placeholders before trading began do not
+count towards a complete week; zero activity on a day can still be a valid observation. This correction on
+2026-11-14 removes one early price change from the scan, with no change to the 5-of-85 count or the Holm verdict.
+
 ## Limits
+
+The relay-position correction described in THESIS.md is in the SQL, but the committed BigQuery tables remain the
+original results. Their actor/payer classifications have not been remeasured. The quoted scan costs are those of
+the original queries; a fresh dry-run estimate is required before executing the corrected queries.
+
+The keyless sample has a separate historical limitation: the old collector inferred absence at 365 days from
+absence at 30 days, although an account can be deleted and recreated. Its unchecked older dates cover 250 accounts /
+252 transactions in the prior window and 109 accounts / 206 transactions in the recent window. The saved age shares
+are retained, and their bootstrap intervals do not cover this classification uncertainty. The old block parser also
+lacked `DelegateV2` support. The collector now checks both dates independently and the parser supports that archival
+action; neither correction has been applied to the saved sample by a new download.
 
 The limits that THESIS.md states in a line or two, in full.
 

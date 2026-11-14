@@ -77,7 +77,7 @@ same commands: uv installs Python 3.12.12 and the locked libraries itself, with 
 | `make serve` | The tests and `python -m thesis build --offline` run while the image is built; the container serves the rebuilt `docs/` on <http://localhost:8000> |
 | `make build` (network) | `data/raw/*.json` (exact API responses), `data/daily.csv`, `docs/*.png`, `docs/index.html`, `docs/summary.json`; stdout gets a short digest: one sentence per chart and the status of the nine predictions. If an API is down, the build says so and uses the committed copy |
 | `make offline` | Same outputs rebuilt from the committed `data/raw/` files, no network |
-| `make test` | 147 tests: parsing, metric formulas, a planted 3-week lead recovered by the lead-lag test, the account census on a hand-made table, block parsing with relayed transactions, the scoring of all nine predictions, the numbers quoted in THESIS.md, APPENDIX.md, PREDICTIONS.md and this README against the frozen copy of the summary, full offline build, the build on tables extended the way a later run of the queries extends them, and one Python version named the same in `.python-version`, the Dockerfile, `pyproject.toml` and this README |
+| `make test` | Offline tests: parsing, metric formulas, a planted 3-week lead recovered by the lead-lag test, the account census on a hand-made table, block parsing with relayed transactions, the scoring of all nine predictions, the numbers quoted in THESIS.md, APPENDIX.md, PREDICTIONS.md and this README against the frozen copy of the summary, full offline build, the build on tables extended the way a later run of the queries extends them, and one Python version named the same in `.python-version`, the Dockerfile, `pyproject.toml` and this README |
 | `make protocol` (network, one request, no key) | `data/raw/protocol_config.json`: the maximum issuance in force, read from the protocol's own configuration; the build sets the approved cut (HSP-029) against it |
 | `make wallets` (network, about 2 minutes, no key) | `data/raw/revenue_wallets.json`: what NEAR's three revenue wallets hold at the start and the end of the 90-day window and 30 days before its end, read from an archival RPC node. The build sets their growth against the new supply and against DefiLlama's revenue series |
 | `make outcomes` (network, about 5 minutes, no key) | `data/raw/census_outcomes.csv`: how the transactions to NEAR Intents in the sampled blocks ended, by sender |
@@ -98,6 +98,10 @@ What is reproducible byte for byte is the committed snapshot (`docs/`, `data/sna
 page is built from replies downloaded that day, which the providers may later revise; the page publishes them with
 itself under `inputs/` (the raw replies, the daily table and the commit), so it can be rebuilt offline from them while
 it is up. Earlier daily pages and their inputs are not archived.
+
+The SQL relay-position correction on 2026-11-14 has not been applied to the saved BigQuery data. The queries now
+recognise Delegate in any action position. Their quoted costs are historical; obtain new dry-run estimates before
+rerunning them. See the limitation in THESIS.md.
 
 ## Metrics
 

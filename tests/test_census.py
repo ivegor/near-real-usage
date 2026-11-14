@@ -1,6 +1,9 @@
 """Signer census: parsing of blocks and the pure metrics, on synthetic data (no network)."""
+import json
+
 import numpy as np
 import pandas as pd
+import pytest
 
 from thesis import census, charts
 
@@ -24,6 +27,98 @@ def test_parse_block_reads_the_user_behind_a_relayer():
         ("factory.near", "new.near", "CreateAccount", False),
     ]
     assert census.parse_block(None) == []
+
+
+@pytest.mark.parametrize("kind", ["Delegate", "DelegateV2"])
+@pytest.mark.parametrize("prefix", [[], [{"Transfer": {"deposit": "1"}}]])
+def test_parse_block_reads_both_archived_delegate_formats_in_any_position(kind, prefix):
+    """The historical V2 RPC view wraps the same inner actor/receiver in a versioned payload."""
+    delegated = {"sender_id": "alice.near", "receiver_id": "game.near",
+                 "actions": [{"FunctionCall": {"method_name": "claim", "args": "", "gas": 1, "deposit": "0"}}]}
+    payload = {"V2": delegated} if kind == "DelegateV2" else delegated
+    tx = {"signer_id": "payer.near", "receiver_id": "alice.near",
+          "actions": prefix + [{kind: {"delegate_action": payload, "signature": "x"}}]}
+    (row,) = census.parse_block(fake_block(42, [tx]))
+    assert row == {"height": 42, "ts": 42 * 10**9, "actor": "alice.near", "signer": "payer.near",
+                   "target": "game.near", "method": "claim", "relayed": True}
+
+
+def test_unknown_delegate_payload_does_not_silently_become_self_paid():
+    tx = {"signer_id": "payer.near", "receiver_id": "alice.near",
+          "actions": [{"DelegateV2": {"delegate_action": {"V3": {}}, "signature": "x"}}]}
+    with pytest.raises(ValueError, match="Unsupported DelegateV2 payload"):
+        census.parse_block(fake_block(42, [tx]))
+
+
+def test_block_cache_does_not_reuse_rows_from_the_old_parser(tmp_path, monkeypatch):
+    """The cache contains parsed rows rather than original blocks, so a parser fix needs a new cache key."""
+    monkeypatch.setattr(census, "CACHE_DIR", tmp_path)
+    (tmp_path / "blocks").mkdir()
+    old = tmp_path / "blocks" / "42.json"
+    old.write_text(json.dumps({"found": True, "rows": [{"actor": "wrong-relayer.near"}]}))
+    tx = {"signer_id": "payer.near", "receiver_id": "alice.near", "actions": [{"DelegateV2": {
+        "delegate_action": {"V2": {"sender_id": "alice.near", "receiver_id": "game.near", "actions": []}},
+        "signature": "x"}}]}
+    calls = []
+
+    def get(url):
+        calls.append(url)
+        return fake_block(42, [tx])
+
+    monkeypatch.setattr(census, "_get_json", get)
+    assert census._block_rows(42)["rows"][0]["actor"] == "alice.near"
+    assert census._block_rows(42)["rows"][0]["relayed"] is True
+    assert len(calls) == 1  # the new cache remains resumable
+    assert json.loads(old.read_text())["rows"][0]["actor"] == "wrong-relayer.near"
+
+
+def test_fetch_checks_both_historical_states_after_account_recreation(tmp_path, monkeypatch):
+    """An ID can exist at the older date, be absent at the nearer date, and act again in the sampled block."""
+    monkeypatch.setattr(census, "RAW_DIR", tmp_path / "raw")
+    monkeypatch.setattr(census, "CACHE_DIR", tmp_path / "cache")
+    census.CACHE_DIR.mkdir()
+    bounds = {"recent": {"start": "2026-08-14", "end": "2026-11-11", "height_start": 100, "height_end": 101,
+                         "ref_heights": {"30d_before_start": 30, "365d_before_start": 10}}}
+    (census.CACHE_DIR / "bounds_2026-11-11.json").write_text(json.dumps(bounds))
+    monkeypatch.setattr(census, "_block_rows", lambda height: {"found": True, "rows": [{
+        "height": height, "ts": pd.Timestamp("2026-10-01").value, "actor": "again.parent.near",
+        "signer": "again.parent.near", "target": "app.near", "method": "call", "relayed": False}]})
+    calls = []
+
+    def rpc(method, params):
+        assert method == "query" and params["request_type"] == "view_account"
+        assert params["account_id"] == "again.parent.near"
+        height = params["block_id"]
+        calls.append(height)
+        return {"result": {}} if height == 10 else {"error": {"cause": {"name": "UNKNOWN_ACCOUNT"}}}
+
+    monkeypatch.setattr(census, "_rpc", rpc)
+    census.fetch("2026-11-11", blocks={"recent": 1})
+    sample, exist, meta = census.load()
+    assert calls == [30, 10]
+    assert exist.to_dict("records") == [{"window": "recent", "actor": "again.parent.near",
+                                         "existed_30d": False, "existed_365d": True}]
+    assert meta["age_check_mode"] == "independent" and meta["block_parser_version"] == census.BLOCK_PARSER_VERSION
+    summary = census.summarize(sample, exist, meta)
+    assert summary["windows"]["recent"]["tx_share_by_account_age"] == {"365d+": 1, "30-365d": 0, "new": 0}
+    assert summary["windows"]["recent"]["age_checks"] == {
+        "inferred_false_365d_accounts": 0, "inferred_false_365d_transactions": 0}
+    assert "age_check_note" not in summary and "relay_parser_note" not in summary
+
+
+def test_legacy_sample_preserves_age_assignments_without_claiming_revalidation():
+    sample, exist = synthetic()
+    before = census.classify(sample, exist)
+    summary = census.summarize(sample, exist)
+    assert summary["age_check_mode"] == "legacy_30d_shortcut"
+    assert "have not been revalidated" in summary["age_check_note"]
+    assert "has not been refreshed" in summary["relay_parser_note"]
+    for label, rows in before.groupby("window"):
+        inferred = rows.loc[~rows["existed_30d"]]
+        window = summary["windows"][label]
+        assert window["age_checks"] == {"inferred_false_365d_accounts": inferred["actor"].nunique(),
+                                         "inferred_false_365d_transactions": len(inferred)}
+        assert window["tx_share_by_account_age"]["365d+"] == rows["existed_365d"].mean()
 
 
 def test_calls_to_says_how_many_calls_a_relayer_submitted():
@@ -98,6 +193,9 @@ def test_census_chart_renders(tmp_path):
     c = charts._census_chart(cs, tmp_path)
     assert (tmp_path / "signer_census.png").stat().st_size > 5_000
     assert "nan" not in c.sentence.lower() and "80%" in c.sentence
+    assert "have not been revalidated" in c.method and "DelegateV2" in c.method
+    checks = cs["windows"]["prior"]["age_checks"]
+    assert f"prior: {checks['inferred_false_365d_accounts']} accounts / {checks['inferred_false_365d_transactions']} transactions" in c.method
 
 
 def test_height_at_finds_the_block_in_a_few_requests(monkeypatch):

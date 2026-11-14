@@ -9,8 +9,11 @@ import shutil
 import subprocess
 import tempfile
 import textwrap
+import math
 from datetime import datetime
 from pathlib import Path
+
+from . import charts, clients
 
 import matplotlib
 
@@ -31,11 +34,12 @@ def slides(s: dict) -> list[dict]:
     latest = c["months"][c["latest_month"]]
     cc = s.get("cross_check", {}).get("recent")
     # the coverage of the new supply over windows from a week to the whole programme: one window is not the figure
-    cov = [x["coverage"] for x in ((v.get("windows") or {}).get("by_length") or {}).values()]
+    cov = [x["coverage"] for x in ((v.get("windows") or {}).get("by_length") or {}).values()
+           if x.get("coverage") is not None and math.isfinite(x["coverage"])]
     out = [
-        {"head": f"NEAR lost {abs(al['accounts']['pct_change']):.0f}% of its active accounts in a year.",
+        {"head": charts.population_takeaway(al['accounts']['pct_change']),
          "line": "We counted every one. Built at NEAR HACKATHON, track Investment Thesis.", "chart": None, "sec": 6},
-        {"head": f"{s['population']['reward_apps_share_of_lost']['accounts'] * 100:.0f}% of the accounts that left belonged to reward apps.",
+        {"head": f"Sponsored accounts changed {sg['sponsored_accounts']['pct_change']:+.0f}% in a year.",
          "line": f"Accounts whose fees an app paid: {sg['sponsored_accounts']['prior'] / 1e6:.1f}M a year ago, "
                  f"{sg['sponsored_accounts']['latest'] / 1e6:.2f}M now.",
          "chart": "population", "sec": 10},
@@ -46,7 +50,7 @@ def slides(s: dict) -> list[dict]:
                  f"their low was {s['segments']['regular_accounts_low']['value']:,.0f} in "
                  f"{datetime.strptime(s['segments']['regular_accounts_low']['month'], '%Y-%m'):%B %Y}.",
          "chart": "segments", "sec": 11},
-        {"head": f"{latest['accounts_for_half_of_txs']} accounts send half of all transactions.",
+        {"head": f"{clients.half_txs_text(latest)} accounts {'are needed to send' if latest['accounts_for_half_of_txs'] is None else 'send'} half of all transactions.",
          "line": f"Reward and wallet apps are still {c['reward_apps_share']['latest'] * 100:.0f}% of them; the exchange, Intents, tokens and "
                  f"bridges {c['finance_share']['latest'] * 100:.0f}% ({c['finance_txs']['pct_change']:+.0f}% in a year).",
          "chart": "clients", "sec": 12},
@@ -66,9 +70,9 @@ def slides(s: dict) -> list[dict]:
                     "chart": "signer_census", "sec": 9})
     n_out = sum(len(x["outside_band"]) for x in s["lead_vs_price"].values())
     out += [
-        {"head": "No usage metric leads price in these tests.",
+        {"head": charts._takeaway("lead_lag", s),
          "line": f"{n_out} of {17 * len(s['lead_vs_price'])} weekly lead-lag tests fall outside the noise band, about 4 by chance; "
-                 f"none survives Holm's correction.",
+                 f"{s.get('lead_vs_price_holm', {}).get('significant', 'Unknown number of')} survive Holm's correction.",
          "chart": "lead_lag", "sec": 8},
         {"head": "Every number is rebuilt by one command.",
          "line": f"python -m thesis build    |    github.com/ivegor/near-real-usage    |    "

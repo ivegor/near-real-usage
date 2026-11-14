@@ -173,6 +173,10 @@ def build(offline: bool, require_fresh: bool = False) -> None:
             w = wallets.summarize(held, daily, fees) if held else None
             if w:
                 summary["value_capture"]["wallets"] = w
+        else:
+            summary["value_capture_unavailable"] = (
+                "Value capture is unavailable: the 90-day window needs finite supply at both exact endpoints, "
+                "a positive price on every day and fee observations. Missing observations are not zero revenue.")
     if cs and pop is not None:
         summary["cross_check"] = population.cross_check(summary["signer_census"], pop, summary.get("clients"))
     built = charts.build_all(daily, summary, DOCS)

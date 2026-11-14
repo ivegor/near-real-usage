@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 
+import numpy as np
 import pandas as pd
 
 from . import sources
@@ -20,19 +21,25 @@ URLS = {
 YOCTO = 1e24
 
 
+def _utc_now() -> pd.Timestamp:
+    return pd.Timestamp.now(tz="UTC")
+
+
 def fetch() -> None:
     """Download the three fee series into data/raw/ (network). The build only reads the saved copies.
 
     All three replies are checked before any file is written: an error page or an empty reply must not replace a
     committed copy, and the three files must come from the same download. Raises RuntimeError otherwise.
     """
-    replies = {}
+    replies, fetched = {}, {}
     for name, url in URLS.items():
+        fetched[name] = _utc_now().isoformat()
         replies[name] = sources._fetch_json(url)
         sources._check_shape(name, replies[name], key="totalDataChart")
     sources.RAW_DIR.mkdir(parents=True, exist_ok=True)
     for name, data in replies.items():
         (sources.RAW_DIR / f"{name}.json").write_text(json.dumps(data), encoding="utf-8")
+    (sources.RAW_DIR / "_value_meta.json").write_text(json.dumps(fetched, indent=2), encoding="utf-8")
 
 
 def load() -> pd.DataFrame | None:
@@ -42,21 +49,48 @@ def load() -> pd.DataFrame | None:
     day must not read as a day without revenue, and a prediction must be able to see that its window has a hole.
     """
     cols = {}
+    meta_path = sources.RAW_DIR / "_value_meta.json"
+    fetched = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else {}
     for name in URLS:
         path = sources.RAW_DIR / f"{name}.json"
         if not path.exists():
             return None
         pts = json.loads(path.read_text(encoding="utf-8")).get("totalDataChart") or []
-        cols[name.replace("defillama_intents_", "")] = pd.Series(
+        series = pd.Series(
             {pd.Timestamp(int(ts), unit="s").normalize(): float(v) for ts, v in pts if v is not None}, dtype=float)
+        if name in fetched:
+            day = pd.Timestamp(fetched[name]).tz_convert("UTC").tz_localize(None).normalize()
+            series = series[series.index < day]
+        cols[name.replace("defillama_intents_", "")] = series
     return pd.DataFrame(cols).sort_index()
+
+
+def finite_window(s: pd.Series, a: pd.Timestamp, b: pd.Timestamp, positive: bool = False) -> pd.Series | None:
+    """Every calendar day must have a finite value; prices must additionally be positive."""
+    w = s.reindex(pd.date_range(a, b, freq="D"))
+    return w if len(w) and np.isfinite(w).all() and (not positive or (w > 0).all()) else None
+
+
+def supply_change(supply: pd.Series, a: pd.Timestamp, b: pd.Timestamp) -> float:
+    """Supply at the exact two endpoints, never the most recent earlier observation."""
+    ends = supply.reindex([a - pd.Timedelta(days=1), b])
+    return float(ends.iloc[1] - ends.iloc[0]) if np.isfinite(ends).all() else float("nan")
+
+
+def window_end(daily: pd.DataFrame, fees: pd.DataFrame) -> pd.Timestamp | None:
+    """Last day with supply, a positive price and all fee series; trailing gaps shift every operand together."""
+    if not {"total_supply_yocto", "price_usd"} <= set(daily):
+        return None
+    valid = daily[["total_supply_yocto", "price_usd"]].join(fees, how="inner")
+    valid = valid[np.isfinite(valid).all(axis=1) & (valid["price_usd"] > 0)]
+    return valid.index.max() if len(valid) else None
 
 
 def window_total(s: pd.Series, a: pd.Timestamp, b: pd.Timestamp) -> float:
     """What a daily series adds up to over the days a to b. A day without a value is not a day without revenue: when
     days are missing, the total is the mean of the days present times the days of the window, and the summary says
-    how many days were missing (days_without_buyback_data)."""
-    w = s.loc[a:b]
+    how many days were missing in each series (days_without_data)."""
+    w = s.loc[a:b].replace([np.inf, -np.inf], np.nan)
     n = int((b - a).days) + 1
     if w.notna().sum() == n:
         return float(w.sum())
@@ -65,42 +99,51 @@ def window_total(s: pd.Series, a: pd.Timestamp, b: pd.Timestamp) -> float:
 
 def covered_through(fees: pd.DataFrame) -> pd.Timestamp | None:
     """The last day on which all three fee series have a value."""
-    full = fees.dropna()
+    full = fees.replace([np.inf, -np.inf], np.nan).dropna()
     return full.index.max() if len(full) else None
 
 
 def summarize(daily: pd.DataFrame, fees: pd.DataFrame, days: int = 90) -> dict | None:
+    fees = fees.replace([np.inf, -np.inf], np.nan)
     if "total_supply_yocto" not in daily or daily["total_supply_yocto"].dropna().empty:
         return None
-    last_fee_day = covered_through(fees)
-    if last_fee_day is None:
+    end = window_end(daily, fees)
+    if end is None:
         return None
     # The fee series can end before the daily table: a late update, or the saved copy used during an outage. The
     # window ends on the last day both cover, so that 90 days of buybacks are always set against 90 days of supply.
-    end = min(daily.index.max(), last_fee_day)
     start = end - pd.Timedelta(days=days - 1)
-    f = fees.loc[start:end]
-    supply = daily["total_supply_yocto"].dropna() / YOCTO
-    price = daily["price_usd"].loc[start:end].mean()
-    year = supply.asof(end) - supply.asof(end - pd.Timedelta(days=365))
-    quarter = supply.asof(end) - supply.asof(start - pd.Timedelta(days=1))
+    calendar = pd.date_range(start, end, freq="D")
+    f = fees.reindex(calendar)
+    supply = daily["total_supply_yocto"] / YOCTO
+    prices = finite_window(daily["price_usd"], start, end, positive=True)
+    quarter = supply_change(supply, start, end)
+    if prices is None or not np.isfinite(quarter):
+        return None
+    price = prices.mean()
+    year = supply_change(supply, end - pd.Timedelta(days=364), end)
     scale = 365 / days
-    buyback_year = window_total(fees["holders_revenue"], start, end) * scale
+    totals = {col: window_total(fees[col], start, end) for col in ("fees", "revenue", "holders_revenue")}
+    missing = {col: int(f[col].isna().sum()) for col in totals}
+    l1 = daily["fees_usd"].reindex(calendar).replace([np.inf, -np.inf], np.nan)
+    missing["l1_fees"] = int(l1.isna().sum())
+    buyback_year = totals["holders_revenue"] * scale
     new_supply_value = float(quarter * scale * price)
     nonzero = fees["holders_revenue"][fees["holders_revenue"] > 0]
     out = {
         "window": [str(start.date()), str(end.date())],
         "days_behind_the_daily_series": int((daily.index.max() - end).days),
-        "days_without_buyback_data": int(days - f["holders_revenue"].notna().sum()),
-        "intents_gross_fees_usd": window_total(fees["fees"], start, end),
-        "captured_revenue_usd": window_total(fees["revenue"], start, end),
-        "captured_share_of_gross_fees": float(f["revenue"].sum() / f["fees"].sum()) if f["fees"].sum() else float("nan"),
-        "buyback_usd": window_total(fees["holders_revenue"], start, end),
+        "days_without_buyback_data": missing["holders_revenue"],
+        "days_without_data": missing,
+        "intents_gross_fees_usd": totals["fees"],
+        "captured_revenue_usd": totals["revenue"],
+        "captured_share_of_gross_fees": totals["revenue"] / totals["fees"] if totals["fees"] else float("nan"),
+        "buyback_usd": totals["holders_revenue"],
         "buyback_usd_annualized": buyback_year,
         "buyback_start": str(nonzero.index.min().date()) if len(nonzero) else None,
-        "l1_fees_usd": float(daily["fees_usd"].loc[start:end].sum()),
+        "l1_fees_usd": window_total(l1, start, end),
         "net_new_supply_near_365d": float(year),
-        "net_new_supply_pct_365d": float(year / supply.asof(end - pd.Timedelta(days=365)) * 100),
+        "net_new_supply_pct_365d": float(year / supply.get(end - pd.Timedelta(days=365), np.nan) * 100),
         "net_new_supply_near_annualized": float(quarter * scale),
         "mean_price_usd": float(price),
         "new_supply_value_usd_annualized": new_supply_value,
@@ -110,7 +153,7 @@ def summarize(daily: pd.DataFrame, fees: pd.DataFrame, days: int = 90) -> dict |
     # The coverage above is a ratio of USD: buybacks in USD over the new supply valued at the window's mean price. The
     # same flow counted in NEAR (each day's buyback at that day's price, over the new NEAR) differs whenever the price
     # moves inside the window and the buybacks are not spread evenly over it. Both are published, as two measurements.
-    px = daily["price_usd"].where(daily["price_usd"] > 0).reindex(fees.index)
+    px = prices.reindex(fees.index)
     out["buyback_near"] = window_total(fees["holders_revenue"] / px, start, end)
     out["buyback_coverage_in_near"] = out["buyback_near"] / float(quarter) if quarter else float("nan")
     out["intents_fees_vs_l1_fees"] = out["intents_gross_fees_usd"] / out["l1_fees_usd"] if out["l1_fees_usd"] else float("nan")
@@ -124,14 +167,17 @@ def monthly(daily: pd.DataFrame, fees: pd.DataFrame, months: int = 12) -> pd.Dat
     last_fee_day = covered_through(fees)
     end = min(daily.index.max(), last_fee_day) if last_fee_day is not None else daily.index.max()
     last = (end + pd.Timedelta(days=1)).to_period("M") - 1  # the last month complete in both the daily and the fee series
-    supply = daily["total_supply_yocto"].dropna() / YOCTO
-    m = fees.resample("ME").sum()
+    supply = daily["total_supply_yocto"] / YOCTO
+    clean = fees.replace([np.inf, -np.inf], np.nan)
+    m = clean.resample("ME").sum(min_count=1)
+    m = m.where(clean.resample("ME").count().eq(m.index.days_in_month, axis=0))
     m.index = m.index.to_period("M")
-    eom = supply.resample("ME").last()
-    eom.index = eom.index.to_period("M")
-    price = daily["price_usd"].resample("ME").mean()
-    price.index = price.index.to_period("M")
-    m["new_supply_value"] = eom.diff().reindex(m.index) * price.reindex(m.index)
+    values = []
+    for month in m.index:
+        a, b = month.start_time, month.end_time.normalize()
+        prices = finite_window(daily["price_usd"], a, b, positive=True)
+        values.append(supply_change(supply, a, b) * prices.mean() if prices is not None else np.nan)
+    m["new_supply_value"] = values
     return m.loc[:last].tail(months)
 
 
@@ -149,20 +195,23 @@ def windows(daily: pd.DataFrame, fees: pd.DataFrame, step_day: str | None = None
     can be met by the price alone, so for `threshold_month_usd` the mean price at which the last 30 days' buybacks in
     NEAR, over the days of `threshold_month`, reach the threshold is published too.
     """
-    last_fee_day = covered_through(fees)
-    if last_fee_day is None or "total_supply_yocto" not in daily:
+    end = window_end(daily, fees)
+    if end is None:
         return None
-    end = min(daily.index.max(), last_fee_day)
-    supply = daily["total_supply_yocto"].dropna() / YOCTO
-    price = daily["price_usd"].where(daily["price_usd"] > 0)
-    nonzero = fees["holders_revenue"][fees["holders_revenue"] > 0]
+    supply = daily["total_supply_yocto"] / YOCTO
+    price = daily["price_usd"].where(np.isfinite(daily["price_usd"]) & (daily["price_usd"] > 0))
+    fees = fees.replace([np.inf, -np.inf], np.nan)
+    nonzero = fees.loc[:end, "holders_revenue"][fees.loc[:end, "holders_revenue"] > 0]
     if nonzero.empty:
         return None
     start = nonzero.index.min()
 
     def cover(a: pd.Timestamp, b: pd.Timestamp) -> float:
         bought = window_total(fees["holders_revenue"], a, b)
-        new = float(supply.asof(b) - supply.asof(a - pd.Timedelta(days=1))) * float(price.loc[a:b].mean())
+        prices = finite_window(price, a, b, positive=True)
+        if prices is None:
+            return float("nan")
+        new = supply_change(supply, a, b) * float(prices.mean())
         return bought / new if new else float("nan")
 
     def captured(a: pd.Timestamp, b: pd.Timestamp) -> float:
@@ -171,13 +220,16 @@ def windows(daily: pd.DataFrame, fees: pd.DataFrame, step_day: str | None = None
 
     rolling = pd.Series({b: cover(b - pd.Timedelta(days=days - 1), b)
                          for b in pd.date_range(start + pd.Timedelta(days=days - 1), end, freq="D")}, dtype=float)
+    if rolling.empty:
+        return None
     latest = float(rolling.iloc[-1])
+    available = rolling[np.isfinite(rolling)]
     out: dict = {"window_days": days, "end": str(end.date()), "programme_start": str(start.date()),
-                 f"rolling_{days}d": {"windows": int(len(rolling)), "latest": latest,
-                                      "rank_of_the_latest": int((rolling > latest).sum()) + 1,
-                                      "median": float(rolling.median()), "min": float(rolling.min()), "max": float(rolling.max())}}
+                 f"rolling_{days}d": {"windows": int(len(available)), "latest": latest,
+                                      "rank_of_the_latest": int((available > latest).sum()) + 1 if np.isfinite(latest) else None,
+                                      "median": float(available.median()), "min": float(available.min()), "max": float(available.max())}}
     if step_day:
-        before = rolling[rolling.index < pd.Timestamp(step_day)]
+        before = available[available.index < pd.Timestamp(step_day)]
         if len(before):
             out[f"rolling_{days}d"]["ending_before_the_step"] = {"windows": int(len(before)), "min": float(before.min()),
                                                                   "max": float(before.max())}
@@ -201,7 +253,7 @@ def windows(daily: pd.DataFrame, fees: pd.DataFrame, step_day: str | None = None
                           # a month's mean can rest on one day: the median day, and the largest day with its share
                           "buyback_near_per_day_median": float(bn.median()),
                           "largest_day_near": {"date": str(bn.idxmax().date()), "value": float(bn.max()),
-                                               "share_of_the_month": float(bn.max() / bn.sum()) if bn.sum() else float("nan")},
+                                               "share_of_the_month": float(bn.max() / bn.sum()) if bn.sum() else float("nan")} if len(bn) else None,
                           "price_usd": float(price.loc[a:b].mean())}
     out["by_month"] = months
     if step_day:
@@ -270,6 +322,28 @@ def take(daily: pd.DataFrame, fees: pd.DataFrame, step_day: str | None, days: in
     monthly = frame.resample("MS").sum()
     monthly = monthly[(monthly.index >= step.to_period("M").start_time - pd.DateOffset(months=3)) & (monthly.index < end.to_period("M").start_time)]
     out["take_bps_by_month"] = {str(m.to_period("M")): float(r["revenue"] / r["volume"] * 1e4) for m, r in monthly.iterrows() if r["volume"]}
+    # Volume and take need not step on the same day, and a mean over everything since the volume step hides when the
+    # take moved. So: the take in each calendar half-month from the step, and the first of them above the highest
+    # full month before the step month (the months published just above). The period since the step is then cut there.
+    halves, a = {}, step
+    while a <= end:
+        b = min(a.replace(day=15) if a.day <= 15 else a + pd.offsets.MonthEnd(0), end)
+        half = part(a, b)
+        if half:
+            halves[f"{a.date()}..{b.date()}"] = half["take_bps"]
+        a = b + pd.Timedelta(days=1)
+    out["take_bps_by_half_month"] = halves
+    earlier_months = {m: bps for m, bps in out["take_bps_by_month"].items() if m < str(step.to_period("M"))}
+    if earlier_months and halves:
+        top = max(earlier_months, key=earlier_months.get)
+        rose = next((k for k, bps in halves.items() if bps > earlier_months[top]), None)
+        if rose:
+            first = pd.Timestamp(rose.split("..")[0])
+            until, since = part(step, first - pd.Timedelta(days=1)) if first > step else None, part(first, end)
+            out["take_step"] = {
+                "rule": "the first half-month from the volume step whose take is above the highest full month before the step month",
+                "reference_top_month": top, "reference_top_bps": earlier_months[top], "first_half_month_above": rose,
+                "from_the_volume_step_until_it": until, "from_it": since}
     recent, earlier = frame.loc[end - pd.Timedelta(days=29):end], frame.loc[end - pd.Timedelta(days=59):end - pd.Timedelta(days=30)]
     if len(recent.dropna()) == 30 and len(earlier.dropna()) == 30:
         out["last_30_days_vs_the_30_before"] = {

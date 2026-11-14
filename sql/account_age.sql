@@ -1,7 +1,9 @@
+-- Revised relay detection: the saved results predate this correction and have not been re-queried.
+-- Scan costs below describe the original queries; obtain a new dry-run estimate before running this version.
 -- Who is behind NEAR's transactions, month by month: account family, account age, and whether the
 -- account was also active in the previous month. Full population, not a sample.
 --
--- "actor"  = the account that acted. For a meta transaction (first action = DELEGATE_ACTION) the
+-- "actor"  = the account that acted. For a meta transaction (any action = DELEGATE_ACTION) the
 --            signer is a relayer and the transaction's receiver is the user, so the receiver is the actor.
 -- "f"      = the first day the account appears in ANY transaction, as signer or receiver, since genesis.
 -- "age"    = f relative to the first day of the month: m0 (first seen during the month), lt30, lt1y,
@@ -27,15 +29,21 @@ WITH fs AS (
   )
   GROUP BY a
 ),
+transaction_flags AS (
+  -- One row per transaction, including Delegate after another action. Do not filter to action zero.
+  SELECT block_date, transaction_hash, signer_account_id, receiver_account_id,
+    MAX(CASE WHEN action_kind = 'DELEGATE_ACTION' THEN 1 ELSE 0 END) AS relayed
+  FROM `bigquery-public-data.crypto_near_mainnet_us.transaction_actions`
+  WHERE block_date BETWEEN '2024-11-01' AND '2026-11-11'
+  GROUP BY block_date, transaction_hash, signer_account_id, receiver_account_id
+),
 act0 AS (
   SELECT
     DATE_TRUNC(block_date, MONTH) AS m,
-    IF(action_kind = 'DELEGATE_ACTION', receiver_account_id, signer_account_id) AS a,
+    IF(relayed = 1, receiver_account_id, signer_account_id) AS a,
     COUNT(*) AS txs,
-    COUNTIF(action_kind = 'DELEGATE_ACTION') AS rtx
-  FROM `bigquery-public-data.crypto_near_mainnet_us.transaction_actions`
-  WHERE block_date BETWEEN '2024-11-01' AND '2026-11-11'
-    AND index_in_transaction = 0  -- one row per transaction: its first action
+    COUNTIF(relayed = 1) AS rtx
+  FROM transaction_flags
   GROUP BY 1, 2
 ),
 act AS (

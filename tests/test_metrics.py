@@ -382,3 +382,51 @@ def test_bartlett_factor_follows_the_sign_of_the_two_autocorrelations():
     opposite = metrics.bartlett_factor(ar(e1, 0.5), ar(e2, -0.5))
     white = metrics.bartlett_factor(pd.Series(e1), pd.Series(e2))
     assert same > 1.4 and opposite < 0.8 and abs(white - 1) < 0.1
+
+
+def test_lead_lag_keeps_calendar_lags_across_a_missing_price_week():
+    rng = np.random.default_rng(31)
+    levels = np.exp(np.cumsum(rng.normal(0, 0.1, 50)))
+    dates = pd.date_range("2025-01-06", periods=350, freq="D")
+    usage = pd.Series(np.repeat(levels, 7), index=dates)
+    price = pd.Series(np.repeat(np.r_[np.ones(3), levels[:-3]], 7), index=dates)
+    price.loc["2025-05-14"] = np.nan
+    row = metrics.lead_lag(usage, price).set_index("lag_weeks").loc[3]
+    assert abs(row["corr"] - 1) < 1e-10                # the planted three-week lead survives the calendar hole
+
+
+def test_bartlett_scan_ignores_price_history_outside_each_lags_pairs():
+    d = metrics.add_derived(daily())
+    d.loc[d.index[:500], "intents_volume_usd"] = np.nan
+    changed = d.copy()
+    # No lag up to eight weeks can pair these old prices with the short Intents series.
+    changed.loc[changed.index[:400], "price_usd"] = np.exp(np.arange(400) * 0.03)
+    a = metrics.bartlett_scan(d, {"intents_volume_usd": {}})
+    b = metrics.bartlett_scan(changed, {"intents_volume_usd": {}})
+    assert a == b
+    factors = a["metrics"]["intents_volume_usd"]["factor_by_lag"]
+    assert set(factors) == {str(k) for k in range(-8, 9)} and len(set(factors.values())) > 1
+
+
+def test_bartlett_factor_preserves_missing_calendar_weeks():
+    rng = np.random.default_rng(42)
+    dates = pd.date_range("2024-01-07", periods=80, freq="W-SUN")
+    x, y = (pd.Series(rng.normal(size=80), index=dates) for _ in range(2))
+    x.iloc[20:35] = np.nan
+    expected = 1 + 2 * sum(x.autocorr(k) * y.where(x.notna()).autocorr(k) for k in range(1, 9))
+    pair = pd.concat([x, y], axis=1).dropna()
+    actual = metrics.bartlett_factor(pair.iloc[:, 0], pair.iloc[:, 1])
+    assert abs(actual - expected) < 1e-12
+
+
+def test_summary_autocorrelation_means_one_calendar_week():
+    d = daily()
+    d.loc[d.index[40:65], "active_accounts"] = np.nan
+    returning = (d["active_accounts"] - d["new_accounts"]).clip(lower=0)
+    weeks = returning.resample("W-SUN")
+    changes = np.log(weeks.mean().where(weeks.count() == 7)).diff()
+    expected = changes.corr(changes.shift(1))
+    compressed = changes.dropna().autocorr(1)
+    assert abs(expected - compressed) > 1e-4  # the hole makes the two definitions distinguishable
+    actual = metrics.summarize(d)["lead_vs_price_lag1_autocorrelation"]["returning_accounts"]
+    assert abs(actual - expected) < 1e-11

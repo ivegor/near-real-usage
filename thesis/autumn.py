@@ -52,12 +52,14 @@ def table(daily: pd.DataFrame, fees: pd.DataFrame | None, first: str, last: pd.T
     """Per-day means (or medians, `stat="median"`) of the daily series in each half-month from `first` to `last`.
 
     A mean of fifteen days can rest on one or two of them; the median day says whether the half-month as a whole moved.
+    Each metric needs every calendar day of the labelled span; a gap is not a shorter half-month.
     """
     d = series(daily, fees)
     rows = {}
     for a, b in halves(pd.Timestamp(first), last):
-        part = d.loc[a:b]
-        rows[_label(a, b)] = {**getattr(part, stat)().to_dict(), "days": int(len(part))}
+        part = d.reindex(pd.date_range(a, b, freq="D"))
+        aggregate = getattr(part, stat)().where(part.count() == len(part))
+        rows[_label(a, b)] = {**aggregate.to_dict(), "days": int(len(part))}
     return pd.DataFrame(rows).T
 
 
@@ -84,7 +86,8 @@ def series(daily: pd.DataFrame, fees: pd.DataFrame | None) -> pd.DataFrame:
 
 def one_day_moves(s: pd.Series, first: pd.Timestamp, last: pd.Timestamp) -> dict:
     """Per calendar month from `first` to `last`: the largest one-day rise and fall of a daily series (in percent of
-    the day before), with the values either side. Where a monthly mean hides a step, this dates it to the day."""
+    the day before), with the values either side. Missing days leave both neighbouring changes unknown."""
+    s = s.reindex(pd.date_range(first - pd.Timedelta(days=1), last, freq="D"))
     out = {}
     for m in pd.period_range(first, last, freq="M"):
         part = s.loc[max(first, m.start_time) - pd.Timedelta(days=1):min(last, m.end_time.normalize())]
@@ -100,19 +103,23 @@ def one_day_moves(s: pd.Series, first: pd.Timestamp, last: pd.Timestamp) -> dict
     return out
 
 
-def _price_after(price: pd.Series, day: pd.Timestamp) -> dict:
+def _price_after(price: pd.Series, day: pd.Timestamp) -> dict | None:
     """The price on the step day, its highest day in the seven days from it (the span of the weekly mean above), and the
     first day it stood at twice the step day's price: did the step come before the price moved, or with it?"""
-    week = price.loc[day:day + pd.Timedelta(days=6)]
+    price = price.asfreq("D").where(np.isfinite(price) & (price > 0))
+    week = price.reindex(pd.date_range(day, day + pd.Timedelta(days=6)))
+    if week.isna().any() or price.loc[day:].isna().any():
+        return None  # unknown prices cannot establish the week's high or the first later crossing
     top = week.idxmax()
     twice = price.loc[day:][price.loc[day:] >= 2 * price[day]]
     out = {"day": float(price[day]), "highest_in_the_week_from_it": {"date": str(top.date()), "value": float(week[top]),
                                                                      "pct_change": float((week[top] / price[day] - 1) * 100),
                                                                      "days_after": int((top - day).days)}}
-    prev = price.loc[:day - pd.Timedelta(days=1)]
+    prev = price.loc[:day - pd.Timedelta(days=1)].dropna()
     if len(prev):  # the day of the step against the day before, and the last earlier day at or below its price
-        out["day_before"] = {"date": str(prev.index[-1].date()), "value": float(prev.iloc[-1]),
-                             "pct_change_to_the_day": float((price[day] / prev.iloc[-1] - 1) * 100)}
+        if prev.index[-1] == day - pd.Timedelta(days=1):
+            out["day_before"] = {"date": str(prev.index[-1].date()), "value": float(prev.iloc[-1]),
+                                 "pct_change_to_the_day": float((price[day] / prev.iloc[-1] - 1) * 100)}
         low = prev[prev <= price[day]]
         out["lowest_since"] = str(low.index[-1].date()) if len(low) else None
     later = price.loc[day + pd.Timedelta(days=1):]
@@ -127,23 +134,30 @@ def _price_after(price: pd.Series, day: pd.Timestamp) -> dict:
 
 def intents_step(daily: pd.DataFrame, fees: pd.DataFrame | None, top: float, after: str) -> dict | None:
     """The day Intents volume stepped up to its autumn level, by the rule in the module docstring."""
-    vol = daily["intents_volume_usd"].dropna()
+    # Seven observations need not be seven calendar days. A gap leaves every weekly mean touching it unknown, and
+    # cannot support the claim that the weekly mean has stayed above the line continuously since the crossing.
+    vol = daily["intents_volume_usd"].asfreq("D").replace([np.inf, -np.inf], np.nan)
     week = vol.rolling(7).mean().loc[after:]
     not_above = week[week <= top]
     if not_above.empty or not_above.index.max() >= week.index.max():
         return None  # the weekly mean is at or below the line today: there is no level that holds
     since = not_above.index.max() + pd.Timedelta(days=1)
-    seven = vol.loc[since - pd.Timedelta(days=6):since]
-    rise = seven.diff().dropna()
+    if week.loc[since:].isna().any():
+        return None
+    rise = vol.diff().loc[since - pd.Timedelta(days=6):since].dropna()
+    if rise.empty:
+        return None
     day = rise.idxmax()
     before = day - pd.Timedelta(days=1)
     month = vol[vol.index.to_period("M") == day.to_period("M")]
     out = {"line": float(top), "weekly_mean_above_it_since": str(since.date()), "last_day_at_or_below": str(not_above.index.max().date()),
            "lowest_weekly_mean_since": float(week.loc[since:].min()), "day": str(day.date()),
            "volume": {"day_before": float(vol[before]), "day": float(vol[day])},
-           "price_usd": _price_after(daily["price_usd"].dropna(), day),
            "month": str(day.to_period("M")), "days_of_the_month_from_it": int((month.index >= day).sum()),
            "share_of_the_month_volume_from_it": float(month[month.index >= day].sum() / month.sum())}
+    price = _price_after(daily["price_usd"], day)
+    if price is not None:
+        out["price_usd"] = price
     if fees is not None:
         bb = fees["holders_revenue"].dropna()
         bb = bb[bb.index.to_period("M") == day.to_period("M")]
@@ -198,20 +212,22 @@ def summarize(daily: pd.DataFrame, fees: pd.DataFrame | None, plateau: tuple[str
     out: dict = {"rule": "calendar half-months (1-15, 16-end); reference: the half-months after the largest one-day fall of "
                          "transactions and before the one in which Intents volume stepped up; above: above the highest of them",
                  "reference": {"from": ref.index[0].split("..")[0], "through": ref.index[-1].split("..")[1],
-                               "top": {c: float(ref[c].max()) for c in COLUMNS if c in ref},
-                               "top_half": {c: str(ref[c].idxmax()) for c in COLUMNS if c in ref}},
+                               # An unknown half may contain the reference maximum; skipping it would lower the
+                               # threshold and turn later observations into unsupported "above reference" claims.
+                               "top": {c: float(ref[c].max()) for c in COLUMNS if c in ref and ref[c].notna().all()},
+                               "top_half": {c: str(ref[c].idxmax()) for c in COLUMNS if c in ref and ref[c].notna().all()}},
                  "half_months": {k: {c: (float(v[c]) if pd.notna(v[c]) else None) for c in [*COLUMNS, "days"] if c in v}
                                  for k, v in t.iterrows()}}
     out["above_reference_top"] = {c: [k for k, v in after[c].items() if v > out["reference"]["top"][c]]
-                                  for c in COLUMNS if c in after and c not in NOT_COMPARED}
+                                  for c in COLUMNS if c in out["reference"]["top"] and c not in NOT_COMPARED}
     # The same by the median day. A half-month's mean can rest on a day or two, the reference top's too: the largest
     # day of the half-month that sets each top is published, with its share of that half-month's total.
     tm = table(daily, fees, str(first.date()), last, stat="median")
     ref_m = tm.loc[ref.index]
     after_m = tm.loc[after.index]
     d = series(daily, fees)
-    out["reference"]["top_median"] = {c: float(ref_m[c].max()) for c in COLUMNS if c in ref_m}
-    out["reference"]["top_half_median"] = {c: str(ref_m[c].idxmax()) for c in COLUMNS if c in ref_m}
+    out["reference"]["top_median"] = {c: float(ref_m[c].max()) for c in COLUMNS if c in ref_m and ref_m[c].notna().all()}
+    out["reference"]["top_half_median"] = {c: str(ref_m[c].idxmax()) for c in COLUMNS if c in ref_m and ref_m[c].notna().all()}
     largest = {}
     for c, half in out["reference"]["top_half"].items():
         a, b = (pd.Timestamp(x) for x in half.split(".."))
@@ -222,7 +238,7 @@ def summarize(daily: pd.DataFrame, fees: pd.DataFrame | None, plateau: tuple[str
     out["half_months_median"] = {k: {c: (float(v[c]) if pd.notna(v[c]) else None) for c in [*COLUMNS, "days"] if c in v}
                                  for k, v in tm.iterrows()}
     out["above_reference_top_by_median"] = {c: [k for k, v in after_m[c].items() if v > out["reference"]["top_median"][c]]
-                                            for c in COLUMNS if c in after_m and c not in NOT_COMPARED}
+                                            for c in COLUMNS if c in out["reference"]["top_median"] and c not in NOT_COMPARED}
     out["one_day_moves"] = {c: one_day_moves(d[c].dropna(), first, last) for c in ("active_contracts", "active_accounts", "txns")
                             if c in d and d[c].notna().any()}
     if step:

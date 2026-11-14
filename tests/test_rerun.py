@@ -61,10 +61,13 @@ def carried_forward(until="2027-02-12", daily=None, fees=None):
     tail["total_supply_yocto"] = daily["total_supply_yocto"].iloc[-1] + np.arange(1, len(more) + 1) * 8.8e28
     more_fees = pd.date_range(fees.index.max() + pd.Timedelta(days=1), until, freq="D")
     daily = pd.concat([daily, tail])
-    # The later tables repeat October under January 2027. The aggregator's January has to count the same transactions:
-    # a result that is short of the daily counts by a day or more is taken for a query run before the month ended.
-    january = (daily.index >= "2027-01-01") & (daily.index <= "2027-01-31")
-    daily.loc[january, "txns"] = clients.load()["2026-10"]["conc"]["txs"] / 31
+    # The later tables repeat October under every month of B2's window. The independent daily totals must agree
+    # for all three: a complete query end date alone cannot certify the absence of missing records inside them.
+    total = clients.load()["2026-10"]["conc"]["txs"]
+    for month in LATER:
+        period = pd.Period(month, "M")
+        in_month = daily.index.to_period("M") == period
+        daily.loc[in_month, "txns"] = total / period.days_in_month
     return daily, pd.concat([fees, pd.DataFrame([fees.iloc[-1]] * len(more_fees), index=more_fees)])
 
 

@@ -12,6 +12,8 @@ import hashlib
 import math
 import operator
 import re
+from dataclasses import dataclass
+from decimal import Decimal
 from pathlib import Path
 
 import numpy as np
@@ -29,6 +31,7 @@ def sha256(path: Path | None = None) -> str:
 
 FROZEN_DATA_THROUGH = "2026-11-11"  # the last day of the daily data when predictions.csv was frozen
 A5_CONTINUING = ("price_usd", "txns", "fees_usd", "intents_volume_usd")  # fees in NEAR are fees_usd over the price
+A5_METRICS = ("returning_accounts", "active_accounts", "intents_volume_usd", "fees_near", "txns")
 PLATEAU = ("2025-12", "2026-08")      # the nine complete months between the November 2025 spike and the September 2026 step
 BUYBACK_PLATEAU = ("2026-03", "2026-08")  # complete months of the buyback programme before the step (it began 2026-02-23)
 
@@ -57,7 +60,8 @@ def a5_chance_without_a_lead(metrics: int, lags: int = 8) -> float:
     A correlation is outside the band of 2 standard errors with probability erfc(2/√2), half of it on each side. A5
     fails when, for any metric, two neighbouring positive lags (1 to `lags` weeks) are outside it on the same side.
     The chain below carries the probability of no such pair so far, by where the last lag fell. Real weeks are not
-    independent, so the true rate is higher; this is the floor of what chance alone gives A5, not a test.
+    independent. Dependence can increase or decrease the rate: this is an illustration under an independent null,
+    not a lower bound or an estimate of the actual false-positive rate.
     """
     side = 0.5 * math.erfc(2 / math.sqrt(2))
     inside, up, down = 1.0, 0.0, 0.0
@@ -236,7 +240,17 @@ def _window(s: pd.Series, start: pd.Timestamp, end: pd.Timestamp) -> pd.Series |
     saved copy used during an outage), or miss a day in the middle. A prediction is not scored on part of its window.
     """
     w = s.reindex(pd.date_range(start, end, freq="D"))
-    return None if w.isna().any() else w
+    return None if not np.isfinite(w).all() else w
+
+
+def _decimal_total(w: pd.Series) -> Decimal:
+    """Sum decimal observations without a floating-point overshoot at a strict threshold."""
+    return sum((Decimal(str(x)) for x in w), Decimal(0))
+
+
+def _decimal_mean(w: pd.Series) -> float:
+    """Average decimal observations without summation noise moving an exact threshold equality."""
+    return float(_decimal_total(w) / len(w))
 
 
 def _measure(metric: str, on: pd.Timestamp, daily: pd.DataFrame, fees: pd.DataFrame | None) -> float | None:
@@ -245,25 +259,34 @@ def _measure(metric: str, on: pd.Timestamp, daily: pd.DataFrame, fees: pd.DataFr
     if metric in ("intents_volume_7d_mean_usd", "intents_volume_month_mean_usd"):
         start = on - pd.Timedelta(days=6) if metric == "intents_volume_7d_mean_usd" else on.replace(day=1)
         w = _window(d["intents_volume_usd"], start, on)
-        return None if w is None else float(w.mean())
+        return None if w is None else _decimal_mean(w)
     if metric == "metrics_with_adjacent_positive_leads":
-        # The series A5 is scored on must reach its check date: every week from the data the file was frozen with to the
-        # check date needs a value of the price and of each usage series that goes on after NearBlocks /v1. The two
-        # that end with /v1 (active and returning accounts) are scored as they stand, as PREDICTIONS.md says.
-        weeks = pd.period_range(pd.Timestamp(FROZEN_DATA_THROUGH) + pd.Timedelta(days=1), on, freq="W-SUN")
+        # Require an actual weekly change for every completed week after the snapshot. This checks all seven days
+        # and the preceding week needed by the difference. The unfinished week containing the check date is excluded.
+        # The two series that end with /v1 are still scored as they stand, as PREDICTIONS.md says.
+        first = (pd.Timestamp(FROZEN_DATA_THROUGH) + pd.Timedelta(days=1)).to_period("W-SUN").end_time.normalize()
+        weeks = pd.date_range(first, on, freq="W-SUN")
+        if not len(weeks) or any(c not in d for c in (*A5_CONTINUING, "active_accounts", "new_accounts")):
+            return None
+        derived = metrics.add_derived(d)
         for c in A5_CONTINUING:
-            if c not in d:
-                return None
-            have = d[c].dropna().index.to_period("W-SUN")
+            have = metrics.weekly_log_diff(derived["fees_near" if c == "fees_usd" else c],
+                                           positive_only=(c == "price_usd")).index
             if not set(weeks) <= set(have):
                 return None
-        return float(adjacent_positive_leads(metrics.summarize(d)["lead_vs_price"]))
+        leads = metrics.summarize(d)["lead_vs_price"]
+        # A successful download can still truncate a series' old history. The general scan omits short series;
+        # A5 must not turn that omission (or an undefined correlation) into evidence of no lead. Its family stays
+        # the five metrics present when the prediction was frozen, including the two that later stop with /v1.
+        if not set(A5_METRICS) <= set(leads) or any(not np.isfinite(leads[c]["corr"]) for c in A5_METRICS):
+            return None
+        return float(adjacent_positive_leads({c: leads[c] for c in A5_METRICS}))
     if fees is None or fees.empty:
         return None
     f = fees.loc[:on]
     if metric == "buyback_month_usd":
         w = _window(f["holders_revenue"], on.replace(day=1), on)
-        return None if w is None else float(w.sum())
+        return None if w is None else float(_decimal_total(w))
     if metric == "buyback_coverage_90d":
         start = on - pd.Timedelta(days=89)
         if any(_window(f[c], start, on) is None for c in f.columns):
@@ -271,6 +294,8 @@ def _measure(metric: str, on: pd.Timestamp, daily: pd.DataFrame, fees: pd.DataFr
         # The other side of the ratio: the mean price of the 90 days and the supply on the day before them and on the
         # last day. A missing price would leave a mean of fewer days, a missing supply the value of an earlier day.
         if "price_usd" not in d or _window(d["price_usd"], start, on) is None:
+            return None
+        if (d["price_usd"].reindex(pd.date_range(start, on)) <= 0).any():
             return None
         if "total_supply_yocto" not in d or _window(d["total_supply_yocto"], start - pd.Timedelta(days=1), start - pd.Timedelta(days=1)) is None \
                 or _window(d["total_supply_yocto"], on, on) is None:
@@ -295,32 +320,37 @@ BQ_METRIC = re.compile(r"^(?P<name>[a-z_]+?)_(?P<first>\d{4}_\d{2})(?:_to_(?P<la
 def holds_the_whole_month(table_txs: float, month: str, daily: pd.DataFrame | None) -> bool:
     """False when a query result is short of the aggregator's transaction count for a month by a day or more.
 
-    The census says where its scan stopped (population.QUERY_END). The other two queries name whole months, so their
-    result is partial only when the query was run before the month ended, and the result itself does not say so. The
-    aggregator does: NearBlocks counts the same transactions day by day, and the two sources agree to a few hundred
-    transactions in a month (population.totals_check). A result that misses a day is short by at least the month's
-    quietest day, so that is the line; no tolerance is chosen. Without a daily count for every day of the month there
-    is nothing to compare with, so nothing shows that the result holds the whole month: it is not scored (False) until
-    the daily series has every day of it. After /v1 is switched off the count goes on from v3 (thesis/sources.py).
+    A query's end date does not establish that its source held every day: it may have been run early, or its source
+    may have missing records. NearBlocks counts the same transactions day by day, so every query result is checked
+    against it, in addition to the census scan's end date (population.QUERY_END). A result that misses a day is short
+    by at least the month's quietest day, so that is the line; no tolerance is chosen. Without a daily count for every
+    day of the month there is nothing to compare with, so nothing shows that the result holds the whole month:
+    it is not scored (False) until the daily series has every day of it. After /v1 is switched off the count goes on
+    from v3 (thesis/sources.py).
     """
     if daily is None or "txns" not in daily:
         return False
     period = pd.Period(month, "M")
     days = daily["txns"].reindex(pd.date_range(period.start_time, period.end_time.normalize(), freq="D"))
-    if days.isna().any():
+    if not np.isfinite(days).all() or not np.isfinite(table_txs):
         return False
     return float(days.sum() - table_txs) < float(days.min())
 
 
+@dataclass(frozen=True)
+class LowerBound:
+    value: int
+
+
 def _measure_committed(p: dict, census: pd.DataFrame | None, seg: pd.DataFrame | None, top: dict | None,
-                       daily: pd.DataFrame | None = None) -> float | tuple[float, float] | None:
+                       daily: pd.DataFrame | None = None) -> float | tuple[float, float] | LowerBound | None:
     """A "bigquery" prediction measured from the committed query results; None while they do not hold its months.
 
     The queries cover whole calendar months and are run by hand: sql/payer_frequency.sql for the frequency classes,
     sql/account_age.sql for the census (with QUERY_END in thesis/population.py), sql/top_accounts.sql for the largest
     accounts and the apps. Once a result that holds the named month is committed, the build scores the prediction
-    with the same definitions its threshold was taken from. A month counts only when the result holds all of it: for
-    the census that is QUERY_END, for the other two results the comparison with the daily series (holds_the_whole_month).
+    with the same definitions its threshold was taken from. Every month must pass the comparison with the daily series
+    (holds_the_whole_month); the census additionally requires QUERY_END to reach the month's last day.
     B4 returns both bounds: the contracts outside the top 40 leave a range, not an exact measurement.
     """
     m = BQ_METRIC.match(str(p["metric"]))
@@ -340,8 +370,11 @@ def _measure_committed(p: dict, census: pd.DataFrame | None, seg: pd.DataFrame |
     if name == "core_self_paid_txs_mean" and census is not None:
         if not set(months) <= set(population.complete_months(census)):
             return None  # a month the scan has not finished is not a month
+        counted = census.groupby("month")["txs"].sum()
+        if not all(holds_the_whole_month(counted[x], x, daily) for x in months):
+            return None  # an end date alone cannot detect missing records inside a completed month
         core = census[~census["family"].isin(population.REWARD_FAMILIES)].groupby("month")[["txs", "relayed_txs"]].sum()
-        return float((core["txs"] - core["relayed_txs"])[months].mean())
+        return float((core["txs"] - core["relayed_txs"]).reindex(months, fill_value=0).mean())
     if top and len(months) == 1 and {"via", "conc"} <= set(top.get(months[0], {})):
         month = top[months[0]]
         c = month["conc"]
@@ -353,8 +386,7 @@ def _measure_committed(p: dict, census: pd.DataFrame | None, seg: pd.DataFrame |
             # The query ranks only the accounts with 1,000 or more transactions. If together they send less than
             # half, more accounts than that whole group are needed. This is a lower bound, so it is used only when
             # it already decides the prediction.
-            at_least = c["heavy_actors"] + 1
-            return float(at_least) if at_least >= p["threshold"] else None
+            return LowerBound(clients.half_txs_lower_bound(c))
         if name == "reward_minus_finance_tx_share":
             apps = clients.by_app(month)
             reward, finance = (sum(int(apps.get(a, 0)) for a in group) for group in (clients.REWARD_APPS, clients.FINANCE_APPS))
@@ -381,6 +413,15 @@ def evaluate(daily: pd.DataFrame, fees: pd.DataFrame | None, path: Path | None =
                 measured, waiting = _measure_committed(p, census, seg, top, daily), "open (needs the census query for that month)"
             else:
                 measured, waiting = _measure(p["metric"], on, daily, fees), "open (waiting for complete data)"
+            if isinstance(measured, LowerBound):
+                # A lower bound can refute an upper limit or establish a lower limit; it cannot give an exact count.
+                passes = OPS[p["operator"]](measured.value, p["threshold"])
+                decided = (p["operator"] in ("<", "<=") and not passes) or (p["operator"] in (">", ">=") and passes)
+                status = ("held" if passes else "failed") if decided else "open (undecided: only a lower bound is known)"
+                rows.append({**p, "status": status, "measured": None, "measured_lower_bound": measured.value})
+                continue
+            if measured is not None and not np.isfinite(measured).all():
+                measured = None  # neither a scalar nor a pair of measurements can be scored while undefined
             if isinstance(measured, tuple):
                 holds = [OPS[p["operator"]](end, p["threshold"]) for end in measured]
                 why = ("the ratio in USD and the ratio in NEAR give different verdicts" if p["metric"] == "buyback_coverage_90d"
@@ -388,8 +429,6 @@ def evaluate(daily: pd.DataFrame, fees: pd.DataFrame | None, path: Path | None =
                 status = ("held" if holds[0] else "failed") if holds[0] == holds[1] else f"open (undecided: {why})"
                 rows.append({**p, "status": status, "measured": None, "measured_range": list(measured)})
                 continue
-            if measured is not None and not np.isfinite(measured):
-                measured = None  # an empty or undefined measurement is not a miss
             if measured is None:
                 status = waiting
             else:

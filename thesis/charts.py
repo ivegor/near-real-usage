@@ -13,7 +13,7 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 from matplotlib.ticker import FuncFormatter, LogLocator, NullFormatter  # noqa: E402
 
-from . import metrics, population, segments, value  # noqa: E402
+from . import clients, metrics, population, segments, value  # noqa: E402
 
 INK, ACCENT, MUTED, GRID = "#1f2328", "#00a27a", "#8c959f", "#e6e8eb"
 
@@ -197,6 +197,13 @@ def _value_chart(d: pd.DataFrame, fees: pd.DataFrame, vc: dict, out: Path) -> Ch
     _style(ax, "USD millions per month")
     ax.legend(frameon=False, fontsize=8, loc="upper left")
     _save(fig, out, "value_capture")
+    labels = {"fees": "Intents gross fees", "revenue": "captured revenue",
+              "holders_revenue": "buybacks", "l1_fees": "network transaction fees"}
+    missing = [f"{labels[k]} ({n} missing {'day' if n == 1 else 'days'})"
+               for k, n in vc.get("days_without_data", {}).items() if n]
+    estimates = ("The totals and ratios below include estimates for " + ", ".join(missing) + ". "
+                 "Each incomplete total is the observed daily mean times the window's calendar days; "
+                 "ratios use those same totals. ") if missing else ""
     return Chart(
         "value_capture", "Does it reach the token?",
         f"Over the 90 days to {vc['window'][1]} NEAR Intents charged ${vc['intents_gross_fees_usd'] / 1e6:.1f}M in fees "
@@ -208,12 +215,12 @@ def _value_chart(d: pd.DataFrame, fees: pd.DataFrame, vc: dict, out: Path) -> Ch
         f"{vc['buyback_coverage_of_new_supply'] * 100:.0f}% of the net new supply (a ratio of flows in USD, not a measured offset; "
         f"{vc['buyback_coverage_in_near'] * 100:.1f}% counted in NEAR at each day's price), and the market capitalisation is "
         f"{vc['market_cap_to_annual_buyback']:.0f} times the annual buyback.",
-        "DefiLlama fee series for NEAR Intents (dailyFees, dailyRevenue, dailyHoldersRevenue); net new supply = change in "
+        estimates + "DefiLlama fee series for NEAR Intents (dailyFees, dailyRevenue, dailyHoldersRevenue); net new supply = change in "
         "NearBlocks' daily total supply (already net of burned fees) valued at the mean price of the period. The window ends "
         "on the last day both sources cover. The bought NEAR is not burned, so supply itself does not shrink. What is checked "
         "here is the NEAR arriving at the revenue wallets and staying there; the purchases on the market are not."
-        + (f" The fee series ends {vc['days_behind_the_daily_series']} days before the daily data."
-           if vc.get("days_behind_the_daily_series", 0) > 1 else ""),
+        + (f" The last common day of fees, supply and price is {vc['days_behind_the_daily_series']} days before the daily data."
+           if vc.get("days_behind_the_daily_series", 0) > 0 else ""),
     )
 
 
@@ -346,7 +353,7 @@ def _clients_chart(cl: dict, out: Path) -> Chart:
                  f"changed {_pct(failing['finance_pct_change_without_them'])}.")
     return Chart(
         "clients", "Who sends the transactions",
-        f"In {lm}, {L['accounts_for_half_of_txs']} accounts sent half of NEAR's {L['transactions'] / 1e6:.1f}M transactions "
+        f"In {lm}, {clients.half_txs_text(L).lower()} accounts {'were needed to send' if L['accounts_for_half_of_txs'] is None else 'sent'} half of NEAR's {L['transactions'] / 1e6:.1f}M transactions "
         f"and the top 10 sent {L['top10_share'] * 100:.0f}% ({P['top10_share'] * 100:.0f}% in {pm}). Reward and wallet apps "
         f"(Sweat, HOT, Meteor, KaiChing) are {cl['reward_apps_share']['latest'] * 100:.0f}% of transactions, down from "
         f"{cl['reward_apps_share']['prior'] * 100:.0f}%; Sweat alone is {sw['latest_share'] * 100:.0f}%. Trading, Intents, token "
@@ -379,28 +386,41 @@ def _holm_words(s: dict) -> str:
     return f"{'none' if n == 0 else n} of them {'stands' if n <= 1 else 'stand'} after Holm's correction for testing them together"
 
 
+def population_takeaway(change: float | None) -> str:
+    if change is None or not np.isfinite(change):
+        return "The year-on-year change in active accounts is not available."
+    if change == 0:
+        return "NEAR's active account count is unchanged from a year earlier."
+    return f"NEAR {'lost' if change < 0 else 'gained'} {abs(change):.0f}% of its active accounts in a year."
+
+
 def _takeaway(slug: str, s: dict) -> str:
     """One plain sentence per chart, built from the same summary as the detailed caption. Empty if the data is absent."""
     try:
         if slug == "population":
-            return f"NEAR lost {abs(s['population']['segments']['all']['accounts']['pct_change']):.0f}% of its active accounts in a year."
+            return population_takeaway(s['population']['segments']['all']['accounts']['pct_change'])
         if slug == "segments":
             sg = s["segments"]
-            return (f"Almost all of the lost accounts were users an app was paying for; outside the reward apps, "
+            sponsored = sg['metrics']['sponsored_accounts']
+            return (f"Accounts whose fees an app pays changed {_pct(sponsored['pct_change'])}; outside the reward apps, "
                     f"{sg['metrics']['heavy_accounts']['latest']:,.0f} heavy accounts send "
                     f"{sg['heavy_share_of_independent_self_paid_txs']['latest'] * 100:.0f}% of the transactions that senders pay for themselves.")
         if slug == "clients":
             c = s["clients"]
-            return f"{c['months'][c['latest_month']]['accounts_for_half_of_txs']} accounts send half of all NEAR transactions."
+            month = c['months'][c['latest_month']]
+            verb = 'are needed to send' if month['accounts_for_half_of_txs'] is None else 'send'
+            return f"{clients.half_txs_text(month)} accounts {verb} half of all NEAR transactions."
         if slug == "value_capture":
             v = s["value_capture"]
             first = f"The revenue NEAR Intents captures for buybacks equals {v['buyback_coverage_of_new_supply'] * 100:.0f}% of the new NEAR issued."
             lengths = (v.get("windows") or {}).get("by_length")
-            if lengths:  # one window is not the figure: the range over windows of other lengths ending on the same day
-                cov = [x["coverage"] for x in lengths.values()]
+            cov = [x["coverage"] for x in (lengths or {}).values() if x.get("coverage") is not None and np.isfinite(x["coverage"])]
+            if cov:  # only windows with a defined denominator contribute to the range
                 first = (f"The revenue NEAR Intents captures for buybacks equals {v['buyback_coverage_of_new_supply'] * 100:.0f}% of the new NEAR "
-                         f"issued over the last 90 days, and {min(cov) * 100:.0f}% to {max(cov) * 100:.0f}% over windows from a "
-                         f"week to the whole programme.")
+                         f"issued over the 90 days to {v['window'][1]}, and {min(cov) * 100:.0f}% to {max(cov) * 100:.0f}% over the other "
+                         f"available windows.")
+            if any(v.get("days_without_data", {}).values()):
+                first = "Some fee totals and ratios are estimated; " + first[0].lower() + first[1:]
             w = v.get("wallets")
             if not w:
                 return first
@@ -501,6 +521,15 @@ def _census_chart(cs: dict, out: Path) -> Chart:
         lo, hi = win["tx_share_ci95"][c]
         return f"{win['tx_share_by_account_age'][c] * 100:.0f}% (95% interval {lo * 100:.0f}-{hi * 100:.0f}%)"
 
+    age_note = cs.get("age_check_note", "")
+    if age_note:
+        counts = []
+        for label, win in (("prior", p), ("recent", r)):
+            checks = win["age_checks"]
+            counts.append(f"{label}: {checks['inferred_false_365d_accounts']} accounts / "
+                          f"{checks['inferred_false_365d_transactions']} transactions")
+        age_note += " Unchecked older dates (" + "; ".join(counts) + "). Intervals do not cover this classification uncertainty."
+    notes = " ".join(note for note in (age_note, cs.get("relay_parser_note", "")) if note)
     return Chart(
         "signer_census", "Who signs the transactions (measured on the chain)",
         f"Accounts older than one year sign {share(r, '365d+')} of transactions now, against {share(p, '365d+')} a year "
@@ -511,7 +540,8 @@ def _census_chart(cs: dict, out: Path) -> Chart:
         f"{r['transactions']} transactions now, {p['blocks_found']} blocks / {p['transactions']} transactions a year earlier. "
         "For a relayed (meta) transaction the user is read from the delegate action. An account's age class comes from "
         "view_account on an archival RPC node at the block 30 and 365 days before the window starts. Intervals resample "
-        "whole blocks. Sampled accounts over-represent frequent senders. Re-run: python -m thesis census [--seed N].",
+        "whole blocks. Sampled accounts over-represent frequent senders. Re-run: python -m thesis census [--seed N]."
+        + (" " + notes if notes else ""),
     )
 
 
@@ -645,14 +675,18 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
                           f"a day, and from {rng['first']} to {rng['last']} volume averaged ${v['range_mean'] / 1e6:,.1f}M.")
         step_day = (summary.get("autumn") or {}).get("intents_step")
         if step_day:  # by day the step came with the start of the price's move, before the price doubled
-            pr = step_day["price_usd"]
+            pr = step_day.get("price_usd")
             rally += (f" By day it came earlier: volume went from ${step_day['volume']['day_before'] / 1e6:,.0f}M to "
-                      f"${step_day['volume']['day'] / 1e6:,.0f}M on {step_day['day']}, at a price of ${pr['day']:.2f}")
-            up, twice = pr.get("highest_in_the_week_from_it"), pr.get("first_day_at_twice_it")
-            if up:
-                rally += f" that was {up['pct_change']:.0f}% higher {up['days_after']} days later"
-            if twice:
-                rally += f" and first stood at twice that on {twice['date']}"
+                      f"${step_day['volume']['day'] / 1e6:,.0f}M on {step_day['day']}")
+            if pr:
+                rally += f", at a price of ${pr['day']:.2f}"
+                up, twice = pr.get("highest_in_the_week_from_it"), pr.get("first_day_at_twice_it")
+                if up:
+                    rally += f" that was {up['pct_change']:.0f}% higher {up['days_after']} days later"
+                if twice:
+                    rally += f" and first stood at twice that on {twice['date']}"
+            else:
+                rally += "; the price comparison is unavailable because daily quotes are missing"
             rally += (f"; its 7-day mean has stayed above ${step_day['line'] / 1e6:,.1f}M since "
                       f"{step_day['weekly_mean_above_it_since']}.")
         so_far = (summary.get("month_to_date_yoy") or {}).get("intents_volume_usd")

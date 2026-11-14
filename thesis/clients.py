@@ -120,7 +120,9 @@ def outside_the_40(month: dict, group: tuple) -> dict:
     """
     listed, floor = set(month["via"]["via"]), int(month["via"]["txs"].min())
     missing = [v for app in group for v in APPS[app] if v not in listed]
-    return {"contracts": len(missing), "transactions_each_at_most": floor, "transactions_at_most": len(missing) * floor}
+    tail = max(0, month["conc"]["txs"] - int(month["via"]["txs"].sum()))
+    return {"contracts": len(missing), "transactions_each_at_most": floor,
+            "transactions_at_most": min(len(missing) * floor, tail)}
 
 
 def gap_range(month: dict, reward: set, finance: set) -> list[float]:
@@ -128,7 +130,24 @@ def gap_range(month: dict, reward: set, finance: set) -> list[float]:
     via, total = month["via"], month["conc"]["txs"]
     listed, floor = set(via["via"]), int(via["txs"].min())
     gap = int(via.loc[via["via"].isin(reward), "txs"].sum()) - int(via.loc[via["via"].isin(finance), "txs"].sum())
-    return [(gap - len(finance - listed) * floor) / total, (gap + len(reward - listed) * floor) / total]
+    tail = max(0, total - int(via["txs"].sum()))
+    return [(gap - min(len(finance - listed) * floor, tail)) / total,
+            (gap + min(len(reward - listed) * floor, tail)) / total]
+
+
+def half_txs_lower_bound(c: dict) -> int:
+    """When the heavy group falls short, each remaining account contributes at most 999 transactions."""
+    remaining = max(0, (int(c["txs"]) + 1) // 2 - int(c["heavy_txs"]))
+    return int(c["heavy_actors"]) + (remaining + 998) // 999
+
+
+def half_txs_text(month: dict) -> str:
+    """An exact count or an explicitly labelled lower bound for chart and video captions."""
+    exact = month.get("accounts_for_half_of_txs")
+    if exact is not None:
+        return str(exact)
+    lower = month.get("accounts_for_half_of_txs_at_least")
+    return f"At least {lower}" if lower is not None else "An unknown number of"
 
 
 def compared_months(data: dict) -> tuple[str, str]:
@@ -158,6 +177,8 @@ def summarize(data: dict) -> dict:
             "top100_share": c["top100_txs"] / c["txs"],
             "accounts_for_half_of_txs": c["n50"] if half_reached else None,
         }
+        if not half_reached:
+            out["months"][m]["accounts_for_half_of_txs_at_least"] = half_txs_lower_bound(c)
     out["apps"] = {
         app: {"latest": int(apps[latest].get(app, 0)), "prior": int(apps[prior].get(app, 0)),
               "latest_share": float(apps[latest].get(app, 0) / data[latest]["conc"]["txs"]),
@@ -222,8 +243,8 @@ def summarize(data: dict) -> dict:
     out["reward_side_direct_calls"] = {
         "contracts": list(REWARD_SIDE_CONTRACTS_OUTSIDE_NAMESPACES),
         "outside_the_40": {k: {"contracts": len(set(REWARD_SIDE_CONTRACTS_OUTSIDE_NAMESPACES) - set(data[m]["via"]["via"])),
-                               "transactions_at_most": len(set(REWARD_SIDE_CONTRACTS_OUTSIDE_NAMESPACES) - set(data[m]["via"]["via"]))
-                               * int(data[m]["via"]["txs"].min())} for k, m in both},
+                               "transactions_at_most": min(len(set(REWARD_SIDE_CONTRACTS_OUTSIDE_NAMESPACES) - set(data[m]["via"]["via"]))
+                               * int(data[m]["via"]["txs"].min()), max(0, data[m]["conc"]["txs"] - int(data[m]["via"]["txs"].sum())))} for k, m in both},
         **{k: {"transactions": int(side[k]["txs"].sum()),
                "by_contract": {r.via: {"transactions": int(r.txs), "accounts": int(r.actors)} for r in side[k].itertuples()}}
            for k, _ in both}}
