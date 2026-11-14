@@ -358,93 +358,52 @@ PREDICTIONS.md says, prediction by prediction, what a hold shows and what it doe
 
 ## Limits
 
-* **"Outside the reward namespaces" is not "NEAR's own users".** The account-age census groups accounts by namespace,
-  and a year ago 93% of the accounts outside `.kaiching`, `.tg` and `.sweat` were sponsored users of other apps
-  (`.sweat` itself is 11 service accounts; Sweat's users are relayed implicit accounts). Read the age and returning
-  figures of that group with this in mind; the payer and frequency split is the cleaner count.
-* **Self-paying means the account paid for at least one transaction in the month.** It may also have sponsored ones.
-  A sponsored account is not a lesser one; it is one an app is paying for, and it goes when the app does. Self-paying
-  is a technical category: the account signed a transaction and paid its fee. Who funded the account, whether rewards
-  repaid the fees and who holds its keys is not checked, so it does not show that a user is willing to pay with money
-  of their own.
-* **An account an app acts for is not shown to be a person.** For a relayed transaction we count the account the
-  relayer acted for, and the committed data shows such accounts acting like the app's own: KaiChing's relayer's monthly totals
-  point to a daily quota, nearly all of the game Ember's sponsored accounts had also been active the month before, and Meteor's relayer claims rewards in
-  batches for accounts whose names start with the same two letters. "Sponsored accounts" counts accounts that apps act for; how many people
-  are behind them the chain does not say.
-* **"Independent" is defined by exclusion, and it let another app's users in.** It means: pays for at least one of
-  its own transactions and is not in the `.kaiching` or `.tg` namespace. Meteor's game sat inside it (see "Who pays,
-  and how often"). We found it by reading the 40 most-called contracts of both months; a smaller game of the same kind
-  would not show there. Read the regular class as an upper bound on the independent accounts that act regularly, not
-  as a count of users. The same holds for transactions: direct calls to reward-side contracts outside the namespaces
-  are inside "self-paid transactions outside the reward apps", and a call from inside the namespaces is not. How many
-  of each the tables do not say, so with those calls out the October change lies between +24% and +37%.
+Each limit is named here in a line or two. The full text of every one, with its numbers, is in the
+[appendix](APPENDIX.md#limits-as-thesismd-states-them-in-full); the relay correction is given in full because the
+account tables depend on it.
+
 * **Relay classification was corrected on 2026-11-14.** The saved BigQuery tables recognised a meta transaction
   only when Delegate was its first action. The queries now recognise Delegate in any position, as the block parser
   already did. The saved data have not been refreshed, so the effect on this snapshot is unmeasured; matching total
   transaction counts cannot detect misclassified actors or fee payers.
-* **A transaction is counted whether it succeeded or not.** None of the queries here reads how a transaction ended.
-  That was checked on a sample for one contract only, NEAR Intents, where all sampled calls of one account failed
-  (see "Evidence against"). How many transactions fail elsewhere on the chain is not measured.
-* **The pace of November is eleven days.** The census scan stopped on 2026-11-11, so the unfinished month is used
-  only as rates per day of transactions, set against the rates of whole months, for every series it is quoted for.
-* **Frequency classes are powers of ten of a monthly count.** "Heavy" (1,000 or more) is our reading of that line as
-  automation; we did not inspect the accounts one by one beyond the forty largest.
-* **Account age is first appearance in a transaction**, as signer or receiver, since genesis. An account created by a
-  contract call and first used later looks younger than it is.
+* **"Outside the reward namespaces" is not "NEAR's own users".** A year ago 93% of the accounts outside `.kaiching`,
+  `.tg` and `.sweat` were sponsored users of other apps; the payer and frequency split is the cleaner count.
+* **Self-paying means the account paid for at least one transaction in the month.** It is a technical category: who
+  funded the account and whether rewards repaid the fees is not checked.
+* **An account an app acts for is not shown to be a person.** "Sponsored accounts" counts accounts that apps act for;
+  how many people are behind them the chain does not say.
+* **"Independent" is defined by exclusion, and it let another app's users in.** Read the regular class as an upper
+  bound on the independent accounts that act regularly, not as a count of users; with the calls to reward-side
+  contracts out, the October change in self-paid transactions lies between +24% and +37%.
+* **A transaction is counted whether it succeeded or not.** How transactions ended was checked on a sample for one
+  contract only, NEAR Intents.
+* **The pace of November is eleven days.** The unfinished month is used only as rates per day of transactions.
+* **Frequency classes are powers of ten of a monthly count.** "Heavy" (1,000 or more) read as automation is our
+  reading; the accounts were not inspected one by one beyond the forty largest.
+* **Account age is first appearance in a transaction.** An account created by a contract call and first used later
+  looks younger than it is.
 * **"Active two months running" is a calendar-month measure.** It says nothing about retention within a month.
 * **One-off bursts.** February, March and April 2026 each contain a one-off burst of existing implicit accounts
-  sending one transaction each (about 3.5, 6.0 and 1.1 million accounts against about 0.1 million in an ordinary
-  month). February's was paid by the senders, so it also sits in the self-paid series: 3.37M of that month's 10.38M
-  self-paid core transactions (32%), and NearBlocks counted 3,401,092 deleted accounts that month. Without that group
-  the nine-month change is +2% instead of +6% and the eleven-month one −8% instead of −5%. Deletions in other months
-  (named accounts in spring 2025, December 2025) are smaller and are set out in the appendix with what they move.
-* **The census's series start in December 2024**, because the first month of the table has no month before it.
-  Transaction counts were checked against NearBlocks month by month: they differ by at most 484 transactions (0.002%)
-  in 22 of the 25 months, and BigQuery is lower in three early months (by up to 2.5%), which no October or
-  three-month comparison touches.
-* **Intents volume, prices and gross fees are aggregator data** (DefiLlama, NearBlocks) and were not checked against a
-  second source; captured revenue was, against the balances of the wallets it arrives at. Every year-on-year figure for
-  Intents volume shrinks as its base moves through the ramp-up of autumn 2025; the steadier yardstick is the level
-  between the two autumns, $74.5M a day from December 2025 to August 2026.
-* **Net new supply is not dilution for every holder.** New NEAR is issued mostly as staking rewards, so a holder who
-  stakes receives part of it. The 18% compares buybacks with all of the net new supply, which is the most a holder
-  could be diluted by. It is a ratio of flows: what it does for holders depends on the NEAR being bought on the market
-  and kept out of circulation, which the data do not show.
-* **Lead-lag scans 17 lags × 5 metrics = 85 tests**; about 4 bars outside ±2/√n are expected by chance. A week counts
-  only when all seven of its days are in the data: the snapshot ends on a Wednesday, and with its three days set
-  against full weeks the count was 6, not 5. The p-values behind Holm's correction use Fisher's z, a normal
-  approximation. Each of the seven daily prices must also be finite and positive; the source's zero placeholders
-  before trading began are missing prices, while a genuine zero activity day remains an observation. The statistical
-  band and p-values treat the weeks as independent, and they are not: weekly price changes correlate
-  0.31 with the week before, the usage metrics' changes −0.10 to −0.27. Allowing for that by Bartlett's formula
-  (autocorrelations up to eight weeks, on the matched observations of each metric and lag) narrows the band, because
-  the signs are opposite: 7 of 85 tests fall outside it, and still none stands after Holm's correction (smallest
-  p-value 0.003). Calendar gaps stay gaps when computing lags and autocorrelations. The formula uses autocorrelations
-  estimated from the same data, so this is a check, not an exact band. One of the five metrics is
-  the `active − new` proxy shown above to point the wrong way; it stays in the scan because A5 was frozen with it,
-  and it is not read here as evidence about users.
-* **The app table is a manual grouping** of the 40 largest contracts and relayers, which cover 90% of October 2026
-  transactions. Allowing for the group's contracts outside a month's 40 largest, the +37% lies between +30% and +39%.
-  Filing the contracts the exchange's own bots called with the exchange gives the financial group +31% to +33%. The
-  reward-app group is left as it was when prediction B4 was written, so HOT's two bridge contracts stay in it; filed
-  with the bridges, the gap B4 is scored on is +0.4 to +1.9 points of all transactions in October 2026 instead of +1.3
-  to +2.8. The groups are assigned by contract and relayer, not by what a transaction was for (see "Who is left: the
-  customers").
-* **The step date is found after the fact.** The rule takes the last day on which the 7-day mean of Intents volume was
-  at or below the top of its earlier range and dates the step to the largest one-day rise in the week before it, which
-  gives 19 August. That the weekly mean has stayed above the line since is part of how the day is chosen. What the
-  rule does not fix is the margin: the weekly mean has not gone below $98.4M since, 10% above the line of $89.6M. The
-  date marks a change in level; it is not a test of a structural break and does not name its cause.
+  sending one transaction each. February's sits in the self-paid series (3.37M of that month's 10.38M); without it
+  the nine-month change is +2% instead of +6%.
+* **The census's series start in December 2024.** Transaction counts differ from NearBlocks' by at most 0.002% in 22
+  of the 25 months; BigQuery is lower in three early months, which no October or three-month comparison touches.
+* **Intents volume, prices and gross fees are aggregator data**, not checked against a second source; captured
+  revenue was, against the balances of the wallets it arrives at. The steadier yardstick for volume is its level
+  between the two autumns, $74.5M a day.
+* **Net new supply is not dilution for every holder.** The 18% is a ratio of flows: what it does for holders depends
+  on the NEAR being bought on the market and kept out of circulation, which the data do not show.
+* **Lead-lag scans 17 lags × 5 metrics = 85 tests**, and its band treats the weeks as independent, which they are
+  not. Allowing for that, 7 of 85 tests fall outside the band and still none stands after Holm's correction.
+* **The app table is a manual grouping** of the 40 largest contracts and relayers. Allowing for the group's contracts
+  outside a month's 40 largest, the +37% lies between +30% and +39%.
+* **The step date is found after the fact.** A rule dates the step to 19 August. The date marks a change in level; it
+  is not a test of a structural break and does not name its cause.
 * **This is not a valuation.** The thesis measures usage and how much of its revenue reaches the token. It does not
   estimate what NEAR is worth or what holding it would return.
 * **The daily source changes on 2026-11-22.** NearBlocks switches off the API this text was built from. The committed
-  copy keeps every number here reproducible, and the daily build goes on from the API that replaces it for the columns
-  that mean the same there; counts of signers, of new and of deleted accounts end with the old one.
+  copy keeps every number here reproducible; counts of signers, of new and of deleted accounts end with the old API.
 * **The traces of where the revenue comes from are not ours.** The confidential-pool share quoted in "Does it reach
-  the token?" is the work of two other entries; we checked that they state it and that our take per dollar of volume
-  rises as theirs does, not their on-chain traces.
-* **The issuance scenario is one parameter.** It scales the measured net new supply by 1.6/2.5 and holds revenue,
-  price and burned fees fixed; the cut is approved by governance and not yet adopted by validators.
-* **The account census ends on 2026-11-11** and costs 482.64 GB of BigQuery scanning to re-run (the free tier is 1 TB
-  a month). The dashboard keeps October 2026 as its last month until the query is run again.
+  the token?" is the work of two other entries.
+* **The issuance scenario is one parameter.** The cut is approved by governance and not yet adopted by validators.
+* **The account census ends on 2026-11-11** and costs 482.64 GB of BigQuery scanning to re-run.
