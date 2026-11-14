@@ -9,6 +9,7 @@ they are reported as open. The file's SHA-256 is quoted in PREDICTIONS.md so lat
 from __future__ import annotations
 
 import hashlib
+import math
 import operator
 import re
 from pathlib import Path
@@ -26,7 +27,6 @@ def sha256(path: Path | None = None) -> str:
     return hashlib.sha256((path or CSV).read_bytes()).hexdigest()
 
 
-UNDECIDED = "undecided"  # a committed result whose bounds lie on both sides of the threshold
 FROZEN_DATA_THROUGH = "2026-11-11"  # the last day of the daily data when predictions.csv was frozen
 A5_CONTINUING = ("price_usd", "txns", "fees_usd", "intents_volume_usd")  # fees in NEAR are fees_usd over the price
 PLATEAU = ("2025-12", "2026-08")      # the nine complete months between the November 2025 spike and the September 2026 step
@@ -46,6 +46,24 @@ def adjacent_positive_leads(lead_vs_price: dict, same_sign_only: bool = True, po
         lags = sorted(out)
         n += any(b - a == 1 and (not same_sign_only or (out[a] > 0) == (out[b] > 0)) for a, b in zip(lags, lags[1:]))
     return n
+
+
+metrics_sig = metrics._sig
+
+
+def a5_chance_without_a_lead(metrics: int, lags: int = 8) -> float:
+    """How often A5's rule fails when no metric leads price at all, were the lags' correlations independent and normal.
+
+    A correlation is outside the band of 2 standard errors with probability erfc(2/√2), half of it on each side. A5
+    fails when, for any metric, two neighbouring positive lags (1 to `lags` weeks) are outside it on the same side.
+    The chain below carries the probability of no such pair so far, by where the last lag fell. Real weeks are not
+    independent, so the true rate is higher; this is the floor of what chance alone gives A5, not a test.
+    """
+    side = 0.5 * math.erfc(2 / math.sqrt(2))
+    inside, up, down = 1.0, 0.0, 0.0
+    for _ in range(lags):
+        inside, up, down = (inside + up + down) * (1 - 2 * side), (inside + down) * side, (inside + up) * side
+    return metrics_sig(1 - (inside + up + down) ** metrics)  # erfc can differ in its last digit between C libraries
 
 
 def baselines(daily: pd.DataFrame, fees: pd.DataFrame | None, census: pd.DataFrame | None,
@@ -292,7 +310,7 @@ def holds_the_whole_month(table_txs: float, month: str, daily: pd.DataFrame | No
 
 
 def _measure_committed(p: dict, census: pd.DataFrame | None, seg: pd.DataFrame | None, top: dict | None,
-                       daily: pd.DataFrame | None = None) -> float | None:
+                       daily: pd.DataFrame | None = None) -> float | tuple[float, float] | None:
     """A "bigquery" prediction measured from the committed query results; None while they do not hold its months.
 
     The queries cover whole calendar months and are run by hand: sql/payer_frequency.sql for the frequency classes,
@@ -300,6 +318,7 @@ def _measure_committed(p: dict, census: pd.DataFrame | None, seg: pd.DataFrame |
     accounts and the apps. Once a result that holds the named month is committed, the build scores the prediction
     with the same definitions its threshold was taken from. A month counts only when the result holds all of it: for
     the census that is QUERY_END, for the other two results the comparison with the daily series (holds_the_whole_month).
+    B4 returns both bounds: the contracts outside the top 40 leave a range, not an exact measurement.
     """
     m = BQ_METRIC.match(str(p["metric"]))
     if not m or m["name"] not in COMMITTED:
@@ -337,13 +356,10 @@ def _measure_committed(p: dict, census: pd.DataFrame | None, seg: pd.DataFrame |
             apps = clients.by_app(month)
             reward, finance = (sum(int(apps.get(a, 0)) for a in group) for group in (clients.REWARD_APPS, clients.FINANCE_APPS))
             # The groups' contracts outside the month's 40 largest are not in the count, and each can have received up to
-            # the smallest listed entry. The result is scored only when no such contracts could reverse it: the end of
-            # the range that is nearer the threshold is used, and a range across the threshold leaves B4 undecided.
+            # the smallest listed entry. Return both bounds for scoring and display; neither is an exact count.
             low = (reward - finance - clients.outside_the_40(month, clients.FINANCE_APPS)["transactions_at_most"]) / c["txs"]
             high = (reward - finance + clients.outside_the_40(month, clients.REWARD_APPS)["transactions_at_most"]) / c["txs"]
-            if OPS[p["operator"]](low, p["threshold"]) == OPS[p["operator"]](high, p["threshold"]):
-                return low if OPS[p["operator"]](low, p["threshold"]) else high
-            return UNDECIDED
+            return low, high
     return None
 
 
@@ -362,9 +378,11 @@ def evaluate(daily: pd.DataFrame, fees: pd.DataFrame | None, path: Path | None =
                 measured, waiting = _measure_committed(p, census, seg, top, daily), "open (needs the census query for that month)"
             else:
                 measured, waiting = _measure(p["metric"], on, daily, fees), "open (waiting for complete data)"
-            if measured == UNDECIDED:
-                rows.append({**p, "status": "open (undecided: the group's contracts outside the 40 largest could reverse it)",
-                             "measured": None})
+            if isinstance(measured, tuple):
+                holds = [OPS[p["operator"]](end, p["threshold"]) for end in measured]
+                status = ("held" if holds[0] else "failed") if holds[0] == holds[1] else (
+                    "open (undecided: the group's contracts outside the 40 largest could reverse it)")
+                rows.append({**p, "status": status, "measured": None, "measured_range": list(measured)})
                 continue
             if measured is not None and not np.isfinite(measured):
                 measured = None  # an empty or undefined measurement is not a miss

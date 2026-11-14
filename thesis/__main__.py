@@ -134,6 +134,8 @@ def build(offline: bool, require_fresh: bool = False) -> None:
         pred["baselines"] = predictions.baselines(daily, fees, pop, seg)
         gone_months = list(summary.get("population", {}).get("deleted_accounts", {}).get("months_above_ten_times_the_median", []))
         pred["step"] = predictions.step(daily, fees, pop, seg, deletion_months=gone_months)  # the step month, the price included
+        if summary.get("lead_vs_price"):  # what chance alone gives A5's rule, for the metrics it is scored on today
+            pred["a5_chance_without_a_lead"] = predictions.a5_chance_without_a_lead(len(summary["lead_vs_price"]))
         summary["predictions"] = pred
     fall = summary.get("population", {}).get("largest_daily_fall", {}).get("date")
     if pred:

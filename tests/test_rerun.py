@@ -103,7 +103,7 @@ def later(tmp_path, monkeypatch):
     return build
 
 
-def test_a_later_run_of_all_three_queries_scores_the_four_predictions(later, capsys):
+def test_a_later_run_of_all_three_queries_scores_the_four_predictions(later, capsys, tmp_path):
     s = later(scan_end="2027-02-05")
     printed = capsys.readouterr().out
     # the build prints a digest a reader can take in at once: one sentence per chart and the nine statuses, not the summary
@@ -112,10 +112,15 @@ def test_a_later_run_of_all_three_queries_scores_the_four_predictions(later, cap
     assert re.search(r"Predictions: A1 (held|failed), ", printed) and "B4 held" in printed and "Dashboard: " in printed
     assert len(printed) < 4000 and '"yoy_90d"' not in printed and printed.count("\n- ") == 11
     status = {p["id"]: (p["status"], p["measured"]) for p in s["predictions"]["items"]}
-    assert len(status) == 9 and all(st in ("held", "failed") and v is not None for st, v in status.values()), status
+    assert len(status) == 9 and all(st in ("held", "failed") for st, v in status.values()), status
+    assert all(p["measured"] is not None or p.get("measured_range") is not None for p in s["predictions"]["items"])
     # the tables repeat October, so the four are measured at October's values
     assert status["B1"] == ("held", 17105.0) and status["B3"] == ("held", 30.0)
     assert status["B2"][0] == "held" and status["B4"][0] == "held"
+    b4 = next(p for p in s["predictions"]["items"] if p["id"] == "B4")
+    assert b4["measured"] is None and b4["measured_range"] == s["clients"]["reward_minus_finance_share"]["latest_range"]
+    page = (tmp_path / "docs" / "index.html").read_text(encoding="utf-8")
+    assert "held</b> (+1.3 to +2.8 percentage points of all transactions (range))" in page
     # every result compares January 2027 with January 2026, so they are still combined
     for part in ("population", "segments", "clients"):
         assert (s[part]["latest_month"], s[part]["prior_month"]) == ("2027-01", "2026-01"), part

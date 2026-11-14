@@ -64,6 +64,9 @@ def summary_json(summary: dict) -> str:
 def measured_text(p: dict) -> str:
     """What a scored prediction was measured at, in the unit its statement uses."""
     v, metric = p.get("measured"), str(p.get("metric", ""))
+    if metric.startswith("reward_minus_finance") and p.get("measured_range") is not None:
+        low, high = p["measured_range"]
+        return f"{low * 100:+.1f} to {high * 100:+.1f} percentage points of all transactions (range)"
     if v is None:
         return ""
     if metric.startswith("intents_volume"):
@@ -117,7 +120,8 @@ def render(charts: list[Chart], summary: dict, out: Path) -> Path:
     pred_card = ""
     if pred:
         def row(p: dict) -> str:
-            measured = "" if p["measured"] is None else f" ({html.escape(measured_text(p))})"
+            value = measured_text(p)
+            measured = f" ({html.escape(value)})" if value else ""
             cells = [str(p["id"]), str(p["check_on"]), str(p["statement"])]
             return ("<tr>" + "".join(f"<td>{html.escape(c)}</td>" for c in cells)
                     + f"<td><b>{html.escape(p['status'])}</b>{measured}</td></tr>")

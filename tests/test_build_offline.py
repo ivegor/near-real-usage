@@ -97,12 +97,16 @@ def test_dashboard_reads_on_a_phone_and_names_what_was_measured(tmp_path):
         item("A4", "buyback_coverage_90d", "held", 0.146), item("A5", "metrics_with_adjacent_positive_leads", "held", 0.0),
         item("B1", "regular_self_paying_accounts_2027_01", "held", 17105.0),
         item("B2", "core_self_paid_txs_mean_2026_11_to_2027_01", "failed", 9876543.0),
-        item("B4", "reward_minus_finance_tx_share_2027_01", "held", 0.0199), item("B3", "accounts_for_half_of_txs_2027_01", "open", None)]}
+        {**item("B4", "reward_minus_finance_tx_share_2027_01", "held", None), "measured_range": [0.0128, 0.0281]},
+        {**item("B4-open", "reward_minus_finance_tx_share_2027_01", "open (undecided)", None), "measured_range": [-0.001, 0.002]},
+        item("B3", "accounts_for_half_of_txs_2027_01", "open", None)]}
     card = charts.Chart("population", "t", "One. Two.", "m", source="sql/account_age.sql")
     page = dashboard.render([card], {"first_date": "a", "last_date": "b", "days": 1, "predictions": pred}, tmp_path).read_text(encoding="utf-8")
     assert '<a href="population.png"' in page and '<img src="population.png"' in page and "overflow-wrap:anywhere" in page
     for shown in ("<b>held</b> ($113.8M a day)", "<b>held</b> ($1.72M)", "<b>held</b> (15% of net new supply)", "<b>held</b> (0)",
-                  "<b>held</b> (17,105)", "<b>failed</b> (9.88M a month)", "<b>held</b> (+2.0 points of all transactions)",
+                  "<b>held</b> (17,105)", "<b>failed</b> (9.88M a month)",
+                  "<b>held</b> (+1.3 to +2.8 percentage points of all transactions (range))",
+                  "<b>open (undecided)</b> (-0.1 to +0.2 percentage points of all transactions (range))",
                   "<b>open</b></td>"):
         assert shown in page, shown
 

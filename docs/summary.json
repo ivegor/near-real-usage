@@ -4343,6 +4343,19 @@
         0.02812530673472677
       ]
     },
+    "hot_bridges": {
+      "contracts": [
+        "v2_1.omni.hot.tg",
+        "bridge-refuel.hot.tg"
+      ],
+      "latest": 84269,
+      "prior": 320529,
+      "latest_share": 0.003724193237674009,
+      "reward_minus_finance_share_range_with_them_as_bridges": [
+        0.004163350083047357,
+        0.019497379532497937
+      ]
+    },
     "sweat_users": {
       "latest": 413927,
       "prior": 1263047
@@ -4700,6 +4713,18 @@
             -92.14664389526965,
             -90.54446800272855
           ]
+        }
+      },
+      "reward_group_final_calls": {
+        "prior": {
+          "sampled": 1075,
+          "to_finance_contracts": 1,
+          "to_hot_bridges": 2
+        },
+        "recent": {
+          "sampled": 576,
+          "to_finance_contracts": 1,
+          "to_hot_bridges": 15
         }
       },
       "by_month": {
@@ -5626,7 +5651,8 @@
         "before": 177.0,
         "month": 266.0
       }
-    }
+    },
+    "a5_chance_without_a_lead": 0.034959174308
   },
   "autumn": {
     "rule": "calendar half-months (1-15, 16-end); reference: the half-months after the largest one-day fall of transactions and before the one in which Intents volume stepped up; above: above the highest of them",

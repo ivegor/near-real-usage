@@ -39,6 +39,9 @@ _APP_OF = {via: app for app, vias in APPS.items() for via in vias}
 # The game Ember sponsored its users' transactions like the reward apps do, but it is not in REWARD_APPS: prediction B4
 # (predictions.csv) was frozen with that group as it is, so the group stays and Ember's share is published next to it.
 EMBER = ("relayer:mytestapi.embr.playember_reserve.near", "embr.playember_reserve.near")
+# HOT's own bridge contracts. The app table files them with HOT, and that grouping is frozen with prediction B4; by
+# what they do they are bridges, so the gap B4 is scored on is also published with them filed with the bridges.
+HOT_BRIDGES = ("v2_1.omni.hot.tg", "bridge-refuel.hot.tg")
 EXCHANGE = "Ref Finance / Rhea (DEX, lending)"
 # Two contracts of the "Other" row that the exchange's own accounts called in October 2025: pyth-oracle.near (the
 # price bots pyth-bot.ref-labs.near and pyth-bot-a.ref-labs.near) and acc.toalice.near (watcher05.ref-watchdog.near,
@@ -118,6 +121,14 @@ def outside_the_40(month: dict, group: tuple) -> dict:
     listed, floor = set(month["via"]["via"]), int(month["via"]["txs"].min())
     missing = [v for app in group for v in APPS[app] if v not in listed]
     return {"contracts": len(missing), "transactions_each_at_most": floor, "transactions_at_most": len(missing) * floor}
+
+
+def gap_range(month: dict, reward: set, finance: set) -> list[float]:
+    """Reward minus finance as a share of a month's transactions, both ends: an unlisted entry received 0 to the smallest."""
+    via, total = month["via"], month["conc"]["txs"]
+    listed, floor = set(via["via"]), int(via["txs"].min())
+    gap = int(via.loc[via["via"].isin(reward), "txs"].sum()) - int(via.loc[via["via"].isin(finance), "txs"].sum())
+    return [(gap - len(finance - listed) * floor) / total, (gap + len(reward - listed) * floor) / total]
 
 
 def compared_months(data: dict) -> tuple[str, str]:
@@ -220,6 +231,12 @@ def summarize(data: dict) -> dict:
     out["reward_minus_finance_share"] = {
         "latest": gap / total,
         "latest_range": [(gap - more_now) / total, (gap + unseen["reward_apps"]["latest"]["transactions_at_most"]) / total]}
+    reward_vias, finance_vias = ({v for app in group for v in APPS[app]} for group in (REWARD_APPS, FINANCE_APPS))
+    hot = {k: int(data[m]["via"].loc[data[m]["via"]["via"].isin(HOT_BRIDGES), "txs"].sum()) for k, m in both}
+    out["hot_bridges"] = {
+        "contracts": list(HOT_BRIDGES), **hot, "latest_share": hot["latest"] / total,
+        "reward_minus_finance_share_range_with_them_as_bridges": gap_range(
+            data[latest], reward_vias - set(HOT_BRIDGES), finance_vias | set(HOT_BRIDGES))}
 
     # one row of the "via" table: the transactions a contract or relayer received and the distinct accounts behind them
     def via_row(month: str, via: str) -> dict | None:
@@ -500,4 +517,15 @@ def sample_view(sample: pd.DataFrame, windows: dict, daily: pd.DataFrame, seed: 
         lo, hi = np.nanpercentile(boot["recent"] / np.where(boot["prior"] > 0, boot["prior"], np.nan), [2.5, 97.5])
         out["groups"][name] = {**row, "pct_change": (row["recent"]["transactions_per_30_days"] / then - 1) * 100 if then else float("nan"),
                                "pct_change_ci95": [float((lo - 1) * 100), float((hi - 1) * 100)]}
+    # The table files a relayed transaction by its relayer. The sample also reads what it finally calls: how many of the
+    # transactions filed with the reward and wallet apps end in a contract of the financial group, or in HOT's bridges.
+    reward_vias = {v for app in REWARD_APPS for v in APPS[app]}
+    finance_contracts = {v for app in FINANCE_APPS for v in APPS[app] if not v.startswith("relayer:")}
+    out["reward_group_final_calls"] = {}
+    for label in labels:
+        w = sample[sample["window"] == label]
+        filed = w[via[w.index].isin(reward_vias)]
+        out["reward_group_final_calls"][label] = {
+            "sampled": int(len(filed)), "to_finance_contracts": int(filed["target"].isin(finance_contracts).sum()),
+            "to_hot_bridges": int(filed["target"].isin(HOT_BRIDGES).sum())}
     return out

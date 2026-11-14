@@ -218,7 +218,10 @@ def test_bigquery_predictions_are_scored_once_the_committed_results_hold_the_mon
     assert out["B1"] == ("held", 9500.0)                                  # 9,000 + 500 regular accounts outside the app namespaces
     assert out["B2"][0] == "held" and abs(out["B2"][1] - 32_000_000 / 3) < 1e-6          # mean of 12M, 11M and 9M
     assert out["B3"] == ("held", 2.0)
-    assert out["B4"][0] == "failed" and abs(out["B4"][1] - (300 - 350) / 1000) < 1e-4    # a miss is scored as a miss
+    assert out["B4"] == ("failed", None)                                  # a miss is scored as a miss, with a range
+    b4 = next(r for r in predictions.evaluate(daily, None, p, census=census, seg=seg, top=top)["items"] if r["id"] == "B4")
+    low, high = b4["measured_range"]
+    assert low < (300 - 350) / 1000 < high and high - low < 1e-4
     assert out["B9"] == waiting
     # before the check date nothing is scored, whatever the files hold
     early = predictions.evaluate(daily.loc[:"2027-01-31"], None, p, census=census, seg=seg, top=top)["items"]
@@ -292,7 +295,8 @@ def test_every_prediction_in_the_frozen_file_can_be_scored(tmp_path, monkeypatch
     census, seg, top = bq_results(tmp_path)
     monkeypatch.setattr(population, "QUERY_END", "2027-02-10")
     out = predictions.evaluate(daily, fees, census=census, seg=seg, top=top)["items"]
-    assert len(out) == 9 and all(r["status"] in ("held", "failed") and r["measured"] is not None for r in out), out
+    assert len(out) == 9 and all(r["status"] in ("held", "failed") for r in out), out
+    assert all(r["measured"] is not None or r.get("measured_range") is not None for r in out), out
     # and with the results as they stood when the file was frozen, the four that wait for the queries say so
     monkeypatch.setattr(population, "QUERY_END", snapshot.SCAN_END)
     now = predictions.evaluate(daily, fees, census=snapshot.census(), seg=snapshot.frequency(), top=snapshot.top())["items"]
@@ -462,25 +466,23 @@ def test_a5_waits_for_the_usage_series_to_reach_its_check_date():
     assert predictions._measure("metrics_with_adjacent_positive_leads", pd.Timestamp("2027-02-11"), full, None) is not None
 
 
-def test_b4_is_scored_only_when_the_contracts_outside_the_40_cannot_reverse_it():
-    """Reward apps 100 transactions ahead, and one financial contract outside the 40 largest that can have received 101:
-    the count as listed says "held", the range says it is not decided."""
+def test_b4_is_scored_only_when_the_contracts_outside_the_40_cannot_reverse_it(tmp_path):
+    """Each side has one unlisted contract with at most 101 transactions. Keep both bounds, even when undecided;
+    for the frozen > 0 rule, touching zero from above is undecided and touching it from below is a miss."""
     from thesis import clients
-    fin = clients.APPS[clients.FINANCE_APPS[0]][0]
-    reward = clients.APPS[clients.REWARD_APPS[0]][0]
-    listed = [reward, *(v for app in clients.FINANCE_APPS for v in clients.APPS[app] if v != fin)]
-    via = pd.DataFrame({"via": listed + ["filler.near"], "txs": [0] * (len(listed) + 1), "actors": 1})
-    via.loc[via["via"] == reward, "txs"] = 1_000
-    others = via["via"].isin(listed[1:])
-    via.loc[others, "txs"] = 200                                  # every listed entry above the smallest
-    via.loc[via["via"] == "filler.near", "txs"] = 101             # the smallest entry: what an unlisted one can have
-    finance_listed = int(via.loc[others, "txs"].sum())
-    via.loc[via["via"] == reward, "txs"] = finance_listed + 100   # reward apps 100 ahead as listed
-    total = int(via["txs"].sum()) + 1_000
-    month = {"via": via, "conc": {"txs": total}}
-    p = {"metric": "reward_minus_finance_tx_share_2027_01", "operator": ">", "threshold": 0.0}
-    gap = clients.by_app(month)
-    assert sum(int(gap.get(a, 0)) for a in clients.REWARD_APPS) - sum(int(gap.get(a, 0)) for a in clients.FINANCE_APPS) == 100
-    top = {"2027-01": {**month, "conc": {**month["conc"], "heavy_txs": 0, "n50": 0, "heavy_actors": 0}}}
-    daily = pd.DataFrame({"txns": total / 31}, index=pd.date_range("2027-01-01", "2027-01-31"))
-    assert predictions._measure_committed(p, None, None, top, daily) == predictions.UNDECIDED
+    reward, finance = ([v for app in group for v in clients.APPS[app]][:-1]
+                       for group in (clients.REWARD_APPS, clients.FINANCE_APPS))
+    via = pd.DataFrame({"via": reward + finance + ["filler.near"], "txs": 200, "actors": 1})
+    via.loc[via["via"] == "filler.near", "txs"] = 101
+    path = tmp_path / "p.csv"
+    path.write_text(BQ_HEADER + "B4,q,2027-02-01,reward_minus_finance_tx_share_2027_01,>,0,b,bigquery,reward apps are larger\n")
+    undecided = "open (undecided: the group's contracts outside the 40 largest could reverse it)"
+    for gap, status in ((102, "held"), (100, undecided), (-102, "failed"), (-101, "failed"), (101, undecided)):
+        via.loc[via["via"] == reward[0], "txs"] = (len(finance) - len(reward) + 1) * 200 + gap
+        total = int(via["txs"].sum()) + 1_000
+        top = {"2027-01": {"via": via, "conc": {"txs": total}}}
+        daily = pd.DataFrame({"txns": total / 31}, index=pd.date_range("2027-01-01", "2027-02-01"))
+        result, = predictions.evaluate(daily, None, path, top=top)["items"]
+        assert result["status"] == status, (gap, result)
+        assert result["measured"] is None
+        assert result["measured_range"] == [(gap - 101) / total, (gap + 101) / total]

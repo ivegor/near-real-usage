@@ -171,9 +171,16 @@ def test_thesis_quotes_the_committed_summary():
         assert 0.9 < row["burst_days"]["deleted_accounts"] / sum(row["census_one_transaction_accounts"].values()) < 1.1
     quoted = [
         # the long-term case in short names what stayed; November is quoted for the reward apps' namespaces as well
-        f"which still send {c['reward_apps_share']['latest'] * 100:.0f}% of transactions (in October, close to their lowest month), and a "
-        f"small amount of self-paid, financial "
-        f"activity carried by a few hundred heavy accounts",
+        # the long-term case in short: the shares of the two app groups and of self-paid transactions, all of one month
+        f"still account for {c['reward_apps_share']['latest'] * 100:.0f}% of October's transactions (close to their lowest month), "
+        f"counted by the contract or relayer each transaction goes through, and the exchange, Intents, token contracts and "
+        f"bridges for {c['finance_share']['latest'] * 100:.0f}%",
+        f"Self-paid transactions outside the reward namespaces are "
+        f"{s['population']['segments']['core']['direct_txs']['latest'] / s['population']['segments']['all']['txs']['latest'] * 100:.0f}% "
+        f"of all transactions, and most come from a few hundred heavy accounts: "
+        f"{s['segments']['metrics']['heavy_accounts']['latest']:,.0f} of them send "
+        f"{s['segments']['heavy_share_of_independent_self_paid_txs']['latest'] * 100:.0f}% of the self-paid transactions outside "
+        f"`.kaiching` and `.tg`",
         f"In its first {rates['days']} days HOT's namespace (`.tg`) sent {thousand(hot_tg['partial'])} transactions a day against "
         f"{thousand(hot_tg['latest_complete'])} in October ({pct(hot_tg['pct_change'])}), most of the rise through its relayer "
         f"({thousand(hot_tg['relayed']['partial'])} a day against {thousand(hot_tg['relayed']['latest_complete'])})",
@@ -183,7 +190,9 @@ def test_thesis_quotes_the_committed_summary():
         f"self-paid transactions outside the reward apps ran {abs(last_full['pct_change']):.0f}% below October's rate",
         "its transactions run at almost twice October's daily rate",
         # the long-term case in short, and the wording of the nine months before the step
-        f"The NEAR its revenue brings in equals {cov_lo:.0f}% to {cov_hi:.0f}% of the new NEAR issued, depending on the window",
+        f"The NEAR that revenue brings in equals {s['value_capture']['windows']['rolling_90d']['latest'] * 100:.0f}% of the new NEAR "
+        f"issued over the last 90 days, close to the best window since the buybacks began; the median 90-day window gives "
+        f"{s['value_capture']['windows']['rolling_90d']['median'] * 100:.0f}%",
         "What pays its own fees averaged below the year before until autumn 2026",
         f"below the year before in {core_step['range_months_below_a_year_earlier']} of the {step['reference_range']['months']} months and "
         f"above it in May ({pct(above['2026-05'])}) and June ({pct(above['2026-06'])})",
@@ -203,7 +212,7 @@ def test_thesis_quotes_the_committed_summary():
         # what is inside the self-paid series and the financial group without being independent use
         f"without them the October change is {pct(adj['pct_change_without_both'])} if every caller of the reward-side contracts "
         f"is outside the reward namespaces, and between {pct(both_lo)} and {pct(both_hi)} as far as the tables can say",
-        f"Without the transactions of one account whose sampled calls all failed, {pct(failing['finance_pct_change_without_them'])}",
+        f"without them the group is {pct(failing['finance_pct_change_without_them'])}",
         f"This year's holds {side['latest']['transactions']:,} direct calls to reward-side contracts",
         f"and the {failed_txs:,} transactions of `escrow.ai.near`, whose sampled calls all failed. With the reward-side calls out of both "
         f"years the change is {pct(adj['pct_change_without_reward_side_direct_txs'])} if all their callers are outside the reward "
@@ -292,7 +301,6 @@ def test_thesis_quotes_the_committed_summary():
         f"are down {abs(fees['pct_change']):.0f}% in USD on the same 90 days a year earlier",
         f"and {abs(s['yoy_90d']['fees_near']['pct_change']):.0f}% in NEAR; on the 90 days just before them they are up "
         f"({pct(quarter['fees_usd']['pct_change'])} in USD, {pct(quarter['fees_near']['pct_change'])} in NEAR)",
-        f"But up to {bound['game_players_prior']:,} of last year's were players of Meteor's reward game paying their own fees",
         f"up to {direct['accounts']:,} of them were players of Meteor's reward game",
         f"read as {bound['fall']:,.0f} users leaving",
         f"Both years' counts can also hold players who act through that relayer and pay for a transaction of their own, because "
@@ -578,15 +586,21 @@ def test_readme_key_findings_quote_the_same_summary():
     twelve = p["core_direct_txs_change_12_months_with_the_tables_first_month"]["pct_change"]
     assert pct(twelve) == pct(p["core_direct_txs_change_by_window"]["11"])                         # "the same on twelve"
     quoted = [
-        f"which still send {c['reward_apps_share']['latest'] * 100:.0f}% of transactions (in October, close to their lowest month), and a "
-        f"small amount of self-paid, financial "
-        f"activity carried by a few hundred heavy accounts",
+        # the long-term case in short: the shares of the two app groups and of self-paid transactions, all of one month
+        f"still account for {c['reward_apps_share']['latest'] * 100:.0f}% of October's transactions (close to their lowest month), "
+        f"counted by the contract or relayer each transaction goes through, and the exchange, Intents, token contracts and "
+        f"bridges for {c['finance_share']['latest'] * 100:.0f}%",
+        f"Self-paid transactions outside the reward namespaces are "
+        f"{s['population']['segments']['core']['direct_txs']['latest'] / s['population']['segments']['all']['txs']['latest'] * 100:.0f}% "
+        f"of all transactions, and most come from a few hundred heavy accounts: "
+        f"{s['segments']['metrics']['heavy_accounts']['latest']:,.0f} of them send "
+        f"{s['segments']['heavy_share_of_independent_self_paid_txs']['latest'] * 100:.0f}% of the self-paid transactions outside "
+        f"`.kaiching` and `.tg`",
         f"in its first {rates['days']} days HOT's namespace sent {rates['tg']['partial'] / 1e3:.0f} thousand transactions a day against "
         f"{rates['tg']['latest_complete'] / 1e3:.0f} thousand in October",
         f"{quota['median_month_to_the_nearest_thousand']:,.0f} transactions a day, to within a thousandth, in "
         f"{len(quota['months_within_a_thousandth_of_it'])} of its {quota['months_with_relayed_transactions']} months from "
-        f"{month(quota['first_month'])} to {month(quota['last_month'])} (every series of the census leaves out its first month, "
-        f"{month(p['table_first_month'])}, which has no month before it)",
+        f"{month(quota['first_month'])} to {month(quota['last_month'])}: that points to a job with a daily quota",
         f"they averaged {abs(core_step['range_pct_change']):.0f}% below the year before (below it in "
         f"{core_step['range_months_below_a_year_earlier']} of the {step['reference_range']['months']} months)",
         f"in the first {pace['days']} days of November they run {abs(pace['latest_complete_month']['pct_change']):.0f}% below October's "
@@ -595,7 +609,9 @@ def test_readme_key_findings_quote_the_same_summary():
         f"of the reward-side contracts is outside the reward namespaces, and between "
         f"{pct(s['segments']['self_paid_txs_adjustments']['pct_change_without_both_both_ends'][0])} and "
         f"{pct(s['segments']['self_paid_txs_adjustments']['pct_change_without_both_both_ends'][1])} as far as the tables can say",
-        f"The NEAR its revenue brings in equals {min(cov):.0f}% to {max(cov):.0f}% of the new NEAR issued, depending on the window",
+        f"The NEAR that revenue brings in equals {s['value_capture']['windows']['rolling_90d']['latest'] * 100:.0f}% of the new NEAR "
+        f"issued over the last 90 days, close to the best window since the buybacks began; the median 90-day window gives "
+        f"{s['value_capture']['windows']['rolling_90d']['median'] * 100:.0f}%",
         f"level with November 2025 (${iv_step['month_before_range']['value'] / 1e6:.0f}M) and {pct(vs_range)} on the nine months "
         f"in between (${iv_step['range_mean'] / 1e6:.1f}M)",
         f"{p['one_day']['accounts_created']:,} accounts created by {p['one_day']['account_creators']} creators",
@@ -728,13 +744,9 @@ def test_the_texts_quote_the_readings_by_window_half_month_and_family():
     feb, octo = gone["2026-02"]["burst_days"], gone["2026-10"]["burst_days"]
     th = w["threshold_price"]
     quoted = [
-        f"stepped up on {day(step['day'])} and have held, while the load on the chain itself (its fees and gas) ran high for the four "
-        f"weeks of the price rally, from {first} to {last}",
+        f"stepped up on {day(step['day'])} and have stayed above their earlier range (the date is set by a rule, see \"Limits\"), while "
+        f"the load on the chain itself (its fees and gas) ran high for the four weeks of the price rally, from {first} to {last}",
         f"(100.6% of the net fall as counted, 99.2% with the one-off deletion taken out)".replace("100.6", f"{whole:.1f}").replace("99.2", f"{whole_clean:.1f}"),
-        f"named `.near` accounts sent {fam['near']['range_pct_change']:.0f}% more than a year earlier, implicit accounts "
-        f"{abs(fam['implicit']['range_pct_change']):.0f}% less (those under a year old "
-        f"{abs(fam['implicit']['by_age_and_activity']['under_a_year']['pct_change']):.0f}% less) and other accounts "
-        f"{abs(fam['other']['range_pct_change']):.0f}% less",
         f"it runs at {thousand(calm['per_day'])} a day, {abs(calm['latest_complete_month']['pct_change']):.0f}% below October's rate",
         f"{thousand(aug_now['per_day'])} transactions a day against {thousand(aug_then['per_day'])}",
         # claim 6, 7, 8, 10
@@ -767,7 +779,7 @@ def test_the_texts_quote_the_readings_by_window_half_month_and_family():
         f"{day(step['price_usd']['lowest_since'])}; it rose from the next day ({up['pct_change']:.0f}% higher on {day(up['date'])} than on "
         f"the 19th) and first stood at twice the step day's level on {day(twice['date'])}",
         f"{min(by_len[x]['coverage'] for x in by_len) * 100:.0f}% to {max(by_len[x]['coverage'] for x in by_len) * 100:.0f}% over other "
-        f"windows, and {roll['median'] * 100:.0f}% in the median 90-day window",
+        f"windows ending on the same day, and {roll['median'] * 100:.0f}% in the median 90-day window",
         # who pays: the payer dated, the game's accounts, the heavy accounts
         f"fell from {reg['2025-10']['self_paid_txs'] / 1e6:.2f}M in October 2025 to {reg['2025-12']['self_paid_txs'] / 1e6:.2f}M in December "
         f"while its accounts went from {reg['2025-10']['accounts']:,} to {reg['2025-12']['accounts']:,}",
@@ -822,10 +834,10 @@ def test_the_texts_quote_the_readings_by_window_half_month_and_family():
         f"{fall['kaiching']['month_of']['txs'] - fall['kaiching']['month_of']['relayed_txs']:,} of its April transactions on 2 April, so it is at least "
         f"{fall['kaiching_share_of_the_fall_at_least_if_relayer_ended_the_day_before'] * 100:.0f}% of the one-day fall, and at most "
         f"{fall['kaiching_share_of_the_fall_at_most'] * 100:.0f}% in any case",
-        f"KaiChing can be at most {fall['kaiching_share_of_the_fall_at_most'] * 100:.0f}% of that one-day fall (everything it sent in "
-        f"April); the census is monthly, so how much it was is not measured. If its relayer sent all of April's relayed "
-        f"transactions on 1 April, as a column of the daily data suggests, it is at least "
-        f"{fall['kaiching_share_of_the_fall_at_least_if_relayer_ended_the_day_before'] * 100:.0f}%",
+        f"KaiChing is {fall['median_day']['kaiching_share_of_it'] * 100:.0f}% of the fall in the level, from the median day of March "
+        f"to that of May, but at most {fall['kaiching_share_of_the_fall_at_most'] * 100:.0f}% of that one-day fall (everything it sent "
+        f"in April), and at least {fall['kaiching_share_of_the_fall_at_least_if_relayer_ended_the_day_before'] * 100:.0f}% if its "
+        f"relayer's last day was 1 April",
         f"on every day from {day(run['first'])} to {day(run['last'])}, {M(run['transactions_above_it_in_the_month_before'])} above the "
         f"median of the days before in March alone, against {burst_apr['2026-03']['accounts'] / 1e6:.1f} million accounts of the burst in "
         f"March, while `active_contracts` stayed within the range of the days before ({run['active_contracts_range_before'][0] / 1e6:.2f}M "
@@ -905,14 +917,15 @@ def test_the_texts_quote_the_readings_by_window_half_month_and_family():
         f"named `.near` accounts {pct(fam['near']['range_pct_change'])}",
         f"({abs(calm['latest_complete_month']['pct_change']):.0f}% and {abs(calm['same_month_a_year_earlier']['pct_change']):.0f}% below "
         f"without a one-off of dormant accounts on {day(spike['date'])})",
-        f"({thousand(aug_now['per_day'])} transactions a day against {thousand(aug_then['per_day'])})",
+        f"the group ran at {thousand(aug_now['per_day'])} transactions a day against {thousand(aug_then['per_day'])}",
         f"(by namespace {share(ns['2026-10'])} in October against {share(min(spring))[:-1]}% to {share(max(spring))} a month from April to August)",
         f"It stepped up on {day(step['day'])}, as the price began to move and a month before it doubled",
         f"the sixth-best of {roll['windows']} such windows since they began ({min(by_len[x]['coverage'] for x in by_len) * 100:.0f}% to "
-        f"{max(by_len[x]['coverage'] for x in by_len) * 100:.0f}% over other windows; ${by_len['programme']['buyback_usd_annualized'] / 1e6:.1f}M "
+        f"{max(by_len[x]['coverage'] for x in by_len) * 100:.0f}% over windows of other lengths that end on the same day, "
+        f"{roll['median'] * 100:.1f}% in the median 90-day window; ${by_len['programme']['buyback_usd_annualized'] / 1e6:.1f}M "
         f"a year at the pace of the whole programme). In NEAR their step was {bb['near_ratio']:.1f} times, in USD {bb['usd_ratio']:.1f} times",
-        f"stepped up on {day(step['day'])} and have held, while the load on the chain (its fees and gas) ran high only for the four weeks "
-        f"of the price rally, from {first} to {last}",
+        f"stepped up on {day(step['day'])} and have stayed above their earlier range, while the load on the chain (its fees and gas) "
+        f"ran high only for the four weeks of the price rally, from {first} to {last}",
     ]
     assert roll["rank_of_the_latest"] == 6                                                            # "the sixth-best"
     missing = [q for q in in_readme if q not in readme]
@@ -1049,7 +1062,7 @@ def test_the_texts_quote_the_eighth_review_readings():
     assert not missing, f"THESIS.md does not quote these summary values: {missing}"
     assert dl["range_pct_change_without_them"] < st["range_pct_change"] < 0       # taken out of the range only: a larger fall
     assert halves[nov]["new_contracts"] == max(x["new_contracts"] for x in halves.values())   # "the highest half-month since 16 April"
-    in_readme = ["What held is the volume and the buybacks in USD; the buybacks in NEAR have held by the median day and not by the mean"]
+    in_readme = ["What stayed up is the volume and the revenue in USD; in NEAR the revenue has held by the median day and not by the mean"]
     assert oct2 in a["above_reference_top"]["buyback_usd"]
     missing = [q for q in in_readme if q not in readme]
     assert not missing, f"README.md does not quote these: {missing}"
@@ -1077,3 +1090,60 @@ def test_predictions_quote_the_range_b4_is_scored_on():
     seg = s["segments"]["metrics"]["regular_accounts"]["latest"]
     low = s["predictions"]["baselines"]["regular_self_paying_accounts_low"]
     assert f"a fall of {(1 - (low + 1) / seg) * 100:.0f}% from October's {seg:,.0f}" in prose("PREDICTIONS.md")
+
+
+def test_the_texts_quote_what_the_grouping_the_step_rule_and_a5_can_say():
+    """What the app groups measure, how the step date is set, what a miss on A5 would mean, and the claims table."""
+    s = json.loads((ROOT / "data" / "snapshot" / "thesis_summary.json").read_text(encoding="utf-8"))
+    text, readme, notes = prose("THESIS.md"), prose("README.md"), prose("PREDICTIONS.md")
+    c, v, a, p = s["clients"], s["value_capture"], s["autumn"], s["population"]
+    calls, hot = c["sample_view"]["reward_group_final_calls"]["recent"], c["hot_bridges"]
+    lo, hi = c["reward_minus_finance_share"]["latest_range"]
+    blo, bhi = hot["reward_minus_finance_share_range_with_them_as_bridges"]
+    assert 0 < blo < lo and bhi < hi                                           # filed with the bridges: still on one side
+    step, roll = a["intents_step"], v["windows"]["rolling_90d"]
+    split = c["sample_view"]["split"]
+    then, now, later = split["prior"]["before"]["finance"], split["recent"]["before"]["finance"], split["prior"]["from"]["finance"]
+    k = lambda x: f"{x / 1e3:.0f}"
+    chance = s["predictions"]["a5_chance_without_a_lead"]
+    bound, fam = s["segments"]["regular_accounts_reward_game_bound"], s["predictions"]["step"]["core_self_paid_txs"]["range_by_family"]
+    assert roll["rank_of_the_latest"] <= 10                                   # "close to the best window"
+    quoted = [
+        # the grouping is by contract and relayer; the sample reads what a relayed transaction finally calls
+        f"of the {calls['sampled']} sampled transactions of autumn 2026 that the table would file with the reward and wallet "
+        f"apps, {calls['to_finance_contracts']} ended in a contract of the financial group and {calls['to_hot_bridges']} in HOT's "
+        f"own bridge contracts, which the table files with HOT ({hot['latest_share'] * 100:.1f}% of October's transactions)",
+        f"filed with the bridges, the gap B4 is scored on is +{blo * 100:.1f} to +{bhi * 100:.1f} points of all transactions in "
+        f"October 2026 instead of +{lo * 100:.1f} to +{hi * 100:.1f}",
+        f"{hot['latest']:,} transactions in October 2026) are filed with HOT, as the group was frozen; filed with the bridges they "
+        f"put that gap between {blo * 100:.1f} and {bhi * 100:.1f} points",
+        # the August sample, with what it rests on
+        f"the group ran at {k(now['per_day'])} thousand transactions a day against {k(then['per_day'])} thousand on the same days of "
+        f"2025 (95% intervals {k(now['per_day_ci95'][0])} to {k(now['per_day_ci95'][1])} and {k(then['per_day_ci95'][0])} to "
+        f"{k(then['per_day_ci95'][1])} thousand)",
+        f"Last year's figure rests on {then['sampled']} sampled transactions, and from September to mid-November 2025 the group "
+        f"already ran at {k(later['per_day'])} thousand a day ({k(later['per_day_ci95'][0])} to {k(later['per_day_ci95'][1])} thousand)",
+        # the step date, set by a rule, and the margin the rule does not fix
+        f"the weekly mean has not gone below ${step['lowest_weekly_mean_since'] / 1e6:.1f}M since, "
+        f"{(step['lowest_weekly_mean_since'] / step['line'] - 1) * 100:.0f}% above the line of ${step['line'] / 1e6:.1f}M",
+        # A5 is a screen
+        f"with no lead at all it would fail in {chance * 100:.1f}% of runs if the lags were independent",
+        # the claims table: revenue against issuance across windows, and the rows of claims 3 and 6
+        f"the {roll['rank_of_the_latest']}th highest of {roll['windows']} such windows; the median window gives "
+        f"{roll['median'] * 100:.1f}%, and those that end before the step of 19 August "
+        f"{roll['ending_before_the_step']['min'] * 100:.1f}% to {roll['ending_before_the_step']['max'] * 100:.1f}%",
+        f"But up to {bound['game_players_prior']:,} of last year's were players of Meteor's reward game paying their own fees",
+        f"named `.near` accounts sent {fam['near']['range_pct_change']:.0f}% more than a year earlier, implicit accounts "
+        f"{abs(fam['implicit']['range_pct_change']):.0f}% less (those under a year old "
+        f"{abs(fam['implicit']['by_age_and_activity']['under_a_year']['pct_change']):.0f}% less) and other accounts "
+        f"{abs(fam['other']['range_pct_change']):.0f}% less",
+    ]
+    missing = [q for q in quoted if q not in text]
+    assert not missing, f"THESIS.md does not quote these summary values: {missing}"
+    in_readme = [f"the group ran at {k(now['per_day'])} thousand transactions a day against {k(then['per_day'])} thousand a year "
+                 f"earlier, a figure that rests on {then['sampled']} sampled transactions",
+                 f"the margin is {(step['lowest_weekly_mean_since'] / step['line'] - 1) * 100:.0f}%"]
+    missing = [q for q in in_readme if q not in readme]
+    assert not missing, f"README.md does not quote these summary values: {missing}"
+    quoted = f"With no lead at all it would fail in {chance * 100:.1f}% of runs if the lags were independent"
+    assert quoted in notes, quoted

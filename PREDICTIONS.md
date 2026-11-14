@@ -93,9 +93,10 @@ Its statement ends "the rebound holds", which says more than the threshold can: 
 a hold, and a fall of 58% from October's 17,105. A hold on B1 is read as "the August low was not broken", no more.
 B4 is scored on its range. The groups' contracts outside a month's 40 largest are not in its count, and each can
 have received up to the smallest entry of that list (`clients.groups_outside_the_40` in the summary). Until
-2026-11-14 the build scored B4 on the count as listed; from that day it scores the end of the range nearer the
-threshold and leaves B4 open when the range lies on both sides of it. In October 2026 the range is +1.3 to +2.8
-points, on one side.
+2026-11-14 the build scored B4 on the count as listed; from that day it scores both ends of the range and leaves B4
+open when they give different verdicts. The dashboard and `predictions.items[].measured_range` in the summary show
+both ends, including when B4 is undecided; `measured` is null because neither end is an exact measurement.
+In October 2026 the range is +1.3 to +2.8 points, on one side.
 
 A third note, on what the data already held when the file was frozen. It ran through 2026-11-11. A1's window is the
 seven days to 17 November, so one of its seven days was known, and the first 11 days of November had averaged
@@ -145,5 +146,11 @@ A5's window is the whole series, so "covers every day of the window" means for A
 day after the data it was frozen with) to the check date has a value of the price and of each usage series that goes
 on after `/v1` (transactions, fees, Intents volume). Until then it stays open; without that rule it could be scored
 on the old weeks alone. This rule was added on 2026-11-14, before the check date.
+What a miss on A5 would mean, said before the date: A5 is a screen, not the test of THESIS.md. It counts lags
+outside the noise band with no correction for testing many lags at once, and two neighbouring lags of one series are
+not two independent confirmations. With no lead at all it would fail in 3.5% of runs if the lags were independent
+(`predictions.a5_chance_without_a_lead` in the summary), and more often since the weeks are not. Its question reads
+"Can usage be used as a timing signal for the price?", but a miss would not answer yes: it would call for the
+Holm-corrected test and a test on weeks after the snapshot, and only a lead that stands in both would be a signal.
 GitHub switches a scheduled workflow off after 60 days without activity in a public repository. If that happens
 before a check date, the prediction is scored when the workflow is switched on again or the build is run by hand.
