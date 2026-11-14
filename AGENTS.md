@@ -53,7 +53,8 @@ changes in another order and their last digits differ; nothing else in `summary.
   relayed transactions in both years). A bound on one side of a comparison is not a range, and where the tables leave
   something open (here: how many accounts are in two groups at once), publish both ends and do not call the nearer
   one a bound.
-* **THESIS.md is a snapshot.** `tests/test_thesis_numbers.py` checks its key numbers, and the README's, against the
+* **THESIS.md is a snapshot.** `tests/test_thesis_numbers.py` checks its key numbers, those of `APPENDIX.md` (the
+  detail behind each section of THESIS.md, under the same headings) and the README's, against the
   frozen copy of the summary in `data/snapshot/` (`python -m thesis snapshot` refreshes it after an offline build).
   Change them together, and do not type numbers by hand: take them from `summary.json`.
 * **A group defined by exclusion is not "own users".** "Outside the reward namespaces" and "independent" both turned

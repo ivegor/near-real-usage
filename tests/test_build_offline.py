@@ -48,6 +48,12 @@ def test_every_card_of_the_real_dashboard_prints_its_query(tmp_path):
         assert html.escape((root / query).read_text(encoding="utf-8")) in cards[slug], slug       # the SQL text itself, not only a link
     for slug, block in cards.items():
         assert "behind this chart" in block and charts.CHART_SOURCE[slug] in block, slug
+    # the aggregator's proxies are method notes: after the evidence and the predictions, under their own heading
+    page = dashboard.render(built, summary, tmp_path).read_text(encoding="utf-8")
+    at = {slug: page.index(f'src="{slug}.png"') for slug in cards}
+    heading, preds = page.index("Method notes: the daily aggregates"), page.index("<h2>Predictions</h2>")
+    assert all(at[s] > heading > preds for s in dashboard.METHOD_NOTES)
+    assert all(at[s] < preds for s in cards if s not in dashboard.METHOD_NOTES)
     assert "GET https://api.llama.fi/summary/fees/near-intents" in cards["value_capture"]
 
 

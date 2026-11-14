@@ -27,6 +27,15 @@ REQUESTS = {
 }
 
 
+# Charts of the aggregator's daily series that the account census shows to be misleading as measures of users. They
+# stay on the page as method notes, after the evidence and the predictions, not among the evidence.
+METHOD_NOTES = ("accounts", "usage_vs_price", "tx_per_active", "fees_per_active")
+METHOD_INTRO = (
+    "Most analyses of NEAR read these daily series from an aggregator. They are kept here as method notes, not as "
+    "evidence: the aggregator's \"active accounts\" are transaction signers, so the users behind relayers are missing, "
+    "and per-account ratios mostly show which apps were on the chain. The account census above counts the same chain "
+    "account by account.")
+
 REPO_URL = "https://github.com/ivegor/near-real-usage"
 SNAPSHOT = "2026-11-11"  # THESIS.md quotes the numbers as of this date; the page itself is rebuilt daily
 
@@ -91,11 +100,11 @@ def query_block(c: Chart) -> str:
 
 
 def render(charts: list[Chart], summary: dict, out: Path) -> Path:
-    cards = []
+    cards, notes = [], []
     for c in charts:
         lead, rest = split_sentence(c.sentence)
         more = f'<details><summary>More numbers</summary><p>{html.escape(rest)}</p></details>' if rest else ""
-        cards.append(f"""
+        (notes if c.slug in METHOD_NOTES else cards).append(f"""
 <section class="card">
   <h2>{html.escape(c.title)}</h2>
   <p class="lead">{html.escape(lead)}</p>
@@ -133,12 +142,14 @@ def render(charts: list[Chart], summary: dict, out: Path) -> Path:
                       "them cover the days up to that date; transactions, fees, price and supply continue.</p>")
     src += "".join(f'<li><code>{html.escape(k)}</code>: <a href="{html.escape(v)}">{html.escape(v)}</a></li>'
                    for k, v in NEARBLOCKS_V3.items())
+    method_block = (f'<h2 class="part">Method notes: the daily aggregates</h2><p class="sub">{html.escape(METHOD_INTRO)}</p>'
+                    + "".join(notes)) if notes else ""
     page = f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>NEAR Real Usage: evidence dashboard</title>
 <style>
 body{{font:15px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:#1f2328;max-width:900px;margin:0 auto;padding:24px}}
-h1{{font-size:24px;margin:0 0 4px}} .sub{{color:#57606a;margin:0 0 24px}}
+h1{{font-size:24px;margin:0 0 4px}} .sub{{color:#57606a;margin:0 0 24px}} .part{{font-size:20px;margin:32px 0 4px}}
 .card{{border:1px solid #e6e8eb;border-radius:10px;padding:16px 18px;margin:0 0 18px}}
 .card h2{{font-size:17px;margin:0 0 6px}} .lead{{margin:0 0 10px}}
 img{{width:100%;height:auto}} .method{{color:#57606a;font-size:13px;margin:8px 0 0}}
@@ -155,6 +166,7 @@ Code and data: <a href="{REPO_URL}">{REPO_URL.split('//')[1]}</a>.</p>
 {ended_note}
 {''.join(cards)}
 {pred_card}
+{method_block}
 <section class="card"><h2>Sources</h2><ul>{src}
 <li><code>bigquery</code>: NEAR public dataset <code>bigquery-public-data.crypto_near_mainnet_us</code>, queries: {", ".join(_repo_link(f"sql/{q.name}") for q in sorted((ROOT / "sql").glob("*.sql")))}; results in <code>data/bq/</code></li></ul>
 <p class="method">Raw API responses are committed in <code>data/raw/</code>; every number on this page is in
