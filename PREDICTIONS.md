@@ -54,6 +54,24 @@ that the proof is for the file's current digest. The first prediction is scored 
 | B3 | Does the chain still depend on a few dozen accounts? | In January 2027 fewer than a hundred accounts still send half of all transactions | < 100 | dozens rather than hundreds; 30 in October 2026 | 2027-02-01 | bigquery |
 | B4 | Which is the larger half of the chain: reward apps or financial use? | In January 2027 reward and wallet apps still send more transactions than the exchange, Intents, token contracts and bridges together | > 0 | the point where the two are equal; 43% vs 41% in October 2026 | 2027-02-01 | bigquery |
 
+## What a hold shows, and what it does not
+
+The statements in the table above, written on 2026-11-13, sometimes say more than their thresholds test ("the
+rebound holds", "usage still does not lead price"). A prediction is scored on its threshold, so a hold is read as
+the condition it checks and nothing wider. Several are control lines, not tests of the economic case, and the number
+that hold is not a count of confirmations of THESIS.md.
+
+| Id | A hold shows | A hold does not show |
+|---|---|---|
+| A1, A2 | Intents volume in USD is above the top of its range before the step | that the users or the revenue behind it grew |
+| A3 | buybacks in USD are above their top before the step | that more NEAR arrives: the price alone can meet the line (note below) |
+| A4 | the revenue is below half of the new supply, as a ratio of USD and as a ratio of NEAR (note below) | that a holder is diluted by that much, or that the NEAR was bought on the market |
+| A5 | no usage metric has two neighbouring lags of one sign outside the noise band | that usage cannot time the price: it is a screen re-run on the whole history, with two of its series stopping in November 2026, not a test on new data |
+| B1 | the regular self-paying accounts did not break their August 2026 low | that the rebound held: a fall of 58% from October would still hold |
+| B2 | self-paid transactions outside the reward apps stayed above the top of their range | more users, or that the fees were paid with the senders' own money |
+| B3 | fewer than a hundred accounts send half of all transactions | how many people stand behind them |
+| B4 | reward and wallet apps still send more transactions than the financial group | what either group's transactions were for |
+
 Two notes on what the reference months turned out to hold.
 
 The step has two dates (see "Evidence against" in THESIS.md). Read by half-months, Intents volume and the buybacks
@@ -142,6 +160,17 @@ A5 counts both signs. A "positive lead" in its statement is a positive lag: the 
 that both move against the price are as much a timing signal, so from that day a pair of either sign counts, as long
 as both are of the same sign. That makes the prediction harder to hold, not easier; `predictions.csv` is unchanged,
 and on the data it was frozen with both counts are 0.
+From 2026-11-14 the weekly changes behind A5 are taken over complete weeks only. Until then the last, unfinished week
+of the data (three days in the frozen snapshot) was set against full weeks; it now waits until its seven days are
+in. On the data the file was frozen with A5's count is 0 either way.
+A4 is scored on two measurements. Its threshold was taken from the ratio of USD that THESIS.md quotes: buybacks in
+USD over the new NEAR valued at the window's mean price. The same flow counted in NEAR (each day's buyback at that
+day's price, over the new NEAR) gives another figure whenever the price moves inside the window and the buybacks do
+not arrive evenly: 17.9% and 18.7% on the data the file was frozen with. Until 2026-11-14 the build scored the first
+only; from that day it scores both, and leaves A4 open when they give different verdicts. That makes the
+prediction harder to hold, not easier; the dashboard and `predictions.items[].measured_range` show both values,
+USD first. The balances of the revenue wallets (18.3%) are a third measurement; they are read by a hand-run command
+and do not score A4.
 A5's window is the whole series, so "covers every day of the window" means for A5 that every week from 2026-11-12 (the
 day after the data it was frozen with) to the check date has a value of the price and of each usage series that goes
 on after `/v1` (transactions, fees, Intents volume). Until then it stays open; without that rule it could be scored

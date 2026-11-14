@@ -13,7 +13,7 @@ each command in that image on the repository mounted at `/app`, as the current u
 
 ```bash
 make serve      # builds the image (tests + offline build inside), serves the dashboard on :8000
-make test       # 143 tests, no network
+make test       # 147 tests, no network
 make offline    # rebuilds docs/ from the committed data, no network
 make build      # same, after refreshing data/raw/ from the public APIs
 make snapshot   # freezes docs/summary.json as data/snapshot/thesis_summary.json

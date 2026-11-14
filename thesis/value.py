@@ -107,6 +107,12 @@ def summarize(daily: pd.DataFrame, fees: pd.DataFrame, days: int = 90) -> dict |
         "buyback_coverage_of_new_supply": buyback_year / new_supply_value if new_supply_value else float("nan"),
         "market_cap_usd": float(daily["market_cap_usd"].asof(end)),
     }
+    # The coverage above is a ratio of USD: buybacks in USD over the new supply valued at the window's mean price. The
+    # same flow counted in NEAR (each day's buyback at that day's price, over the new NEAR) differs whenever the price
+    # moves inside the window and the buybacks are not spread evenly over it. Both are published, as two measurements.
+    px = daily["price_usd"].where(daily["price_usd"] > 0).reindex(fees.index)
+    out["buyback_near"] = window_total(fees["holders_revenue"] / px, start, end)
+    out["buyback_coverage_in_near"] = out["buyback_near"] / float(quarter) if quarter else float("nan")
     out["intents_fees_vs_l1_fees"] = out["intents_gross_fees_usd"] / out["l1_fees_usd"] if out["l1_fees_usd"] else float("nan")
     out["growth_needed_to_cover_new_supply"] = 1 / out["buyback_coverage_of_new_supply"] if out["buyback_coverage_of_new_supply"] else float("nan")
     out["market_cap_to_annual_buyback"] = out["market_cap_usd"] / buyback_year if buyback_year else float("nan")

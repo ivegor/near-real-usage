@@ -353,3 +353,32 @@ def test_a_saved_unfinished_day_stays_out_when_a_later_download_fails(tmp_path, 
     assert table.index.max() == days[-1] and table.loc[days[-1], "txns"] == 500
     assert sources.CONTINUED_FROM_V3 and "nearblocks_charts" not in sources.NOT_REFRESHED
     sources.CONTINUED_FROM_V3.clear()
+
+
+def test_weekly_changes_use_complete_weeks_only():
+    """A snapshot that ends on a Wednesday leaves a three-day week; it is not set against a seven-day one."""
+    idx = pd.date_range("2026-10-05", "2026-11-11", freq="D")        # Monday 5 October to Wednesday 11 November
+    s = pd.Series(np.exp(np.arange(len(idx)) // 7), index=idx, dtype=float)
+    s.loc["2026-11-09":] = 1e6                                      # the unfinished week would be a huge change
+    w = metrics.weekly_log_diff(s)
+    assert w.index.max() == pd.Timestamp("2026-11-08") and np.allclose(w.values, 1.0)
+    s.loc["2026-10-21"] = np.nan                                    # a missing day drops its week and both changes it touches
+    w = metrics.weekly_log_diff(s)
+    assert pd.Timestamp("2026-10-25") not in w.index and pd.Timestamp("2026-11-01") not in w.index
+    assert pd.Timestamp("2026-10-18") in w.index
+
+
+def test_bartlett_factor_follows_the_sign_of_the_two_autocorrelations():
+    rng = np.random.default_rng(0)
+    e1, e2 = rng.normal(size=3000), rng.normal(size=3000)
+
+    def ar(e, phi):  # x_t = phi * x_{t-1} + e_t
+        x = np.zeros(len(e))
+        for t in range(1, len(e)):
+            x[t] = phi * x[t - 1] + e[t]
+        return pd.Series(x)
+
+    same = metrics.bartlett_factor(ar(e1, 0.5), ar(e2, 0.5))
+    opposite = metrics.bartlett_factor(ar(e1, 0.5), ar(e2, -0.5))
+    white = metrics.bartlett_factor(pd.Series(e1), pd.Series(e2))
+    assert same > 1.4 and opposite < 0.8 and abs(white - 1) < 0.1

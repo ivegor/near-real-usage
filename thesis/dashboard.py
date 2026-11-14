@@ -67,6 +67,9 @@ def measured_text(p: dict) -> str:
     if metric.startswith("reward_minus_finance") and p.get("measured_range") is not None:
         low, high = p["measured_range"]
         return f"{low * 100:+.1f} to {high * 100:+.1f} percentage points of all transactions (range)"
+    if metric.startswith("buyback_coverage") and p.get("measured_range") is not None:
+        usd, near = p["measured_range"]
+        return f"{usd * 100:.0f}% of net new supply as a ratio of USD, {near * 100:.0f}% as a ratio of NEAR"
     if v is None:
         return ""
     if metric.startswith("intents_volume"):
@@ -128,7 +131,9 @@ def render(charts: list[Chart], summary: dict, out: Path) -> Path:
 
         trs = "".join(row(p) for p in pred["items"])
         pred_card = (f'<section class="card"><h2>Predictions</h2><p class="lead">Written on 2026-11-13, scored by the build as the '
-                     f'data reaches each check date (data through {html.escape(pred["data_through"])}). Details: {_repo_link("PREDICTIONS.md")}.</p>'
+                     f'data reaches each check date (data through {html.escape(pred["data_through"])}). A hold checks the line a prediction '
+                     f'states and nothing wider, so the number that hold is not a count of confirmations of the thesis. '
+                     f'Details: {_repo_link("PREDICTIONS.md")}.</p>'
                      f'<table><tr><th>Id</th><th>Check on</th><th>Prediction</th><th>Status</th></tr>{trs}</table></section>')
     src = "".join(f'<li><code>{html.escape(k)}</code>: <a href="{html.escape(v)}">{html.escape(v)}</a></li>'
                   for k, v in {**SOURCES, **value.URLS}.items())

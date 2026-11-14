@@ -23,7 +23,8 @@ above their earlier range (the date is set by a rule, see "Limits"), while the l
 gas) ran high for the four weeks of the price rally, from 16 September to 15 October, and has come back down. What
 stayed up is the volume and the revenue in USD; in NEAR the revenue has held by the median day and not by the mean
 (see "Does it reach the token?"). The NEAR that revenue brings in equals 18% of the new NEAR issued over the last 90
-days, close to the best window since the buybacks began; the median 90-day window gives 13%. That is a narrow case,
+days (17.9% to 18.7% by three measurements that are not the same), close to the best window since the buybacks
+began; the median 90-day window gives 13%. That is a narrow case,
 and it is not a valuation of NEAR. Nine dated predictions say what would widen it or close it (see "What would change
 our mind").
 
@@ -38,11 +39,11 @@ did not survive closer measurement; they, and every row below in full, are in th
 | 1 | The collapse in activity is the exit of reward apps | **Supported for the size of the fall; what NEAR's own users did is open** | Accounts whose fees an app paid: 43,049,960 → 552,826 (100.6% of the net fall as counted, 99.2% with the one-off deletion taken out). That is more than the whole net loss of accounts (43,642,992 → 1,379,518), because self-paying accounts rose, 593,032 → 826,692, and the rise is itself a one-off: 560,092 old KaiChing accounts paid for one transaction each in October. KaiChing: 40.39M accounts a year ago, gone since spring. That says where the fall came from, not that NEAR's own users stayed: the independent accounts that returned fell 40,759 → 31,452, and how many regular self-paying accounts really left is not known (claim 3) |
 | 3 | The number of accounts that pay for themselves holds up | **Not established** | Outside the reward namespaces, regular self-paying accounts 27,078 → 17,105 (−37%; −50%), low of 7,201 in August 2026. But up to 15,162 of last year's were players of Meteor's reward game paying their own fees, whose calls a relayer submits now, so how many really left is not known (see "Who pays, and how often") |
 | 6 | Self-paid activity outside reward apps is growing | **On average below the year before for nine months, up in autumn 2026** | Core transactions paid by the sender 9.75M → 12.49M (+28%; +35%); on longer windows +24% (six months), +6% (nine) and −5% (eleven). In the nine months before the step (December to August) they averaged 7.61M against 9.16M a year earlier (−17%; −21% without the February burst), and all of that fall is implicit and other accounts: named `.near` accounts sent 4% more than a year earlier, implicit accounts 49% less (those under a year old 77% less) and other accounts 53% less. Self-paying is a technical category: it does not show that the money was the users' own. The jump came in the weeks of a price rally, and November started lower (see "Evidence against") |
-| 7 | Financial use of the chain is growing | **Up in October 2026 for the contracts of the group; the August sample points the same way, with a wide interval** | Transactions to the exchange, Intents, token contracts and bridges 6.72M → 9.18M a month (+37%); Ref/Rhea exchange +96%, token contracts +47%, bridges and chain signatures +43%. The count holds the 513,339 transactions of one account whose sampled calls to Intents all failed: without them the group is +29%. This counts transactions to the group's contracts, not why they were sent (see "Who is left: the customers") |
+| 7 | Financial use of the chain is growing | **Supported only as more transactions to the group's contracts, October to October; users, successful operations and demand are not measured** | Transactions to the exchange, Intents, token contracts and bridges 6.72M → 9.18M a month (+37%); Ref/Rhea exchange +96%, token contracts +47%, bridges and chain signatures +43%. The count holds the 513,339 transactions of one account whose sampled calls to Intents all failed: without them the group is +29%. This counts transactions to the group's contracts, not who sent them, whether they succeeded or why they were sent (see "Who is left: the customers") |
 | 8 | Cross-chain demand through NEAR is growing | **Higher since late August 2026; level with November 2025** | NEAR Intents volume $55.6M → $128.6M a day (+131%, October to October, DefiLlama), but October 2025 was the middle of a ramp-up: November 2025 already averaged $122.0M (October 2026 is +5% on it). In the nine months in between volume averaged $74.5M; against that level October 2026 is +73% |
 | 9 | NEAR's transactions come from many independent accounts | **Refuted** | 30 accounts send 50% of transactions; the top 10 send 37% (17% a year earlier); 486 accounts with 1,000+ transactions send 70%. Seven of the ten largest are relays or service accounts (Intents, Sweat, the bridges), so this counts who submits transactions; the people behind a relay are not visible on the chain |
-| 10 | Intents revenue offsets the dilution of NEAR holders | **No: the revenue equals 18% of the net new supply, and an offset to holders is not measured** | Buybacks (DefiLlama's name for the NEAR arriving at the revenue wallets) at $20.7M a year against $115M a year of net new NEAR: equal to 18% of the net new supply over the last 90 days, the 6th highest of 173 such windows; the median window gives 12.7%, and those that end before the step of 19 August 10.7% to 13.8%. Matching the issuance at this price needs 5.6 times the captured revenue. Whether the NEAR was bought on the market and stays out of circulation the data do not show |
-| 11 | Usage changes lead price changes | **No lead detected by this test** | 6 of 85 lag tests outside the noise band, about 4 expected by chance; none stands after Holm's correction for testing 85 lags together. A linear screen at fixed lags, not proof that no relation exists |
+| 10 | Intents revenue offsets the dilution of NEAR holders | **No: the revenue equals 18% of the net new supply, and an offset to holders is not measured** | Buybacks (DefiLlama's name for the NEAR arriving at the revenue wallets) at $20.7M a year against $115M a year of net new NEAR: equal to 18% of the net new supply over the last 90 days as a ratio of USD (17.9%); counted in NEAR at each day's price it is 18.7%, and the revenue wallets' balances grew by 18.3% of the new NEAR. Those are three measurements that move apart with the price and the timing of the inflows, not one figure. The median 90-day window since the buybacks began gives 12.7%. Matching the issuance at this price needs 5.6 times the captured revenue. Whether the NEAR was bought on the market and stays out of circulation the data do not show |
+| 11 | Usage changes lead price changes | **This test found no convincing lead** | 5 of 85 lag tests outside the noise band, about 4 expected by chance; none stands after Holm's correction for testing 85 lags together, nor with the band adjusted for the dependence between weeks. A linear screen at fixed lags, not proof that no relation exists |
 
 ## Who pays, and how often
 
@@ -130,12 +131,17 @@ the same activity in the two months.
 
 Partly, and not enough yet. Over the last 90 days NEAR Intents charged $18.9M in fees,
 51 times the network's own transaction fees. NEAR captured $5.1M of that
-(27%); the rest stays with solvers and the front ends that route the swaps. Since
+(27%, a ratio of two flows over the period: the fees accrue swap by swap, the captured revenue arrives at the
+wallets in transfers of its own); the rest stays with solvers and the front ends that route the swaps. Since
 2026-02-23, by DefiLlama's description of its series, the captured revenue is used to buy NEAR on the open market. At the last 90 days' pace that is
 $20.7M a year. Over the same period the supply of NEAR grew at 32.3M NEAR a
 year net of burned fees (2.48% over the last 365 days), worth $115M a year at the
-period's mean price of $3.58. **The buybacks equal 18% of the net new supply.** That is a ratio of two
-flows, not a measured offset of anyone's dilution: "buybacks" is DefiLlama's name for the series, and its adapter
+period's mean price of $3.58. **The buybacks equal 18% of the net new supply.** That figure is a ratio of USD,
+17.9%: buybacks in USD over the new NEAR valued at the period's mean price. Counted in NEAR, each day's buyback at
+that day's price over the new NEAR, it is 18.7%, and the balances of the wallets the revenue arrives at grew by 18.3%
+of the new NEAR (below). They are three measurements, not one: they part whenever the price moves inside the window
+and the NEAR does not arrive evenly, so prediction A4 is scored on the first two and holds only if both do. Each is
+a ratio of two flows, not a measured offset of anyone's dilution: "buybacks" is DefiLlama's name for the series, and its adapter
 counts the NEAR and wNEAR arriving at the revenue wallets and files all of it as bought for holders since that date.
 The purchases on the market are not in the data, nor is it known that the NEAR stays out of circulation for good;
 what the chain shows is that the NEAR arrives and, so far, stays. If all of it was bought and is held, it offsets at
@@ -143,8 +149,8 @@ most 18% of the dilution (below). Covering all of the dilution needs
 5.6 times the captured revenue at this price, and the market capitalisation is 227 times the
 annual buyback. The bought NEAR is not burned, so supply itself does not shrink.
 
-The 18% is close to the best window there has been. Of the 173 windows of 90 days since the buybacks began, it is the
-6th highest; the median window covers 12.7%, and windows of other lengths that end on the same day give 15% to 18%.
+The 18% is close to the best window there has been: the median 90-day window since the buybacks began covers 12.7%,
+and windows of other lengths that end on the same day give 15% to 18% (each window in the appendix).
 And the step in buybacks is mostly the price. In USD they went from $17,025 a day before 19 August to $59,297 a day
 since (3.5 times); in NEAR, from 10,456 to 17,016 NEAR a day (1.6 times). Whether the buybacks in NEAR have held
 since depends on the statistic: by the mean of the last two half-months they have not, by the median day they have.
@@ -168,8 +174,11 @@ where they are, the 18% becomes 28% at the end of the ramp and the 5.6 times bec
 **The same money, read from the chain.** We asked an archival RPC node, with no key, what the three wallets DefiLlama's
 adapter names hold at the start and at the end of the same 90 days (`python -m thesis wallets`). Together they held
 1,456,744 NEAR more at the end. That is 0.98 of the revenue DefiLlama reports for those days, and 18.3% of the 7.95M
-NEAR of net new supply: the 18% again, this time in NEAR and with no price in it. Over the last 30 days it is 15.4%.
-Whether the NEAR was bought on the market or arrived as NEAR, the balances do not say. *(chart: value_capture)*
+NEAR of net new supply: a third measurement of the same flow, with no price in it, close to the other two but not
+the same as either. Over the last 30 days it is 15.4%. The balances confirm that NEAR accumulates in these wallets.
+They do not say where each inflow came from, whether the NEAR was bought on the market or arrived as NEAR, or
+whether it is profit after the incentives paid to bring the volume and the costs of the service.
+*(chart: value_capture)*
 
 ## An independent check: a keyless sample of the chain
 
@@ -210,12 +219,14 @@ tables above do not: a year ago 55% of sampled transactions were a single call, 
   hold transactions that are not independent use (reward-side calls, and one account whose calls fail): without them
   the October change is +26% if every caller of the reward-side contracts is outside the reward namespaces, and between
   +19% and +31% as far as the tables can say (see "Limits"). *(chart: population)*
-* **Financial use is up October to October** while the reward side fell 92% and the rest of the chain stayed level
-  (+3%). On the keyless sample, from 14 to 31 August 2026, before the price doubled, the group ran at 207 thousand
-  transactions a day against 61 thousand on the same days of 2025 (95% intervals 169 to 247 and 12 to 143 thousand).
-  Last year's figure rests on 4 sampled transactions, and from September to mid-November 2025 the group already ran
-  at 177 thousand a day (109 to 283 thousand), so the sample supports the direction more than the size, and when the
-  rise began it does not settle. *(chart: clients)*
+* **Transactions to the financial contracts are up October to October** while the reward side fell 92% and the rest
+  of the chain stayed level (+3%). That is a count of calls to the exchange, Intents, token contracts and bridges; it
+  does not show more users, more successful operations or more demand. A side observation, not a second
+  confirmation: on the keyless sample, from 14 to 31 August 2026, before the price doubled, the group ran at 207
+  thousand transactions a day against 61 thousand on the same days of 2025 (95% intervals 169 to 247 and 12 to 143
+  thousand). Last year's figure rests on 4 sampled transactions, and from September to mid-November 2025 the group
+  already ran at 177 thousand a day (109 to 283 thousand), so when the rise began the sample does not settle.
+  *(chart: clients)*
 * **Intents is a real flow, at a higher level since 19 August.** The step came as the price began to move, on a day it
   was $1.59, and since then every half-month has averaged above the range of the nine months before ($63.2M to
   $89.6M a day), also the first 11 days of November ($129.7M). After the step the price never fell below $1.73
@@ -242,7 +253,8 @@ tables above do not: a year ago 55% of sampled transactions were a single call, 
   sample the exchange's transactions rose from 1 September and were back down by the second half of October. So the
   exchange's transactions of the rally, and the extra load on the chain, have left with it, while the flow through
   Intents has held. Predictions A2, A3 and B2 state that the new level holds; a miss on them would mean that the new level
-  did not outlast the rally, which fits the trading reading but would not show what caused the step.
+  did not outlast the rally, which fits the reading that the rally's extra transactions were trading (a reading:
+  which contracts were called is measured, what the calls were for is not), but would not show what caused the step.
 * **Very few accounts carry it, and a large count is not always use.** Seven of the ten largest accounts in October
   2026 are relays or service accounts (`intents.near`, three of Sweat, two bridge relayers and `escrow.ai.near`), so
   the count says who submits transactions, not how many people stand behind them; either way the chain depends on a
@@ -270,14 +282,15 @@ tables above do not: a year ago 55% of sampled transactions were a single call, 
   points of Intents volume against 2.62 before, and two other entries trace most of that revenue to one new,
   incentivised channel (see "Does it reach the token?"). Over the last 30 days volume, gross fees and captured revenue
   are all a fifth to a quarter below the 30 days before.
-* **No usage metric leads price in our tests.** On weekly log-changes over ~6 years, 6 of 85 lag tests fall outside
-  the noise band where about 4 are expected by chance, and none of the 85 stands after Holm's correction for testing
-  them together (the smallest p-value is 0.009; the first step of the correction asks for 0.0006). Fees in USD do
+* **No usage metric leads price in our tests.** On weekly log-changes over ~6 years (complete weeks only), 5 of 85
+  lag tests fall outside the noise band where about 4 are expected by chance, and none of the 85 stands after Holm's
+  correction for testing them together (the smallest p-value is 0.009; the first step of the correction asks for
+  0.0006). Allowing for the dependence between weeks does not change that (see "Limits"). Fees in USD do
   correlate with price in the same week (r = 0.38), mostly because USD fees are NEAR fees multiplied by the price:
   in NEAR, fees show nothing outside the band.
-  What was tested is a linear correlation of weekly changes at fixed lags of up to eight weeks: it finds no lead that
-  stands, and it does not rule out one that is non-linear or holds only in some periods. It is a screen, not a proof
-  that no lead exists (see "Limits" on the dependence between weeks). *(chart: lead_lag)*
+  What was tested is a linear correlation of weekly changes at fixed lags of up to eight weeks. The result is that
+  this test found no convincing lead; it does not rule out one that is non-linear or holds only in some periods.
+  *(chart: lead_lag)*
 
 ## What would change our mind
 
@@ -289,6 +302,12 @@ pass, four once the account queries have been run again for the month they name.
 predictions' name for the month after their reference range; read by half-months it is two events (see "Evidence
 against"), and the reference range of Intents volume and buybacks already holds the first of them: the last 13 days
 of August, after 19 August, which makes their thresholds harder to stay above, not easier.
+
+A prediction that holds checks the condition it states and nothing wider. Several are control lines rather than
+tests of the economic case: B1 holds if the August low is not broken, even after a fall of more than half from
+October; A3's line is in USD and can be met by the price alone; A5 is a screen re-run on the whole history, not a
+test of timing on new data. So the number of predictions that hold is not a count of confirmations of this thesis;
+PREDICTIONS.md says, prediction by prediction, what a hold shows and what it does not.
 
 * **Regular self-paying accounts fall back to their low.** They bottomed at 7,201 in August 2026 and rebounded in
   September. A month at or below that low means the rebound was a spike and the base has not found a floor (B1
@@ -368,12 +387,16 @@ of August, after 19 August, which makes their thresholds harder to stay above, n
   stakes receives part of it. The 18% compares buybacks with all of the net new supply, which is the most a holder
   could be diluted by. It is a ratio of flows: what it does for holders depends on the NEAR being bought on the market
   and kept out of circulation, which the data do not show.
-* **Lead-lag scans 17 lags × 5 metrics = 85 tests**; about 4 bars outside ±2/√n are expected by chance. The p-values
-  behind Holm's correction use Fisher's z, a normal approximation, on weekly changes. Band and p-values treat the weeks
-  as independent, and they are not: weekly price changes correlate 0.31 with the week before, the usage metrics' changes
-  −0.09 to −0.27. Signs this opposite at the first lag narrow the true band rather than widen it (Bartlett's formula),
-  but no correction for the dependence was computed, so band and p-values are approximate. One of the
-  five metrics is the `active − new` proxy shown above to be unreliable; it is reported for completeness.
+* **Lead-lag scans 17 lags × 5 metrics = 85 tests**; about 4 bars outside ±2/√n are expected by chance. A week counts
+  only when all seven of its days are in the data: the snapshot ends on a Wednesday, and with its three days set
+  against full weeks the count was 6, not 5. The p-values behind Holm's correction use Fisher's z, a normal
+  approximation. Band and p-values treat the weeks as independent, and they are not: weekly price changes correlate
+  0.31 with the week before, the usage metrics' changes −0.10 to −0.27. Allowing for that by Bartlett's formula
+  (autocorrelations up to eight weeks, metric by metric) narrows the band, because the signs are opposite: 9 of 85
+  tests fall outside it, and still none stands after Holm's correction (smallest p-value 0.004). The formula uses
+  autocorrelations estimated from the same data, so this is a check, not an exact band. One of the five metrics is
+  the `active − new` proxy shown above to point the wrong way; it stays in the scan because A5 was frozen with it,
+  and it is not read here as evidence about users.
 * **The app table is a manual grouping** of the 40 largest contracts and relayers, which cover 90% of October 2026
   transactions. Allowing for the group's contracts outside a month's 40 largest, the +37% lies between +30% and +39%.
   Filing the contracts the exchange's own bots called with the exchange gives the financial group +31% to +33%. The

@@ -47,8 +47,8 @@ def slides(s: dict) -> list[dict]:
                  f"{datetime.strptime(s['segments']['regular_accounts_low']['month'], '%Y-%m'):%B %Y}.",
          "chart": "segments", "sec": 11},
         {"head": f"{latest['accounts_for_half_of_txs']} accounts send half of all transactions.",
-         "line": f"Reward and wallet apps are still {c['reward_apps_share']['latest'] * 100:.0f}% of them; trading, Intents, tokens and "
-                 f"bridges are {c['finance_share']['latest'] * 100:.0f}% and grew {c['finance_txs']['pct_change']:+.0f}% in a year.",
+         "line": f"Reward and wallet apps are still {c['reward_apps_share']['latest'] * 100:.0f}% of them; the exchange, Intents, tokens and "
+                 f"bridges {c['finance_share']['latest'] * 100:.0f}% ({c['finance_txs']['pct_change']:+.0f}% in a year).",
          "chart": "clients", "sec": 12},
         {"head": (f"Captured revenue equals {min(cov) * 100:.0f}-{max(cov) * 100:.0f}% of the new NEAR issued." if cov
                   else f"Captured revenue equals {v['buyback_coverage_of_new_supply'] * 100:.0f}% of the new NEAR issued."),

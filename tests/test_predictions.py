@@ -5,8 +5,9 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pytest
 
-from thesis import predictions
+from thesis import predictions, value
 
 from . import snapshot
 
@@ -332,7 +333,9 @@ def test_buyback_predictions_wait_for_a_day_that_is_missing(tmp_path):
 
     waiting = ("open (waiting for complete data)", None)
     full = status(fees)
-    assert full["W3"] == ("failed", 31.0) and full["W4"][0] == "held" and abs(full["W4"][1] - 0.001) < 1e-12
+    assert full["W3"] == ("failed", 31.0) and full["W4"] == ("held", None)     # A4 is scored on two measurements
+    w4 = {r["id"]: r for r in predictions.evaluate(daily, fees, p)["items"]}["W4"]
+    assert w4["measured_range"] == pytest.approx([0.001, 0.001])     # a constant price: USD and NEAR give the same ratio
     hole = fees.copy()
     hole.loc["2025-12-15", "holders_revenue"] = np.nan             # inside December and inside the 90 days to 10 January
     assert status(hole) == {"W3": waiting, "W4": waiting}
@@ -486,3 +489,26 @@ def test_b4_is_scored_only_when_the_contracts_outside_the_40_cannot_reverse_it(t
         assert result["status"] == status, (gap, result)
         assert result["measured"] is None
         assert result["measured_range"] == [(gap - 101) / total, (gap + 101) / total]
+
+
+def test_a4_is_scored_on_the_ratio_in_usd_and_in_near(tmp_path):
+    """Buybacks in USD over the new supply at the mean price, and buybacks in NEAR at each day's price over the new NEAR,
+    differ when the price moves inside the window. A4 holds only if both are below the line, and is open if they differ."""
+    p = tmp_path / "p.csv"
+    p.write_text(BQ_HEADER + "W4,q,2026-01-10,buyback_coverage_90d,<,0.5,b,automatic,coverage\n")
+    idx = pd.date_range("2025-06-01", "2026-01-20", freq="D")
+    price = pd.Series(1.0, index=idx)
+    price.loc["2025-12-01":] = 4.0                     # the price quadruples for the last 41 days of the window
+    daily = pd.DataFrame({"intents_volume_usd": 200.0, "price_usd": price, "fees_usd": 10.0, "market_cap_usd": 1e9,
+                          "total_supply_yocto": (1e9 + 1000.0 * np.arange(len(idx))) * 1e24}, index=idx)
+    hr = pd.Series(0.0, index=idx)
+    hr.loc["2025-12-01":] = 3300.0                     # all the buybacks arrive at the high price
+    fees = pd.DataFrame({"fees": 4.0, "revenue": hr, "holders_revenue": hr}, index=idx)
+    v = value.summarize(daily.loc[:"2026-01-10"], fees.loc[:"2026-01-10"])
+    usd, near = v["buyback_coverage_of_new_supply"], v["buyback_coverage_in_near"]
+    assert near == pytest.approx(41 * 3300 / 4 / 90_000)
+    assert usd == pytest.approx(41 * 3300 / (90_000 * (49 * 1 + 41 * 4) / 90))
+    assert near < 0.5 < usd                            # the two give different verdicts
+    row = predictions.evaluate(daily, fees, p)["items"][0]
+    assert row["status"].startswith("open (undecided: the ratio in USD and the ratio in NEAR")
+    assert row["measured"] is None and row["measured_range"] == pytest.approx([usd, near])

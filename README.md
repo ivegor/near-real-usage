@@ -6,67 +6,42 @@
 one-off accounts, so it is a weak basis for a long-term investment case. This project counts who actually acts on
 NEAR, account by account over the whole chain, and tests with re-runnable code whether usage leads the NEAR price.
 
-**The long-term case, in short.** After the largest reward app left, NEAR's transactions come from few hands. The
-reward and wallet apps that stayed still account for 43% of October's transactions (close to their lowest month),
-counted by the contract or relayer each transaction goes through, and the exchange, Intents, token contracts and
-bridges for 41%. Self-paid transactions outside the reward namespaces are 55% of all transactions, and most come from
-a few hundred heavy accounts: 475 of them send 91% of the self-paid transactions outside `.kaiching` and `.tg`. That
-activity rose in autumn 2026 in two steps: NEAR Intents volume and the revenue it brings in stepped up on 19 August
-and have stayed above their earlier range, while the load on the chain (its fees and gas) ran high only for the four
-weeks of the price rally, from 16 September to 15 October. What stayed up is the volume and the revenue in USD; in
-NEAR the revenue has held by the median day and not by the mean. The NEAR that revenue brings in equals 18% of the new
-NEAR issued over the last 90 days, close to the best window since the buybacks began; the median 90-day window gives
-13%. That is a narrow case, and it is not a valuation of NEAR; nine dated predictions say what would widen it or close
-it.
+**The long-term case, in short.** After the largest reward app left, NEAR's transactions come from few hands: 30
+accounts send half of them, and outside `.kaiching` and `.tg` 475 heavy accounts send 91% of the self-paid ones.
+Reward and wallet apps still carry 43% of October's transactions, the exchange, Intents, token contracts and bridges
+41%. Activity rose in autumn 2026 in two steps: NEAR Intents volume and its revenue stepped up on 19 August and have
+stayed above their earlier range, while the load on the chain ran high only for the four weeks of the price rally.
+The revenue that reaches the token equals 18% of the new NEAR issued over the last 90 days. That is a narrow case,
+not a valuation of NEAR; nine dated predictions say what would widen or close it.
 
 **Key findings (snapshot 2026-11-11; accounts: October 2026 vs October 2025, three-month means in brackets):**
 
 * Accounts acting on NEAR fell **97%** (43.6M → 1.38M a month). **The whole fall is accounts whose fees an app was
-  paying**: 43.05M a year ago, 0.55M now (99.2% of the fall with a one-off deletion of old accounts taken out). One
-  app, KaiChing, had 40.4M of them; its relayer's monthly totals came to 2,000,000 transactions a day, to within a thousandth,
-  in 8 of its 17 months from December 2024 to April 2026: that points to a job with a daily quota.
+  paying**: 43.05M a year ago, 0.55M now. One app, KaiChing, had 40.4M of them.
 * Outside the reward apps, **475 heavy accounts (1,000 or more transactions a month) send 91% of the self-paid
   transactions**. The regular ones (10 to 999 a month) number 17,105 against 27,078 a year earlier, but up to 15,162
   of last year's were players of one wallet's reward game whose calls are relayed now, so how many really left is not
   established.
 * **Self-paid transactions outside reward apps are up 28%** October to October, but only since autumn: in the nine
-  months before they averaged 17% below the year before (below it in 7 of the 9 months), all of
-  it in implicit and other accounts (named `.near` accounts +4%), and the year as a whole is flat (−5% on eleven-month means, the same on twelve). They jumped when the NEAR price went
-  from $1.92 to $4.89 in one month, and in the first 11 days of November they run 12% below October's daily rate and
-  5% below November 2025's (14% and 7% below without a one-off of dormant accounts on 10 November). Without the
-  reward-side calls in both Octobers and one account whose calls fail, the October change is +26% if every caller of
-  the reward-side contracts is outside the reward namespaces, and between +19% and +31% as far as the tables can say.
-  Transactions sponsored through relayers fell 75%.
-* **Transactions to financial contracts are up.** Transactions to the exchange, Intents, token contracts and
-  bridges are up **37%** (+29% without that account); what is neither that group nor the reward apps is level (+3%).
-  On the keyless sample, from 14 to 31 August 2026 the group ran at 207 thousand transactions a day against 61 thousand
-  a year earlier, a figure that rests on 4 sampled transactions: the direction is supported more than the size. The
-  groups are assigned by contract and relayer, not by what a transaction was for.
-* **30 accounts send half of all transactions.** Seven of the ten largest are relays or service accounts. Reward and
-  wallet apps still send 43%, or 45% counting the one-off deletion of old KaiChing accounts, in a month close to their
-  low (by namespace 34% in October against 45% to 56% a month from April to August), and in its first 11 days HOT's
-  namespace sent 196 thousand transactions a day against 100 thousand in October.
+  months before they averaged 17% below the year before. They jumped when the NEAR price went from $1.92 to $4.89 in
+  one month, and in the first 11 days of November they run 12% below October's daily rate.
+* **Transactions to financial contracts are up 37%** (the exchange, Intents, token contracts and bridges; +29%
+  without one account whose sampled calls all failed). This counts calls to those contracts by contract and relayer,
+  not users, successful operations or what the calls were for.
 * NEAR Intents volume: **$56M → $129M a day**, October to October, but that base was the middle of a ramp-up: the
-  volume is level with November 2025 ($122M) and +73% on the nine months in between ($74.5M). It stepped up on 19
-  August, as the price began to move and a month before it doubled, and its weekly mean has stayed above the earlier
-  range since (the date is set by a rule that makes that so; the margin is 10%). No usage metric shows a lead that
-  stands in our tests: 6 of 85 weekly lead-lag tests fall outside the noise band where about 4 are expected by chance, and
-  none stands after Holm's correction.
+  volume is level with November 2025 ($122M) and +73% on the nine months in between ($74.5M).
+* **This test found no convincing lead of usage over price:** 5 of 85 weekly lead-lag tests fall outside the noise
+  band where about 4 are expected by chance, and none stands after Holm's correction.
 * Value reaches the token only in part: buybacks funded by Intents revenue run at **$20.7M a year**, equal to **18%**
-  of the net new NEAR issued over the last 90 days, the sixth-best of 173 such windows since they began (15% to 18%
-  over windows of other lengths that end on the same day, 12.7% in the median 90-day window; $11.2M a year at the pace of the whole programme). In NEAR their step was 1.6 times, in USD 3.5
-  times: most of it is the price. Read from the chain with no key, the three wallets the revenue arrives at grew by
-  1,456,744 NEAR over the same 90 days, 18.3% of the new supply (15.4% over the last 30); "buybacks" is DefiLlama's
-  name for that NEAR, and the purchases on the market are not in the data. The step in revenue since 19 August is 1.9
-  times more volume and a 1.6 times higher take (2.62 → 4.27 basis points of volume); over the last 30 days volume is
-  down 22% and captured revenue 20%. At the issuance the approved HSP-029 ends at (1.6% a year, not yet in force) the
-  18% would be 28%.
-* Our own drafts got three readings wrong or overstated ("returning accounts grew", "remaining accounts are busier",
-  mostly a change of mix, and "the base outside reward apps fell by two thirds"); APPENDIX.md lists each with what
-  replaced it.
+  of the net new NEAR issued over the last 90 days. That is three measurements that are not the same figure: 17.9% as
+  a ratio of USD, 18.7% in NEAR at each day's price, and 18.3% from the growth of the revenue wallets' balances, read
+  from the chain with no key. The median 90-day window since the buybacks began gives 12.7%. "Buybacks" is
+  DefiLlama's name for the NEAR arriving at those wallets; the purchases on the market, the origin of each inflow and
+  any profit after incentives are not in the data.
 
 Full argument, evidence against, and kill criteria: [`THESIS.md`](THESIS.md); the detail behind each of its sections,
-the side analyses and the history of our drafts: [`APPENDIX.md`](APPENDIX.md). Nine dated predictions, their
+the side analyses, the robustness checks and the history of our drafts (three readings that did not survive):
+[`APPENDIX.md`](APPENDIX.md). Nine dated predictions, their
 thresholds reference levels taken from the data or natural lines such as parity, scored by the build (five from
 the daily series, four once the BigQuery queries are run again for January 2027): [`PREDICTIONS.md`](PREDICTIONS.md).
 
@@ -102,7 +77,7 @@ same commands: uv installs Python 3.12.12 and the locked libraries itself, with 
 | `make serve` | The tests and `python -m thesis build --offline` run while the image is built; the container serves the rebuilt `docs/` on <http://localhost:8000> |
 | `make build` (network) | `data/raw/*.json` (exact API responses), `data/daily.csv`, `docs/*.png`, `docs/index.html`, `docs/summary.json`; stdout gets a short digest: one sentence per chart and the status of the nine predictions. If an API is down, the build says so and uses the committed copy |
 | `make offline` | Same outputs rebuilt from the committed `data/raw/` files, no network |
-| `make test` | 143 tests: parsing, metric formulas, a planted 3-week lead recovered by the lead-lag test, the account census on a hand-made table, block parsing with relayed transactions, the scoring of all nine predictions, the numbers quoted in THESIS.md, APPENDIX.md, PREDICTIONS.md and this README against the frozen copy of the summary, full offline build, the build on tables extended the way a later run of the queries extends them, and one Python version named the same in `.python-version`, the Dockerfile, `pyproject.toml` and this README |
+| `make test` | 147 tests: parsing, metric formulas, a planted 3-week lead recovered by the lead-lag test, the account census on a hand-made table, block parsing with relayed transactions, the scoring of all nine predictions, the numbers quoted in THESIS.md, APPENDIX.md, PREDICTIONS.md and this README against the frozen copy of the summary, full offline build, the build on tables extended the way a later run of the queries extends them, and one Python version named the same in `.python-version`, the Dockerfile, `pyproject.toml` and this README |
 | `make protocol` (network, one request, no key) | `data/raw/protocol_config.json`: the maximum issuance in force, read from the protocol's own configuration; the build sets the approved cut (HSP-029) against it |
 | `make wallets` (network, about 2 minutes, no key) | `data/raw/revenue_wallets.json`: what NEAR's three revenue wallets hold at the start and the end of the 90-day window and 30 days before its end, read from an archival RPC node. The build sets their growth against the new supply and against DefiLlama's revenue series |
 | `make outcomes` (network, about 5 minutes, no key) | `data/raw/census_outcomes.csv`: how the transactions to NEAR Intents in the sampled blocks ended, by sender |
@@ -132,7 +107,7 @@ it is up. Earlier daily pages and their inputs are not archived.
 | Account family | namespace of the actor: `.kaiching`, `.tg` (HOT wallet), `.sweat`, implicit (64 hex), `.near`, other | Shows which app created the account. Not a count of "own users": 93% of accounts outside the reward namespaces were sponsored users of other apps |
 | Account age | first appearance of the account in any transaction since genesis, relative to the first day of the month | New, recent and old users are different things |
 | Active two months running | the actor was also active in the previous calendar month | A direct count of returning accounts |
-| `active − new` (NearBlocks) | daily active accounts minus new accounts | The only "returning" proxy the aggregates allow. Shown to be wrong in direction; kept on the dashboard, labelled |
+| `active − new` (NearBlocks) | daily active accounts minus new accounts | The only "returning" proxy the aggregates allow. Shown to be wrong in direction; kept on the dashboard, labelled, as an example of the method's error, not as evidence about users |
 | NEAR Intents volume | DefiLlama daily volume | Cross-chain demand routed through NEAR |
 | Who pays (account) | sponsored: a relayer submitted every transaction of the account in the month; self-paying: the account paid for at least one | Separates accounts an app is paying for from accounts that paid the fee of at least one transaction themselves. The line is the fee payer, not a threshold; who funded the account, whether rewards repaid the fees and who holds its keys is not checked |
 | How often (account) | transactions in the month by powers of ten: occasional under 10, regular 10 to 999, heavy 1,000 or more | 1,000 a month is over 30 a day, which we read as likely automated (not checked account by account); the lines are powers of ten, not tuned |

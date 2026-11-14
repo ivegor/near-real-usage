@@ -276,7 +276,10 @@ def _measure(metric: str, on: pd.Timestamp, daily: pd.DataFrame, fees: pd.DataFr
                 or _window(d["total_supply_yocto"], on, on) is None:
             return None
         v = value.summarize(d, f)
-        return float(v["buyback_coverage_of_new_supply"]) if v else None
+        # Two measurements of one flow: the ratio of USD (as the threshold was written) and the ratio of NEAR (each
+        # day's buyback at that day's price over the new NEAR). From 2026-11-14 A4 is scored on both and left open
+        # when they give different verdicts (PREDICTIONS.md).
+        return (float(v["buyback_coverage_of_new_supply"]), float(v["buyback_coverage_in_near"])) if v else None
     return None
 
 
@@ -380,8 +383,9 @@ def evaluate(daily: pd.DataFrame, fees: pd.DataFrame | None, path: Path | None =
                 measured, waiting = _measure(p["metric"], on, daily, fees), "open (waiting for complete data)"
             if isinstance(measured, tuple):
                 holds = [OPS[p["operator"]](end, p["threshold"]) for end in measured]
-                status = ("held" if holds[0] else "failed") if holds[0] == holds[1] else (
-                    "open (undecided: the group's contracts outside the 40 largest could reverse it)")
+                why = ("the ratio in USD and the ratio in NEAR give different verdicts" if p["metric"] == "buyback_coverage_90d"
+                       else "the group's contracts outside the 40 largest could reverse it")
+                status = ("held" if holds[0] else "failed") if holds[0] == holds[1] else f"open (undecided: {why})"
                 rows.append({**p, "status": status, "measured": None, "measured_range": list(measured)})
                 continue
             if measured is not None and not np.isfinite(measured):

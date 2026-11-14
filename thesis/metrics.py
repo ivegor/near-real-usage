@@ -53,9 +53,31 @@ def period_change(series: pd.Series, days: int = 90, lookback_days: int = 365) -
 
 
 def weekly_log_diff(series: pd.Series) -> pd.Series:
-    w = series.resample("W-SUN").mean()
+    """Week-on-week log-change of the weekly mean, Monday to Sunday, over complete weeks only.
+
+    A week counts only when all seven of its days have a value. The last week of a snapshot is usually unfinished (the
+    data of 2026-11-11 end on a Wednesday, three days into the week), and a mean of three days is not the same
+    observation as a mean of seven; the first week of a series is often partial too. A week left out leaves a gap: the
+    changes into and out of it are not computed, rather than one change spanning two weeks.
+    """
+    s = series.dropna()
+    w = s.resample("W-SUN").mean().where(s.resample("W-SUN").count() == 7)
     w = w.where(w > 0)
     return np.log(w).diff().dropna()
+
+
+def bartlett_factor(x: pd.Series, y: pd.Series, lags: int = 8) -> float:
+    """How much the variance of a correlation between two autocorrelated series exceeds 1/n (Bartlett's formula).
+
+    Under no true relation, var(r) ≈ (1/n) · (1 + 2 Σ_k ρx(k) ρy(k)), with ρ the autocorrelations of each series. Above 1
+    the noise band is wider than 2/√n, below 1 narrower. The sum is cut at `lags` weeks, the longest lag tested.
+    """
+    total = 1.0
+    for k in range(1, lags + 1):
+        a, b = x.autocorr(k), y.autocorr(k)
+        if pd.notna(a) and pd.notna(b):
+            total += 2 * a * b
+    return max(total, 1e-9)
 
 
 # Significant digits kept for the lag statistics. A correlation over a few hundred weekly changes comes out a few units
@@ -88,8 +110,9 @@ def lead_lag(x: pd.Series, price: pd.Series, max_lag: int = 8) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def _p_value(corr: float, n: int) -> float:
-    """Two-sided p-value of a correlation under a zero true correlation, by Fisher's z (normal approximation)."""
+def _p_value(corr: float, n: float) -> float:
+    """Two-sided p-value of a correlation under a zero true correlation, by Fisher's z (normal approximation).
+    `n` may be an effective number of weeks (bartlett_scan), not a whole number."""
     if n <= 3 or pd.isna(corr) or abs(corr) >= 1:
         return float("nan")
     return float(math.erfc(abs(math.atanh(corr)) * math.sqrt(n - 3) / math.sqrt(2)))
@@ -248,5 +271,26 @@ def summarize(daily: pd.DataFrame) -> dict:
         # week before: where both series of a pair have it of the same sign, the true noise band is wider than 2/sqrt(n).
         "lead_vs_price_lag1_autocorrelation": {c: _sig(float(weekly_log_diff(d[c]).autocorr(1)))
                                                for c in ["price_usd", *leads] if c in d},
+        # The same scan with the band and the p-values widened (or narrowed) for the autocorrelation of both series.
+        "lead_vs_price_bartlett": bartlett_scan(d, leads),
         "checks": checks(daily),
     }
+
+
+def bartlett_scan(d: pd.DataFrame, leads: dict) -> dict:
+    """The lead-lag scan with the dependence between weeks allowed for, by Bartlett's formula, metric by metric.
+
+    The band becomes 2·√(factor/n) and each p-value is taken with n/factor weeks. This is an approximation too (the
+    autocorrelations are estimated from the same data), published next to the plain scan, not in place of it.
+    """
+    dp = weekly_log_diff(d["price_usd"])
+    per, ps, outside = {}, [], 0
+    for c in leads:
+        f = bartlett_factor(weekly_log_diff(d[c]), dp)
+        ll = lead_lag(d[c], d["price_usd"]).dropna(subset=["corr"])
+        out = [int(k) for k, r, n in zip(ll["lag_weeks"], ll["corr"], ll["n"]) if abs(r) > 2 * math.sqrt(f / n)]
+        ps += [_p_value(r, n / f) for r, n in zip(ll["corr"], ll["n"])]
+        per[c] = {"factor": _sig(f), "outside_band_lags": out}
+        outside += len(out)
+    return {"metrics": per, "outside_band": outside, "tests": len(ps),
+            "holm": {k: (_sig(v) if isinstance(v, float) else v) for k, v in holm(ps).items()}}
