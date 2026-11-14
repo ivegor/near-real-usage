@@ -316,3 +316,40 @@ def test_a_day_is_left_out_for_its_date_not_for_its_size():
     assert kept.index.max() == pd.Timestamp("2026-04-02")                # a finished day stays, however small
     assert sources.drop_unfinished_days(daily, pd.Timestamp("2026-04-02")).index.max() == pd.Timestamp("2026-04-01")
     assert sources.drop_unfinished_days(daily, None).equals(daily)       # no download date: nothing to go by
+
+
+def test_a_saved_unfinished_day_stays_out_when_a_later_download_fails(tmp_path, monkeypatch):
+    """The day a saved reply was downloaded on is that reply's, not the day of the build that fell back to it. And when
+    the table goes on from v3, the finished v3 day replaces the unfinished last day of the saved /v1 copy."""
+    import json
+
+    nb, ll = synthetic_raw(days=60)
+    today = pd.Timestamp.now(tz="UTC").tz_localize(None).normalize()
+    days = pd.date_range(end=today - pd.Timedelta(days=1), periods=60, freq="D")   # the copy ends yesterday
+    for row, d in zip(nb["charts"], days):
+        row["date"] = d.strftime("%Y-%m-%dT00:00:00.000Z")
+    nb["charts"][-1]["txns"] = "7"                                  # yesterday was not over when the copy was saved
+    ll = {"totalDataChart": [[int(d.timestamp()), 1.0] for d in days]}
+    monkeypatch.setattr(sources, "RAW_DIR", tmp_path)
+    (tmp_path / "nearblocks_charts.json").write_text(json.dumps(nb))
+    (tmp_path / "defillama_intents.json").write_text(json.dumps(ll))
+    saved_at = (days[-1] + pd.Timedelta(hours=15)).tz_localize("UTC").isoformat()
+    meta = {name: {"url": url, "fetched_at_utc": saved_at} for name, url in sources.SOURCES.items()}
+    (tmp_path / "_meta.json").write_text(json.dumps(meta))
+    assert sources.load_daily(offline=True).index.max() == days[-2]           # the saved build left it out
+
+    def down(url, retries=3):
+        raise RuntimeError("API down")
+    monkeypatch.setattr(sources, "_fetch_json", down)
+    assert sources.load_daily().index.max() == days[-2]                       # so does a build that cannot download
+    assert json.loads((tmp_path / "_meta.json").read_text())["nearblocks_charts"]["fetched_at_utc"] == saved_at
+
+    # /v1 is gone and v3 answers: yesterday comes from v3, finished
+    rows = [{"date": d.strftime("%Y-%m-%d"), "total_supply": "1", "gas_used": "1", "txns": "500",
+             "txn_fee": "1", "txn_volume": "1", "near_price": "3", "market_cap": "3", "active_contracts": "1"} for d in days]
+    v3 = {url: {"data": rows} for url in sources.NEARBLOCKS_V3.values()}
+    monkeypatch.setattr(sources, "_fetch_json", lambda url, retries=3: v3[url] if url in v3 else down(url))
+    table = sources.load_daily()
+    assert table.index.max() == days[-1] and table.loc[days[-1], "txns"] == 500
+    assert sources.CONTINUED_FROM_V3 and "nearblocks_charts" not in sources.NOT_REFRESHED
+    sources.CONTINUED_FROM_V3.clear()

@@ -59,6 +59,28 @@ def _fetch_json(url: str, retries: int = 3) -> dict:
 REQUIRED_KEY = {"nearblocks_charts": "charts", "defillama_intents": "totalDataChart", **{k: "data" for k in NEARBLOCKS_V3}}
 NOT_REFRESHED: list[str] = []  # the sources the last fetch_all() could not download and read from their saved copies
 CONTINUED_FROM_V3: list[bool] = []  # non-empty when the last fetch_all() carried the daily table on from the v3 API
+# When the reply each source was read from was downloaded (ISO time, UTC), or None when that is not recorded. A saved
+# copy keeps the time it was downloaded at, not the time of the build that fell back to it.
+FETCHED_AT: dict[str, str | None] = {}
+
+
+def _read_meta() -> dict:
+    meta_path = RAW_DIR / "_meta.json"
+    return json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else {}
+
+
+def _saved_fetch_time(meta: dict, name: str) -> str | None:
+    """When the saved copy of a source was downloaded, by the _meta.json of the build that saved it.
+
+    Builds since 2026-11-14 record it for each source. Older files carry one time for the whole build, which holds for
+    every source that build did refresh, and the v3 copies are only read when that build downloaded them.
+    """
+    own = (meta.get(name) or {}).get("fetched_at_utc")
+    if own:
+        return own
+    if "fetched_at_utc" in meta and name not in meta.get("not_refreshed", []):
+        return meta["fetched_at_utc"]
+    return None
 
 
 def _check_shape(name: str, data: object, key: str | None = None) -> None:
@@ -74,17 +96,21 @@ def fetch_all(offline: bool = False) -> dict[str, dict]:
     RAW_DIR.mkdir(parents=True, exist_ok=True)
     out: dict[str, dict] = {}
     stale: list[str] = []
+    last_run = _read_meta()
+    FETCHED_AT.clear()
     for name, url in SOURCES.items():
         path = RAW_DIR / f"{name}.json"
         if offline:
             if not path.exists():
                 raise FileNotFoundError(f"{path} missing; run without --offline first")
             out[name] = json.loads(path.read_text(encoding="utf-8"))
+            FETCHED_AT[name] = _saved_fetch_time(last_run, name)
         else:
             try:
                 data = _fetch_json(url)
                 _check_shape(name, data)  # never overwrite the committed copy with an error page or an empty reply
                 path.write_text(json.dumps(data), encoding="utf-8")
+                FETCHED_AT[name] = pd.Timestamp.now(tz="UTC").isoformat()
             except RuntimeError as e:
                 # An API outage must not break the build or a judge's reproduction: fall back to the committed copy.
                 if not path.exists():
@@ -92,35 +118,39 @@ def fetch_all(offline: bool = False) -> dict[str, dict]:
                 print(f"[sources] {name}: {e}; using the saved copy {path.name}")
                 data = json.loads(path.read_text(encoding="utf-8"))
                 stale.append(name)
+                FETCHED_AT[name] = _saved_fetch_time(last_run, name)  # when that copy was downloaded, not now
             out[name] = data
     CONTINUED_FROM_V3.clear()
     if offline:
         # An offline build rebuilds what the last build with the network built, from the same saved replies. If that
         # build carried the daily table on from v3 (its _meta.json says so), the saved v3 copies are read too; without
         # them the table would end on the last day of the saved /v1 copy and the offline build would differ from it.
-        meta_path = RAW_DIR / "_meta.json"
-        last_run = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else {}
         if (last_run.get("nearblocks_charts") or {}).get("continued_from"):
             missing = [k for k in NEARBLOCKS_V3 if not (RAW_DIR / f"{k}.json").exists()]
             if missing:
                 raise FileNotFoundError(f"_meta.json says the daily table went on from v3, but {missing} are missing")
             out.update({k: json.loads((RAW_DIR / f"{k}.json").read_text(encoding="utf-8")) for k in NEARBLOCKS_V3})
+            FETCHED_AT.update({k: _saved_fetch_time(last_run, k) for k in NEARBLOCKS_V3})
             CONTINUED_FROM_V3.append(True)
     elif "nearblocks_charts" in stale:
         v3 = fetch_v3()
         if v3:
-            # the daily table is fresh after all: the saved /v1 copy up to its last day, v3 from there on
+            # the daily table is fresh after all: the saved /v1 copy up to its last finished day, v3 from there on
             out.update(v3)
+            FETCHED_AT.update({k: pd.Timestamp.now(tz="UTC").isoformat() for k in v3})
             stale.remove("nearblocks_charts")
             CONTINUED_FROM_V3.append(True)
             print("[sources] nearblocks_charts: continued from the v3 API after the last day of the saved copy")
-    meta = {name: {"url": url, "file": f"data/raw/{name}.json"} for name, url in SOURCES.items()}
+    meta = {name: {"url": url, "file": f"data/raw/{name}.json", "fetched_at_utc": FETCHED_AT.get(name)}
+            for name, url in SOURCES.items()}
     if CONTINUED_FROM_V3:
         meta["nearblocks_charts"]["continued_from"] = NEARBLOCKS_V3
+        meta.update({k: {"url": url, "file": f"data/raw/{k}.json", "fetched_at_utc": FETCHED_AT.get(k)}
+                     for k, url in NEARBLOCKS_V3.items()})
     if stale:
         meta["not_refreshed"] = stale
     if not offline:
-        meta["fetched_at_utc"] = pd.Timestamp.now(tz="UTC").isoformat()
+        meta["built_at_utc"] = pd.Timestamp.now(tz="UTC").isoformat()  # the build; each source has its own time above
         (RAW_DIR / "_meta.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
     NOT_REFRESHED[:] = stale
     return out
@@ -249,20 +279,21 @@ def parse_defillama(raw: dict) -> pd.Series:
 
 def load_daily(offline: bool = False) -> pd.DataFrame:
     raw = fetch_all(offline=offline)
-    daily = parse_nearblocks(raw["nearblocks_charts"])
+    # Each source is cut at the day its own reply was downloaded on, before the sources are put together: an unfinished
+    # last day of the saved /v1 copy must not stand in for the finished day v3 carries for the same date.
+    daily = drop_unfinished_days(parse_nearblocks(raw["nearblocks_charts"]), fetched_on("nearblocks_charts"))
     if all(k in raw for k in NEARBLOCKS_V3):  # /v1/charts could not be downloaded and v3 could
-        daily = continue_with_v3(daily, parse_nearblocks_v3(raw))
+        v3_days = [fetched_on(k) for k in NEARBLOCKS_V3]
+        v3_day = None if any(d is None for d in v3_days) else min(v3_days)
+        daily = continue_with_v3(daily, drop_unfinished_days(parse_nearblocks_v3(raw), v3_day))
     intents = parse_defillama(raw["defillama_intents"])
-    daily = daily.join(intents, how="left")
-    return drop_unfinished_days(daily, fetched_on())
+    day = fetched_on("defillama_intents")
+    return daily.join(intents[intents.index < day] if day is not None else intents, how="left")
 
 
-def fetched_on() -> pd.Timestamp | None:
-    """The UTC day the saved replies were downloaded on (data/raw/_meta.json), or None if it is not recorded."""
-    meta_path = RAW_DIR / "_meta.json"
-    if not meta_path.exists():
-        return None
-    at = json.loads(meta_path.read_text(encoding="utf-8")).get("fetched_at_utc")
+def fetched_on(name: str) -> pd.Timestamp | None:
+    """The UTC day the reply a source was read from was downloaded on (by the last fetch_all), or None if not known."""
+    at = FETCHED_AT.get(name)
     return pd.Timestamp(at).tz_convert("UTC").tz_localize(None).normalize() if at else None
 
 

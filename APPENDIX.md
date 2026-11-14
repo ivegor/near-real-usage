@@ -28,7 +28,7 @@ draft showed both rested on a single month and on a mean:
 
 * Transactions per core account rose from 10.7 to 23.9 a month, but inside each account type the change was much
   smaller: implicit accounts 5.4 → 6.6, named accounts 142.5 → 150.9. With last year's mix of account types the figure
-  would be 11.7, +9%. Most of the rise is low-activity accounts leaving; nobody became twice as active. Whether the
+  would be 11.7, +9%. Most of the rise is low-activity accounts leaving. Whether the
   accounts present in both months became busier was not measured: the census counts accounts by month, not one by one.
 * Named `.near` accounts are +13% October to October but +2% on three-month means; over the last twelve months the
   series ran between 33,204 and 102,911. Named accounts with more than one transaction fell from 50,038 to 36,203
