@@ -17,10 +17,15 @@ next section.*
 5. **Usage did not lead the price in this test.** 5 of 85 weekly lead-lag tests fall outside the noise band, where
    about 4 are expected by chance, and none stands after Holm's correction (claim 11).
 
-That is a narrow case, and it is not a valuation of NEAR: what the data supports is one product, NEAR Intents, and a
-few hundred heavy accounts. Nine dated predictions say what would widen it or close it (see "What would change our
-mind"). The same case as one paragraph, with the shares of the app groups and the two steps of the autumn and their
-dates, is in the [appendix](APPENDIX.md#the-long-term-case-in-full).
+**For a long-term holder.** That is a narrow case, and it is not a valuation of NEAR: what the data supports is one
+product, NEAR Intents, and a few hundred heavy accounts. Holding NEAR for years on this evidence is a bet on two
+changes that are not in the data yet. One is the revenue that reaches the token matching the new NEAR issued: at this
+price that takes 5.6 times the captured revenue, or 3.6 times at the issuance the approved HSP-029 ends at. The other
+is the base widening beyond those accounts and that product: outside the reward namespaces, regular accounts that pay
+their own fees number 17,105 against 27,078 a year earlier as counted, and how many really left is not established
+(claim 3). Nothing here says when, or whether, either happens. Nine dated predictions check the first steps, through
+February 2027 (see "What would change our mind"). The same case as one paragraph, with the shares of the app groups
+and the two steps of the autumn and their dates, is in the [appendix](APPENDIX.md#the-long-term-case-in-full).
 
 *The numbers below are those of the committed `docs/summary.json` (a test checks the key
 ones; a few supporting details, such as which accounts are an app's service accounts, are read from the committed

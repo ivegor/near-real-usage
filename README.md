@@ -25,7 +25,10 @@ Snapshot 2026-11-11; October 2026 against October 2025.
    about 4 are expected by chance, and none stands after Holm's correction.
 
 **Where that leaves a holder: a narrow case, not a valuation.** What the data supports is one product, NEAR Intents,
-and a few hundred heavy accounts; a broad base of accounts paying for themselves is not established. The case widens
+and a few hundred heavy accounts; a broad base of accounts paying for themselves is not established. Holding NEAR for
+years on this evidence is a bet on two changes that are not in the data yet: the revenue that reaches the token
+matching the new NEAR issued, which at this price takes 5.6 times the captured revenue (3.6 times at the issuance the
+approved HSP-029 ends at), and the base widening beyond those accounts and that product. The case widens
 if Intents volume and self-paid activity stay above the range they left in autumn 2026, and closes if they fall back
 into it. Nine predictions with dates and thresholds, frozen on 2026-11-13 and timestamped in a Bitcoin block, say
 which it is; the build scores them, the first on 2026-11-17.
