@@ -9,7 +9,7 @@ NEAR, account by account over the whole chain, and tests with re-runnable code w
 **The long-term case, in short.** After the largest reward app left, what remains on NEAR is the reward apps that
 stayed, which still send 43% of transactions (in October, close to their lowest month), and a small amount of
 self-paid, financial activity carried by a few hundred heavy accounts. That activity grew in autumn 2026 in two steps: NEAR Intents volume and the buybacks it funds
-stepped up on 19 August and have held, while transactions on the chain ran high only for the four weeks of the price
+stepped up on 19 August and have held, while the load on the chain (its fees and gas) ran high only for the four weeks of the price
 rally, from 16 September to 15 October. The revenue it earns covers 15% to 18% of the new NEAR issued, depending on the
 window. That is a narrow case; nine dated predictions say what would widen it or close it.
 
@@ -31,11 +31,11 @@ window. That is a narrow case; nine dated predictions say what would widen it or
   it in implicit and other accounts (named `.near` accounts +4%), and the year as a whole is flat (−5% on eleven-month
   means, the same on twelve). They jumped in the second half of September and the first half of October 2026, when the NEAR price went
   from $1.92 to $4.89 in one month, and in the first 11 days of November they run 12% below October's daily rate and
-  5% below November 2025's (14% below October's rate without a one-off of dormant accounts on 10 November). Without
+  5% below November 2025's (14% and 7% below without a one-off of dormant accounts on 10 November). Without
   the reward-side calls in both Octobers and one account whose calls fail, the October change is +26%. Transactions
   sponsored through relayers fell 75%. Transactions to the exchange, Intents, token contracts and bridges are up
   **37%** (+29% without that account); what is neither that group nor the reward apps is level (+3%). The keyless
-  sample shows the group above the year before already in the second half of August 2026, before the rally (207
+  sample shows the group above the year before already in the second half of August 2026, before the price doubled (207
   thousand transactions a day against 61 thousand); what rose inside the rally is the exchange and the token
   contracts, and the exchange's part was back down by the second half of October.
 * **30 accounts send half of all transactions.** Seven of the ten largest are relays or service accounts (Intents,
@@ -46,7 +46,7 @@ window. That is a narrow case; nine dated predictions say what would widen it or
   100 thousand in October.
 * NEAR Intents volume: **$56M → $129M a day**, October to October, but that base was the middle of a ramp-up: the
   volume is level with November 2025 ($122M) and +73% on the nine months in between ($74.5M). It stepped up on 19
-  August, before the rally, and has held since. Usage does **not** lead price: 6 of 85 weekly
+  August, as the price began to move and a month before it doubled, and has held since. Usage does **not** lead price: 6 of 85 weekly
   lead-lag tests fall outside the noise band where about 4 are expected by chance, and none stands after Holm's
   correction for testing them together.
 * Three readings from our own drafts ("returning accounts grew", "remaining accounts are busier", "the base outside

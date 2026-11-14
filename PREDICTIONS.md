@@ -56,8 +56,8 @@ that the proof is for the file's current digest. The first prediction is scored 
 Two notes on what the reference months turned out to hold.
 
 The step has two dates (see "Evidence against" in THESIS.md). Read by half-months, Intents volume and the buybacks
-stepped up on 19 August 2026, before the price rally, and the transactions on the chain only from 16 September to
-15 October. August, the reference month of A1, A2 and A3, therefore holds 13 days of the step: 58% of its Intents
+stepped up on 19 August 2026, as the price began to move and a month before it doubled, and the fees and gas on the
+chain only from 16 September to 15 October. August, the reference month of A1, A2 and A3, therefore holds 13 days of the step: 58% of its Intents
 volume and 65% of its buybacks came after 19 August. That makes those thresholds higher, not lower: without August the
 top of Intents volume's range would be lower. A3 has a further weakness. Its threshold is in USD, and the buybacks
 are bought with revenue counted in USD, so it can be met by the price alone: at the pace in NEAR of the last 30 days

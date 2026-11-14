@@ -637,10 +637,16 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
                 rally += (f" A year earlier the base was still rising: {was['month']} already averaged ${was['value'] / 1e6:,.1f}M "
                           f"a day, and from {rng['first']} to {rng['last']} volume averaged ${v['range_mean'] / 1e6:,.1f}M.")
         step_day = (summary.get("autumn") or {}).get("intents_step")
-        if step_day:  # by day the step came before the rally, not in the same month
+        if step_day:  # by day the step came with the start of the price's move, before the price doubled
+            pr = step_day["price_usd"]
             rally += (f" By day it came earlier: volume went from ${step_day['volume']['day_before'] / 1e6:,.0f}M to "
-                      f"${step_day['volume']['day'] / 1e6:,.0f}M on {step_day['day']}, at a price of "
-                      f"${step_day['price_usd']['day']:.2f}, and its 7-day mean has stayed above ${step_day['line'] / 1e6:,.1f}M since "
+                      f"${step_day['volume']['day'] / 1e6:,.0f}M on {step_day['day']}, at a price of ${pr['day']:.2f}")
+            up, twice = pr.get("highest_in_the_week_from_it"), pr.get("first_day_at_twice_it")
+            if up:
+                rally += f" that was {up['pct_change']:.0f}% higher {up['days_after']} days later"
+            if twice:
+                rally += f" and first stood at twice that on {twice['date']}"
+            rally += (f"; its 7-day mean has stayed above ${step_day['line'] / 1e6:,.1f}M since "
                       f"{step_day['weekly_mean_above_it_since']}.")
         so_far = (summary.get("month_to_date_yoy") or {}).get("intents_volume_usd")
         if so_far:  # the days of the current month already in hand, against the same days a year earlier

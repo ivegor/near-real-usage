@@ -22,7 +22,8 @@ from . import clients
 FIRST_HALF_ENDS = 15  # day of the month on which the first half ends
 NAMESPACES = (".kaiching", ".tg", ".sweat")
 COLUMNS = {  # what is averaged per day in each half-month
-    "txns": "transactions", "fees_near": "network fees in NEAR", "gas_tgas": "gas used, in Tgas",
+    "txns": "transactions", "txns_less_deleted": "transactions less deleted accounts (each deletion is one transaction)",
+    "fees_near": "network fees in NEAR", "gas_tgas": "gas used, in Tgas",
     "intents_volume_usd": "NEAR Intents volume in USD", "buyback_usd": "buybacks in USD", "buyback_near": "buybacks in NEAR",
     "price_usd": "NEAR price", "deleted_accounts": "deleted accounts", "active_accounts": "signers (active accounts)",
 }
@@ -50,6 +51,8 @@ def table(daily: pd.DataFrame, fees: pd.DataFrame | None, first: str, last: pd.T
     for c in ("txns", "intents_volume_usd", "price_usd", "deleted_accounts", "active_accounts"):
         if c in daily:
             d[c] = daily[c]
+    if "deleted_accounts" in daily:  # a one-off of mass deletions is not activity: the same count without it, every half-month
+        d["txns_less_deleted"] = daily["txns"] - daily["deleted_accounts"].fillna(0)
     price = daily["price_usd"].where(daily["price_usd"] > 0)
     if "fees_usd" in daily:
         d["fees_near"] = daily["fees_usd"] / price
@@ -63,6 +66,21 @@ def table(daily: pd.DataFrame, fees: pd.DataFrame | None, first: str, last: pd.T
         part = d.loc[a:b]
         rows[_label(a, b)] = {**part.mean().to_dict(), "days": int(len(part))}
     return pd.DataFrame(rows).T
+
+
+def _price_after(price: pd.Series, day: pd.Timestamp) -> dict:
+    """The price on the step day, its highest day in the seven days from it (the span of the weekly mean above), and the
+    first day it stood at twice the step day's price: did the step come before the price moved, or with it?"""
+    week = price.loc[day:day + pd.Timedelta(days=6)]
+    top = week.idxmax()
+    twice = price.loc[day:][price.loc[day:] >= 2 * price[day]]
+    out = {"day": float(price[day]), "highest_in_the_week_from_it": {"date": str(top.date()), "value": float(week[top]),
+                                                                     "pct_change": float((week[top] / price[day] - 1) * 100),
+                                                                     "days_after": int((top - day).days)}}
+    if len(twice):
+        out["first_day_at_twice_it"] = {"date": str(twice.index[0].date()), "value": float(twice.iloc[0]),
+                                        "days_after": int((twice.index[0] - day).days)}
+    return out
 
 
 def intents_step(daily: pd.DataFrame, fees: pd.DataFrame | None, top: float, after: str) -> dict | None:
@@ -81,7 +99,7 @@ def intents_step(daily: pd.DataFrame, fees: pd.DataFrame | None, top: float, aft
     out = {"line": float(top), "weekly_mean_above_it_since": str(since.date()), "last_day_at_or_below": str(not_above.index.max().date()),
            "lowest_weekly_mean_since": float(week.loc[since:].min()), "day": str(day.date()),
            "volume": {"day_before": float(vol[before]), "day": float(vol[day])},
-           "price_usd": {"day": float(daily["price_usd"][day])},
+           "price_usd": _price_after(daily["price_usd"].dropna(), day),
            "month": str(day.to_period("M")), "days_of_the_month_from_it": int((month.index >= day).sum()),
            "share_of_the_month_volume_from_it": float(month[month.index >= day].sum() / month.sum())}
     if fees is not None:

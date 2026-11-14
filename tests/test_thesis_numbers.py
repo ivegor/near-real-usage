@@ -583,9 +583,14 @@ def test_the_texts_quote_the_readings_by_window_half_month_and_family():
 
     # the two events of the autumn, dated by rule
     step, above = a["intents_step"], a["above_reference_top"]
+    words = {5: "five"}
+    up, twice = step["price_usd"]["highest_in_the_week_from_it"], step["price_usd"]["first_day_at_twice_it"]
+    assert twice["days_after"] // 7 == 4                                                       # "a month before it doubled"
+    # counted without deleted accounts in every half-month, transactions are above the reference in one half-month only
+    assert above["txns_less_deleted"] == ["2026-09-16..2026-09-30"]
     assert (step["day"], step["weekly_mean_above_it_since"]) == ("2026-08-19", "2026-08-21")
     burst = above["fees_near"]
-    assert burst == above["gas_tgas"] == above["txns"] == ["2026-09-16..2026-09-30", "2026-10-01..2026-10-15"]
+    assert burst == above["gas_tgas"] == ["2026-09-16..2026-09-30", "2026-10-01..2026-10-15"]
     assert above["intents_volume_usd"] == above["buyback_usd"] == [h for h in a["half_months"] if h >= "2026-08-16"]
     first, last = day(burst[0][:10]), day(burst[-1][-10:])
     halves = a["half_months"]
@@ -662,8 +667,8 @@ def test_the_texts_quote_the_readings_by_window_half_month_and_family():
     feb, octo = gone["2026-02"]["burst_days"], gone["2026-10"]["burst_days"]
     th = w["threshold_price"]
     quoted = [
-        f"stepped up on {day(step['day'])} and have held, while transactions on the chain itself ran high for the four weeks of the "
-        f"price rally, from {first} to {last}",
+        f"stepped up on {day(step['day'])} and have held, while the load on the chain itself (its fees and gas) ran high for the four "
+        f"weeks of the price rally, from {first} to {last}",
         f"(100.6% of the net fall as counted, 99.2% with the one-off deletion taken out)".replace("100.6", f"{whole:.1f}").replace("99.2", f"{whole_clean:.1f}"),
         f"named `.near` accounts sent {fam['near']['range_pct_change']:.0f}% more than a year earlier, implicit accounts "
         f"{abs(fam['implicit']['range_pct_change']):.0f}% less and other accounts {abs(fam['other']['range_pct_change']):.0f}% less",
@@ -682,8 +687,11 @@ def test_the_texts_quote_the_readings_by_window_half_month_and_family():
         f"{pct(fam['implicit']['range_pct_change_without_dormant_implicit'])} without the February burst) and other accounts "
         f"(−{abs(fam['other']['range_change_txs']) / 1e6:.2f}M, {pct(fam['other']['range_pct_change'])}); named `.near` accounts sent "
         f"{fam['near']['range_change_txs'] / 1e6:.2f}M more ({pct(fam['near']['range_pct_change'])})",
-        f"of the one-off of {day(spike['date'])} taken out of both months, as from February, {thousand(calm['per_day'])} against "
-        f"{thousand(calm['latest_complete_month']['per_day'])} ({pct(calm['latest_complete_month']['pct_change'])})",
+        f"of the one-off of {day(spike['date'])} taken out of every month compared, as from February, {thousand(calm['per_day'])} against "
+        f"{thousand(calm['latest_complete_month']['per_day'])} ({pct(calm['latest_complete_month']['pct_change'])}) and "
+        f"{thousand(calm['same_month_a_year_earlier']['per_day'])} in November 2025 ({pct(calm['same_month_a_year_earlier']['pct_change'])})",
+        f"it runs at {thousand(calm['per_day'])} a day, {abs(calm['latest_complete_month']['pct_change']):.0f}% below October's rate and "
+        f"{abs(calm['same_month_a_year_earlier']['pct_change']):.0f}% below November 2025's",
         f"({thousand(rec['transactions_per_30_days'] / 30)} a day against {thousand(oct_now)} by October's full count), while last "
         f"year's window sits below October 2025 ({k(pri['transactions_per_30_days'] / 30)} against {thousand(oct_then)})",
         f"from {thousand(aug_then['per_day'])} a day in its days of August to {thousand(nov_then['per_day'])} in its days of November",
@@ -694,8 +702,13 @@ def test_the_texts_quote_the_readings_by_window_half_month_and_family():
         f"{k(split['before']['intents_and_bridges']['per_day'])} to {thousand(split['from']['intents_and_bridges']['per_day'])} "
         f"({pct(view['split']['recent']['pct_change']['intents_and_bridges'])})",
         f"${step['volume']['day_before'] / 1e6:.0f}M on 18 August, ${step['volume']['day'] / 1e6:.0f}M on the 19th, at a price of "
-        f"${step['price_usd']['day']:.2f}, and the weekly mean has stayed above the top of the range before (${step['line'] / 1e6:.1f}M) "
-        f"since {day(step['weekly_mean_above_it_since'])}, its lowest since being ${step['lowest_weekly_mean_since'] / 1e6:.1f}M",
+        f"${step['price_usd']['day']:.2f} that rose {up['pct_change']:.0f}% to ${up['value']:.2f} by {day(up['date'])} and first stood at "
+        f"twice the step day's price on {day(twice['date'])}; the weekly mean has stayed above the top of the range before "
+        f"(${step['line'] / 1e6:.1f}M) since {day(step['weekly_mean_above_it_since'])}, its lowest since being "
+        f"${step['lowest_weekly_mean_since'] / 1e6:.1f}M",
+        f"on a day it was ${step['price_usd']['day']:.2f} ({up['pct_change']:.0f}% higher {words[up['days_after']]} days later, at ${up['value']:.2f})",
+        f"The price began to move the same day ({up['pct_change']:.0f}% higher on {day(up['date'])}) and first stood at twice its level "
+        f"on {day(twice['date'])}",
         f"{min(by_len[x]['coverage'] for x in by_len) * 100:.0f}% to {max(by_len[x]['coverage'] for x in by_len) * 100:.0f}% over other "
         f"windows, and {roll['median'] * 100:.0f}% in the median 90-day window",
         # who pays: the payer dated, the game's accounts, the heavy accounts
@@ -761,23 +774,26 @@ def test_the_texts_quote_the_readings_by_window_half_month_and_family():
         f"day of the others, and the census has {calm['dormant_implicit_single_tx_accounts']['2026-11']:,} dormant implicit accounts with "
         f"one transaction in those 11 days against {calm['dormant_implicit_single_tx_accounts']['2026-10']:,} in all of October",
         f"the series runs at {thousand(calm['per_day'])} a day, {abs(calm['latest_complete_month']['pct_change']):.0f}% below October's "
-        f"rate, and the month would total {M(calm['whole_month_at_that_rate'])}, "
+        f"rate and {abs(calm['same_month_a_year_earlier']['pct_change']):.0f}% below November 2025's, and the month would total "
+        f"{M(calm['whole_month_at_that_rate'])}, "
         f"{(calm['whole_month_at_that_rate'] / s['predictions']['baselines']['core_self_paid_txs_plateau_top'] - 1) * 100:.1f}% above the threshold",
         f"volume stepped up on {day(step['day'])}, at a price of ${step['price_usd']['day']:.2f}, and has held "
         f"({step['days_of_the_month_from_it']} of August's days, {share(step['share_of_the_month_volume_from_it'])} of its volume and "
         f"{share(step['share_of_the_month_buybacks_from_it'])} of its buybacks, are after the step)",
-        f"{k(sep2['txns'])} and {k(oct1['txns'])} thousand transactions a day against a top of {thousand(top['txns'])} "
-        f"({thousand(oct1['txns'] - oct1['deleted_accounts'])} in early October without the deletion of old KaiChing accounts), "
-        f"{sep2['fees_near']:,.0f} and {oct1['fees_near']:,.0f} NEAR of fees a day against {top['fees_near']:,.0f}, and "
-        f"{thousand(oct2['txns'])} transactions and {oct2['fees_near']:,.0f} NEAR in the second half of October, when the price was still "
-        f"${oct2['price_usd']:.2f} on average",
+        f"to 15 October and in no other: {sep2['fees_near']:,.0f} and {oct1['fees_near']:,.0f} NEAR of fees a day against "
+        f"{top['fees_near']:,.0f}",
+        f"{thousand(sep2['txns_less_deleted'])} a day against a top of {thousand(top['txns_less_deleted'])}, and "
+        f"{thousand(oct1['txns_less_deleted'])} in the first half of October, when the deletion of old KaiChing accounts lifted the "
+        f"count as reported to {thousand(oct1['txns'])}",
+        f"back at {thousand(oct2['txns_less_deleted'])} transactions and {oct2['fees_near']:,.0f} NEAR of fees a day, when the price was "
+        f"still ${oct2['price_usd']:.2f} on average",
         f"{thousand(ex[1]['per_day'])} transactions a day in the first half of September, {thousand(ex[2]['per_day'])} and "
         f"{thousand(ex[3]['per_day'])} in the next two half-months, {thousand(ex[4]['per_day'])} (95% interval "
         f"{k(ex[4]['per_day_ci95'][0])} to {thousand(ex[4]['per_day_ci95'][1])}) in the second half of October and "
         f"{thousand(ex[5]['per_day'])} in November",
         f"its namespace sent {thousand(tg['2026-07'])} transactions a day in July, {thousand(tg['2026-08'])} in August, "
         f"{thousand(tg['2026-09'])} in September and {thousand(tg['2026-10'])} in October",
-        f"acted for {hot['2026-08']['accounts']:,} accounts in August, {hot['2026-09']['accounts']:,} in September and "
+        f"paid everything for {hot['2026-08']['accounts']:,} accounts in August, {hot['2026-09']['accounts']:,} in September and "
         f"{hot['2026-10']['accounts']:,} in October",
         f"Old accounts sent {share(old['prior']['relayed'])} of the sponsored core transactions a year ago and send "
         f"{share(old['latest']['relayed'])} now, against {share(old['prior']['self_paid'])} and {share(old['latest']['self_paid'])} of the "
@@ -804,17 +820,17 @@ def test_the_texts_quote_the_readings_by_window_half_month_and_family():
         f"deletions in those months",
         f"move the nine-month window from {pct(calm9['9'])} to {pct(both9['9'])}, the eleven-month one from {pct(calm9['11'])} to "
         f"{pct(both9['11'])}, and the nine months before the step from {pct(rng_calm)} to {pct(nine_both)}",
-        f"NearBlocks counted {dec['deleted_accounts']:,} deletions from 17 to 22 December",
+        f"NearBlocks counted {dec['deleted_accounts']:,} deletions on {words[dec['days']]} days from 17 to 22 December",
         f"{cell['month']['accounts']:,} in December, {cell['month']['single_tx_accounts']:,} of them with one transaction, and "
         f"{cell['month_after']['accounts']:,} in January",
         f"(387,762 in October 2025)",
         f"a second group: {burst_apr['2026-04']['first_seen_the_month_before_single_tx_accounts']:,} implicit accounts first seen in March",
-        f"`aggregate-oracle.near` ({oracle['transactions']:,} transactions from {oracle['accounts']} implicit accounts",
+        f"`aggregate-oracle.near` ({oracle['transactions']:,} transactions from {oracle['accounts']} accounts;",
         f"all three make it {pct(bots['exchange_pct_change_with_them'])}, the financial group {pct(bots['finance_pct_change_with_them'])}, "
         f"everything else {pct(c['three_parts']['rest_without_exchange_bot_targets_and_the_oracle_by_name']['pct_change'])}, and the "
         f"financial group without `escrow.ai.near` {pct(c['failing_senders']['finance_pct_change_without_them_and_with_the_oracle_by_name'])}",
     ]
-    assert (dec["first"], dec["last"], cell["family"], cell["age"]) == ("2025-12-17", "2025-12-22", "implicit", "lt2y")
+    assert (dec["first"], dec["last"], dec["days"], cell["family"], cell["age"]) == ("2025-12-17", "2025-12-22", 5, "implicit", "lt2y")
     assert s["sponsors"]["month"]["sponsored_by_ember"]["prior"] == 387762
     assert (burst_apr["2026-04"]["first_seen_the_month_before_relayed_tx_share"] > 0.5 and bots["latest"] == oracle["transactions"])
     missing = [q for q in quoted if q not in text]
@@ -822,16 +838,16 @@ def test_the_texts_quote_the_readings_by_window_half_month_and_family():
     in_readme = [
         f"({whole_clean:.1f}% of the fall with a one-off deletion of old accounts taken out)",
         f"named `.near` accounts {pct(fam['near']['range_pct_change'])}",
-        f"({abs(calm['latest_complete_month']['pct_change']):.0f}% below October's rate without a one-off of dormant accounts on "
-        f"{day(spike['date'])})",
+        f"({abs(calm['latest_complete_month']['pct_change']):.0f}% and {abs(calm['same_month_a_year_earlier']['pct_change']):.0f}% below "
+        f"without a one-off of dormant accounts on {day(spike['date'])})",
         f"({thousand(aug_now['per_day'])} transactions a day against {thousand(aug_then['per_day'])})",
         f"(by namespace {share(ns['2026-10'])} in October against {share(min(spring))[:-1]}% to {share(max(spring))} a month from April to August)",
-        f"It stepped up on {day(step['day'])}, before the rally",
+        f"It stepped up on {day(step['day'])}, as the price began to move and a month before it doubled",
         f"the sixth-best of {roll['windows']} such windows since they began ({min(by_len[x]['coverage'] for x in by_len) * 100:.0f}% to "
         f"{max(by_len[x]['coverage'] for x in by_len) * 100:.0f}% over other windows; ${by_len['programme']['buyback_usd_annualized'] / 1e6:.1f}M "
         f"a year at the pace of the whole programme). In NEAR their step was {bb['near_ratio']:.1f} times, in USD {bb['usd_ratio']:.1f} times",
-        f"stepped up on {day(step['day'])} and have held, while transactions on the chain ran high only for the four weeks of the price "
-        f"rally, from {first} to {last}",
+        f"stepped up on {day(step['day'])} and have held, while the load on the chain (its fees and gas) ran high only for the four weeks "
+        f"of the price rally, from {first} to {last}",
     ]
     assert roll["rank_of_the_latest"] == 6                                                            # "the sixth-best"
     missing = [q for q in in_readme if q not in readme]
