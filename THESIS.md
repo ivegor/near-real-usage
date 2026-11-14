@@ -356,6 +356,27 @@ PREDICTIONS.md says, prediction by prediction, what a hold shows and what it doe
   illustration, not a lower bound. A failure would call for the Holm-corrected test and a test on weeks after the snapshot; it would
   not by itself make usage a timing signal for the price.
 
+## What could not be computed
+
+The track brief asks to say so when a metric cannot be computed from the sources. These could not; each is set out
+with its numbers in the section named.
+
+* **How many people are behind the accounts.** The chain shows accounts, and for a relayed transaction the account
+  the relayer acted for; how many people are behind them it does not say ("Limits").
+* **How many regular self-paying accounts really left.** Up to 15,162 of last year's were players of Meteor's reward
+  game, whose calls a relayer submits now, so how many really left is not known (claim 3).
+* **Whether transactions succeeded, and what they were for.** None of the queries reads how a transaction ended; that
+  was checked on a sample for one contract only, NEAR Intents ("Limits"; "Who is left: the customers").
+* **What the corrected relay rule does to the account tables.** The saved BigQuery tables have not been refreshed, so
+  the effect on this snapshot is unmeasured ("Limits").
+* **Whether the NEAR reaching the revenue wallets was bought on the market and stays out of circulation.** The data
+  do not show it ("Does it reach the token?").
+* **Where the Intents revenue comes from.** The share of the confidential pool is the work of two other entries; we
+  did not check their on-chain traces ("Limits").
+* **Swap volume from the NEAR Intents Explorer API.** The track brief names it; it needs a partner key, so the volume
+  here is DefiLlama's daily series, not checked against a second source ("Limits").
+* **What NEAR is worth.** The thesis does not estimate it, or what holding NEAR would return ("Limits").
+
 ## Limits
 
 Each limit is named here in a line or two. The full text of every one, with its numbers, is in the
