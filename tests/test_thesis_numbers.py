@@ -129,7 +129,7 @@ def test_thesis_quotes_the_committed_summary():
     vs_last_november = (monthly["2026-10"] / monthly["2025-11"] - 1) * 100
     thousand = lambda v: f"{v / 1e3:.0f} thousand"
     # the coverage over windows of other lengths, the one-off inside the unfinished month, and the term counted in both years
-    cov = [x["coverage"] * 100 for x in s["value_capture"]["windows"]["by_length"].values()]
+    cov = [x["coverage"] * 100 for k, x in s["value_capture"]["windows"]["by_length"].items() if k != "90"]
     cov_lo, cov_hi = min(cov), max(cov)
     spike_day = datetime.strptime(p["partial_month"]["signer_spike"]["date"], "%Y-%m-%d").strftime("%-d %B")
     assert spike_day == "10 November"
@@ -596,7 +596,7 @@ def test_readme_key_findings_quote_the_same_summary():
     assert (pace["latest_complete_month"]["month"], pace["same_month_a_year_earlier"]["month"]) == ("2026-10", "2025-11")
     quota = p["kaiching_relayed_txs_per_day"]
     rates = p["partial_month"]["txs_per_day"]
-    cov = [x["coverage"] * 100 for x in v["windows"]["by_length"].values()]
+    cov = [x["coverage"] * 100 for k, x in v["windows"]["by_length"].items() if k != "90"]
     twelve = p["core_direct_txs_change_12_months_with_the_tables_first_month"]["pct_change"]
     assert pct(twelve) == pct(p["core_direct_txs_change_by_window"]["11"])                         # "the same on twelve"
     quoted = [
@@ -632,6 +632,23 @@ def test_readme_key_findings_quote_the_same_summary():
     ]
     missing = [q for q in quoted if q not in text]
     assert not missing, f"README.md does not quote these summary values: {missing}"
+    # the first screen, on its own: some of its phrases are repeated further down the README
+    first_screen = text.split("## The answer in five lines", 1)[1].split(" ## ", 1)[0]
+    on_first_screen = [
+        f"fell {abs(accounts['pct_change']):.0f}% ({accounts['prior'] / 1e6:.1f}M → {M(accounts['latest'])} a month)",
+        f"from {M(sm['sponsored_accounts']['prior'])} to {M(sm['sponsored_accounts']['latest'])}",
+        f"{latest['accounts_for_half_of_txs']} accounts send half of all transactions",
+        f"{sm['heavy_accounts']['latest']:,.0f} heavy accounts send "
+        f"{s['segments']['heavy_share_of_independent_self_paid_txs']['latest'] * 100:.0f}% of the self-paid ones",
+        f"up {core['direct_txs']['pct_change']:.0f}% October to October",
+        f"averaging {abs(core_step['range_pct_change']):.0f}%",
+        f"equals {v['buyback_coverage_of_new_supply'] * 100:.0f}% of the net new NEAR",
+        f"needs {v['growth_needed_to_cover_new_supply']:.1f} times the revenue",
+        f"{n_out} of {17 * len(s['lead_vs_price'])} weekly lead-lag tests",
+        f"about {0.05 * 17 * len(s['lead_vs_price']):.0f} are expected",
+    ]
+    missing = [q for q in on_first_screen if q not in first_screen]
+    assert not missing, f"The answer in five lines does not quote these summary values: {missing}"
 
 
 def test_the_notes_for_coding_agents_are_the_same_under_both_names():
@@ -774,7 +791,7 @@ def test_the_texts_quote_the_readings_by_window_half_month_and_family():
         f"On the day of the step the price fell {abs(step['price_usd']['day_before']['pct_change_to_the_day']):.0f}%, to its lowest since "
         f"{day(step['price_usd']['lowest_since'])}; it rose from the next day ({up['pct_change']:.0f}% higher on {day(up['date'])} than on "
         f"the 19th) and first stood at twice the step day's level on {day(twice['date'])}",
-        f"{min(by_len[x]['coverage'] for x in by_len) * 100:.0f}% to {max(by_len[x]['coverage'] for x in by_len) * 100:.0f}% over other "
+        f"{min(by_len[x]['coverage'] for x in by_len if x != '90') * 100:.0f}% to {max(by_len[x]['coverage'] for x in by_len if x != '90') * 100:.0f}% over other "
         f"windows ending on the same day, and {roll['median'] * 100:.0f}% in the median 90-day window",
         # who pays: the payer dated, the game's accounts, the heavy accounts
         f"fell from {reg['2025-10']['self_paid_txs'] / 1e6:.2f}M in October 2025 to {reg['2025-12']['self_paid_txs'] / 1e6:.2f}M in December "

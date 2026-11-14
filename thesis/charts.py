@@ -427,7 +427,7 @@ def _takeaway(slug: str, s: dict) -> str:
             v = s["value_capture"]
             first = f"The revenue NEAR Intents captures for buybacks equals {_number(v['buyback_coverage_of_new_supply'], '.0f', suffix='%', scale=100)} of the new NEAR issued."
             lengths = (v.get("windows") or {}).get("by_length")
-            cov = [x["coverage"] for x in (lengths or {}).values() if x.get("coverage") is not None and np.isfinite(x["coverage"])]
+            cov = [x["coverage"] for k, x in (lengths or {}).items() if k != "90" and x.get("coverage") is not None and np.isfinite(x["coverage"])]
             if cov:  # only windows with a defined denominator contribute to the range
                 first = (f"The revenue NEAR Intents captures for buybacks equals {_number(v['buyback_coverage_of_new_supply'], '.0f', suffix='%', scale=100)} of the new NEAR "
                          f"issued over the 90 days to {v['window'][1]}, and {min(cov) * 100:.0f}% to {max(cov) * 100:.0f}% over the other "

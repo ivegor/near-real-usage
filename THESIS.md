@@ -150,7 +150,7 @@ most 18% of the dilution (below). Covering all of the dilution needs
 annual buyback. The bought NEAR is not burned, so supply itself does not shrink.
 
 The 18% is close to the best window there has been: the median 90-day window since the buybacks began covers 12.7%,
-and windows of other lengths that end on the same day give 15% to 18% (each window in the appendix).
+and windows of other lengths that end on the same day give 15% to 17% (each window in the appendix).
 And the step in buybacks is mostly the price. In USD they went from $17,025 a day before 19 August to $59,297 a day
 since (3.5 times); in NEAR, from 10,456 to 17,016 NEAR a day (1.6 times). Whether the buybacks in NEAR have held
 since depends on the statistic: by the mean of the last two half-months they have not, by the median day they have.

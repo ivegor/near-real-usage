@@ -17,8 +17,8 @@ Snapshot 2026-11-11; October 2026 against October 2025.
    those whose fees an app paid went from 43.05M to 0.55M, which is the whole fall.
 2. **What is left is in few hands.** 30 accounts send half of all transactions; outside the reward apps' namespaces
    475 heavy accounts send 91% of the self-paid ones.
-3. **Self-paid activity grew only in autumn 2026.** It is up 28% October to October, after nine months averaging 17%
-   below the year before, and the jump came in the weeks of a price rally.
+3. **Self-paid activity ran below the year before, on average, until autumn 2026.** It is up 28% October to October,
+   after nine months averaging 17% below the year before, and the jump came in the weeks of a price rally.
 4. **Little of it reaches the token so far.** The NEAR that Intents revenue brings in equals 18% of the net new NEAR
    issued over the last 90 days; matching the issuance at this price needs 5.6 times the revenue.
 5. **Usage did not lead the price in this test.** 5 of 85 weekly lead-lag tests fall outside the noise band, where
@@ -35,7 +35,7 @@ which it is; the build scores them, the first on 2026-11-17.
 | Do this | See this |
 |---|---|
 | `docker build -t near-real-usage . && docker run --rm -p 8000:8000 near-real-usage` | The tests and an offline rebuild of every chart run while the image is built; the dashboard is served on <http://localhost:8000> |
-| `make test` | Every figure quoted here, in THESIS.md, APPENDIX.md and PREDICTIONS.md is compared with the frozen copy of the summary |
+| `make test` | The key figures quoted here, in THESIS.md, APPENDIX.md and PREDICTIONS.md are compared with the frozen copy of the summary |
 | `make offline` | `docs/` rebuilt from the committed data with no network, the same bytes as the committed files |
 | `ots verify predictions.csv.ots` | The predictions file existed before its first check date: its digest is in Bitcoin block 975705 |
 | Paste [`sql/account_age.sql`](sql/account_age.sql) into the BigQuery console | The census itself, counted from the public dataset (the saved result was a 482.64 GB scan; read the dry-run estimate first) |
@@ -64,9 +64,9 @@ not a valuation of NEAR; nine dated predictions say what would widen or close it
   transactions**. The regular ones (10 to 999 a month) number 17,105 against 27,078 a year earlier, but up to 15,162
   of last year's were players of one wallet's reward game whose calls are relayed now, so how many really left is not
   established.
-* **Self-paid transactions outside reward apps are up 28%** October to October, but only since autumn: in the nine
-  months before they averaged 17% below the year before. They jumped when the NEAR price went from $1.92 to $4.89 in
-  one month, and in the first 11 days of November they run 12% below October's daily rate.
+* **Self-paid transactions outside reward apps are up 28%** October to October, but on average only since autumn: in the
+  nine months before they averaged 17% below the year before. They jumped when the NEAR price went from $1.92 to $4.89
+  in one month, and in the first 11 days of November they run 12% below October's daily rate.
 * **Transactions to financial contracts are up 37%** (the exchange, Intents, token contracts and bridges; +29%
   without one account whose sampled calls all failed). This counts calls to those contracts by contract and relayer,
   not users, successful operations or what the calls were for.
