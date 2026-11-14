@@ -132,7 +132,7 @@ def _population_chart(pop: pd.DataFrame, summary: dict, out: Path) -> Chart:
         quota_note = (f" Its relayer submitted {quota['median_month_to_the_nearest_thousand']:,.0f} transactions a day, to within a "
                       f"thousandth, in {len(quota['months_within_a_thousandth_of_it'])} of its "
                       f"{quota['months_with_relayed_transactions']} months in the census ({quota['first_month']} to "
-                      f"{quota['last_month']}): a job with a daily quota.")
+                      f"{quota['last_month']}), by its monthly totals: a job with a daily quota, as far as monthly totals can show.")
     check, checked = ps.get("totals_check"), ""
     if check:  # the same transactions counted by a second, independent source
         short = [abs(v["share"]) * 100 for v in check["differ"].values()]
@@ -205,7 +205,7 @@ def _value_chart(d: pd.DataFrame, fees: pd.DataFrame, vc: dict, out: Path) -> Ch
         f"description, used to buy NEAR on the market since {vc['buyback_start']}. That is ${vc['buyback_usd_annualized'] / 1e6:.1f}M a year against "
         f"${vc['new_supply_value_usd_annualized'] / 1e6:.0f}M a year of net new NEAR "
         f"({vc['net_new_supply_near_annualized'] / 1e6:.1f}M NEAR at ${vc['mean_price_usd']:.2f}): the buybacks equal "
-        f"{vc['buyback_coverage_of_new_supply'] * 100:.0f}% of the dilution, and the market capitalisation is "
+        f"{vc['buyback_coverage_of_new_supply'] * 100:.0f}% of the net new supply (a ratio of flows, not a measured offset), and the market capitalisation is "
         f"{vc['market_cap_to_annual_buyback']:.0f} times the annual buyback.",
         "DefiLlama fee series for NEAR Intents (dailyFees, dailyRevenue, dailyHoldersRevenue); net new supply = change in "
         "NearBlocks' daily total supply (already net of burned fees) valued at the mean price of the period. The window ends "
@@ -720,7 +720,7 @@ def build_all(daily: pd.DataFrame, summary: dict, out: Path) -> list[Chart]:
             "lead_lag", "Does usage lead price?",
             f"Weekly-change correlation with price, lags outside the noise band ({n_out} of {n_tests} tested; "
             f"about {0.05 * n_tests:.0f} expected by chance; {_holm_words(summary)}): " + "; ".join(parts) + ". Fees are tested in NEAR: in USD they "
-            f"correlate with price in the same week (r={usd.get('corr', float('nan')):.2f}) only because USD fees are NEAR "
+            f"correlate with price in the same week (r={usd.get('corr', float('nan')):.2f}) mostly because USD fees are NEAR "
             "fees multiplied by the price.",
             "corr(Δlog metric_t, Δlog price_{t+k}), k in weeks, positive k = metric moves first (green bars); "
             "dotted lines = ±2/√n noise band of each lag.",

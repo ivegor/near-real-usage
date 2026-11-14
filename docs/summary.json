@@ -476,6 +476,14 @@
       0.628765859106
     ]
   },
+  "lead_vs_price_lag1_autocorrelation": {
+    "price_usd": 0.308931881485,
+    "returning_accounts": -0.0985964897008,
+    "active_accounts": -0.0939505597968,
+    "intents_volume_usd": -0.273039472683,
+    "fees_near": -0.205708071084,
+    "txns": -0.231067886602
+  },
   "checks": {
     "new_exceeds_active_days": {
       "recent": 0,

@@ -26,6 +26,8 @@ def sha256(path: Path | None = None) -> str:
     return hashlib.sha256((path or CSV).read_bytes()).hexdigest()
 
 
+FROZEN_DATA_THROUGH = "2026-11-11"  # the last day of the daily data when predictions.csv was frozen
+A5_CONTINUING = ("price_usd", "txns", "fees_usd", "intents_volume_usd")  # fees in NEAR are fees_usd over the price
 PLATEAU = ("2025-12", "2026-08")      # the nine complete months between the November 2025 spike and the September 2026 step
 BUYBACK_PLATEAU = ("2026-03", "2026-08")  # complete months of the buyback programme before the step (it began 2026-02-23)
 
@@ -147,8 +149,8 @@ def step(daily: pd.DataFrame, fees: pd.DataFrame | None = None, census: pd.DataF
                 by_family["implicit"]["range_pct_change_without_dormant_implicit"] = (
                     float((a_.mean() / b_.mean() - 1) * 100) if b_.mean() else float("nan"))
             # Inside each family, by age and by activity the month before: who sent the transactions that changed. A
-            # fall in accounts under a year old that does not reappear among the older ones is a smaller inflow; a rise
-            # in one age class matched by a fall in the class below is one cohort growing older, not new old users.
+            # fall in accounts under a year old that is not made up among the older ones fits a smaller inflow; a rise
+            # in one age class matched by a fall in the class below fits one cohort growing older. Class totals, not accounts.
             young = core_rows["age"].isin(["m0", "lt30", "lt1y"])
             part = {"under_a_year": young,
                     "older_active_the_month_before": ~young & (core_rows["prev_month"] == "returning"),
@@ -226,6 +228,16 @@ def _measure(metric: str, on: pd.Timestamp, daily: pd.DataFrame, fees: pd.DataFr
         w = _window(d["intents_volume_usd"], start, on)
         return None if w is None else float(w.mean())
     if metric == "metrics_with_adjacent_positive_leads":
+        # The series A5 is scored on must reach its check date: every week from the data the file was frozen with to the
+        # check date needs a value of the price and of each usage series that goes on after NearBlocks /v1. The two
+        # that end with /v1 (active and returning accounts) are scored as they stand, as PREDICTIONS.md says.
+        weeks = pd.period_range(pd.Timestamp(FROZEN_DATA_THROUGH) + pd.Timedelta(days=1), on, freq="W-SUN")
+        for c in A5_CONTINUING:
+            if c not in d:
+                return None
+            have = d[c].dropna().index.to_period("W-SUN")
+            if not set(weeks) <= set(have):
+                return None
         return float(adjacent_positive_leads(metrics.summarize(d)["lead_vs_price"]))
     if fees is None or fees.empty:
         return None

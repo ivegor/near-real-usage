@@ -446,3 +446,16 @@ def test_the_timestamp_proof_names_the_bitcoin_block_quoted_in_the_notes():
     height, _ = varuint(proof, i)
     notes = " ".join((root / "PREDICTIONS.md").read_text(encoding="utf-8").split())
     assert f"it holds the attestation of Bitcoin block {height}" in notes
+
+
+def test_a5_waits_for_the_usage_series_to_reach_its_check_date():
+    """Prices alone up to the check date must not score A5: the usage series it tests have to reach it too."""
+    from thesis import sources
+    daily = sources.load_daily(offline=True)
+    later = pd.date_range(daily.index.max() + pd.Timedelta(days=1), "2027-02-11", freq="D")
+    only_prices = pd.concat([daily, pd.DataFrame({"price_usd": 3.0}, index=later)])
+    assert predictions._measure("metrics_with_adjacent_positive_leads", pd.Timestamp("2027-02-11"), only_prices, None) is None
+    full = only_prices.copy()
+    for c in ("txns", "fees_usd", "intents_volume_usd"):
+        full.loc[later, c] = daily[c].dropna().iloc[-1]
+    assert predictions._measure("metrics_with_adjacent_positive_leads", pd.Timestamp("2027-02-11"), full, None) is not None

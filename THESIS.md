@@ -18,7 +18,7 @@ transactions (in October, close to their lowest month), and a small amount of se
 activity grew in autumn 2026 in two steps with different dates: NEAR Intents volume and the buybacks it funds stepped
 up on 19 August and have held, while the load on the chain itself (its fees and gas) ran high for the four weeks of the price rally,
 from 16 September to 15 October, and have come back down. What held is the volume and the buybacks in USD; the
-buybacks in NEAR have held by the median day and not by the mean (see "Does it reach the token?"). The revenue it earns covers 15% to 18% of the new NEAR
+buybacks in NEAR have held by the median day and not by the mean (see "Does it reach the token?"). The NEAR its revenue brings in equals 15% to 18% of the new NEAR
 issued, depending on the window. That is a narrow case. Nine dated predictions say what would widen it or close it
 (see "What would change our mind").
 
@@ -38,7 +38,7 @@ appendix.
 | 7 | Financial use of the chain is growing | **Up in October 2026, and already above the year before in August, before the price doubled** | Transactions to the exchange, Intents, token contracts and bridges 6.72M → 9.18M a month (+37%); Ref/Rhea exchange +96%, token contracts +47%, bridges and chain signatures +43%. Without the transactions of one account whose sampled calls all failed, +29% |
 | 8 | Cross-chain demand through NEAR is growing | **Up since 19 August 2026; level with November 2025** | NEAR Intents volume $55.6M → $128.6M a day (+131%, October to October, DefiLlama), but October 2025 was the middle of a ramp-up: November 2025 already averaged $122.0M (October 2026 is +5% on it). In the nine months in between volume averaged $74.5M; against that level October 2026 is +73% |
 | 9 | NEAR's transactions come from many independent accounts | **Refuted** | 30 accounts send 50% of transactions; the top 10 send 37% (17% a year earlier); 486 accounts with 1,000+ transactions send 70%. Seven of the ten largest are relays or service accounts (Intents, Sweat, the bridges), so this counts who submits transactions; the people behind a relay are not visible on the chain |
-| 10 | Intents revenue offsets the dilution of NEAR holders | **Not yet** | Buybacks (DefiLlama's name for the NEAR arriving at the revenue wallets) at $20.7M a year against $115M a year of net new NEAR: equal to 18% of the dilution over the last 90 days, 15% to 18% over other windows, and 13% in the median 90-day window since the buybacks began; 5.6 times the captured revenue needed |
+| 10 | Intents revenue offsets the dilution of NEAR holders | **Not yet** | Buybacks (DefiLlama's name for the NEAR arriving at the revenue wallets) at $20.7M a year against $115M a year of net new NEAR: equal to 18% of the net new supply over the last 90 days, so at most that share of the dilution is offset,, 15% to 18% over other windows, and 13% in the median 90-day window since the buybacks began; 5.6 times the captured revenue needed |
 | 11 | Usage changes lead price changes | **Not supported** | 6 of 85 lag tests outside the noise band, about 4 expected by chance; none stands after Holm's correction for testing 85 lags together |
 
 Claims 2, 4 and 5 are what is left of three readings in our own drafts that did not survive closer measurement as
@@ -54,7 +54,8 @@ between the groups is a number we chose (`sql/payer_frequency.sql`, every transa
 * **Whose account is it?** KaiChing and HOT create accounts for their users inside their own namespaces
   (`.kaiching`, `.tg`). Everything else is outside them.
 * **How often does it act?** Transactions in the month, by powers of ten. Under 10: *occasional*. 10 to 999: *regular*.
-  1,000 or more is over 30 a day, every day, which nobody does by hand: *heavy*, meaning automated or institutional.
+  1,000 or more is over 30 a day, every day: *heavy*. We read it as likely automated or institutional; the line is
+  measured, that reading is not (see "Limits").
 
 | Segment | October 2025 | October 2026 | Change (three-month means) |
 |---|---|---|---|
@@ -126,10 +127,12 @@ Partly, and not enough yet. Over the last 90 days NEAR Intents charged $18.9M in
 2026-02-23, by DefiLlama's description of its series, the captured revenue is used to buy NEAR on the open market. At the last 90 days' pace that is
 $20.7M a year. Over the same period the supply of NEAR grew at 32.3M NEAR a
 year net of burned fees (2.48% over the last 365 days), worth $115M a year at the
-period's mean price of $3.58. **The buybacks equal 18% of the dilution.** "Buybacks" is
-DefiLlama's name for the series: its adapter counts the NEAR and wNEAR arriving at the revenue wallets and files all
-of it as bought for holders since that date. The purchases on the market are not in the data; what the chain shows is
-that the NEAR arrives and stays (below). Covering all of the dilution needs
+period's mean price of $3.58. **The buybacks equal 18% of the net new supply.** That is a ratio of two
+flows, not a measured offset of anyone's dilution: "buybacks" is DefiLlama's name for the series, and its adapter
+counts the NEAR and wNEAR arriving at the revenue wallets and files all of it as bought for holders since that date.
+The purchases on the market are not in the data, nor is it known that the NEAR stays out of circulation for good;
+what the chain shows is that the NEAR arrives and, so far, stays. If all of it was bought and is held, it offsets at
+most 18% of the dilution (below). Covering all of the dilution needs
 5.6 times the captured revenue at this price, and the market capitalisation is 227 times the
 annual buyback. The bought NEAR is not burned, so supply itself does not shrink.
 
@@ -185,8 +188,9 @@ tables above do not: a year ago 55% of sampled transactions were a single call, 
 
 * **The headline numbers measured an app, not a network.** KaiChing peaked at 48.9 million accounts a month (August
   2025) and averaged under 2 transactions per account a month; it was 93% of all active accounts in October 2025 and
-  stopped between March and April 2026. Its relayer worked to a quota: 2,000,000 transactions a day, to within a
-  thousandth, in 8 of its 17 months in the census. The step that analyses of the daily aggregates see and cannot name
+  stopped between March and April 2026. Its relayer's monthly totals came to 2,000,000 transactions a day, to within a
+  thousandth, in 8 of its 17 months in the census: a total that round, month after month, points to a job with a
+  daily quota, though the census is monthly and does not show the days one by one. The step that analyses of the daily aggregates see and cannot name
   is this app stopping: NearBlocks' daily transactions went from 3,758,663 on 2026-04-01 to 1,063,375 on 2026-04-02.
   KaiChing can be at most 51% of that one-day fall (everything it sent in April); the census is monthly, so how much
   it was is not measured. If its relayer sent all of April's relayed transactions on 1 April, as a column of the daily
@@ -256,9 +260,11 @@ tables above do not: a year ago 55% of sampled transactions were a single call, 
 * **No usage metric leads price in our tests.** On weekly log-changes over ~6 years, 6 of 85 lag tests fall outside
   the noise band where about 4 are expected by chance, and none of the 85 stands after Holm's correction for testing
   them together (the smallest p-value is 0.009; the first step of the correction asks for 0.0006). Fees in USD do
-  correlate with price in the same week (r = 0.38), but only because USD fees are NEAR fees multiplied by the price.
+  correlate with price in the same week (r = 0.38), mostly because USD fees are NEAR fees multiplied by the price:
+  in NEAR, fees show nothing outside the band.
   What was tested is a linear correlation of weekly changes at fixed lags of up to eight weeks: it finds no lead that
-  stands, and it does not rule out one that is non-linear or holds only in some periods. *(chart: lead_lag)*
+  stands, and it does not rule out one that is non-linear or holds only in some periods. It is a screen, not a proof
+  that no lead exists (see "Limits" on the dependence between weeks). *(chart: lead_lag)*
 
 ## What would change our mind
 
@@ -304,8 +310,8 @@ of August, after 19 August, which makes their thresholds harder to stay above, n
 * **Self-paying means the account paid for at least one transaction in the month.** It may also have sponsored ones.
   A sponsored account is not a lesser one; it is one an app is paying for, and it goes when the app does.
 * **An account an app acts for is not shown to be a person.** For a relayed transaction we count the account the
-  relayer acted for, and the committed data shows such accounts acting like the app's own: KaiChing's relayer worked
-  to a daily quota, the game Ember sponsored the same accounts every month, and Meteor's relayer claims rewards in
+  relayer acted for, and the committed data shows such accounts acting like the app's own: KaiChing's relayer's monthly totals
+  point to a daily quota, nearly all of the game Ember's sponsored accounts had also been active the month before, and Meteor's relayer claims rewards in
   batches for accounts whose names start with the same two letters. "Sponsored accounts" counts accounts that apps act for; how many people
   are behind them the chain does not say.
 * **"Independent" is defined by exclusion, and it let another app's users in.** It means: pays for at least one of
@@ -341,9 +347,13 @@ of August, after 19 August, which makes their thresholds harder to stay above, n
   between the two autumns, $74.5M a day from December 2025 to August 2026.
 * **Net new supply is not dilution for every holder.** New NEAR is issued mostly as staking rewards, so a holder who
   stakes receives part of it. The 18% compares buybacks with all of the net new supply, which is the most a holder
-  could be diluted by.
+  could be diluted by. It is a ratio of flows: what it does for holders depends on the NEAR being bought on the market
+  and kept out of circulation, which the data do not show.
 * **Lead-lag scans 17 lags × 5 metrics = 85 tests**; about 4 bars outside ±2/√n are expected by chance. The p-values
-  behind Holm's correction use Fisher's z, a normal approximation, on weekly changes. One of the
+  behind Holm's correction use Fisher's z, a normal approximation, on weekly changes. Band and p-values treat the weeks
+  as independent, and they are not: weekly price changes correlate 0.31 with the week before, the usage metrics' changes
+  −0.09 to −0.27. Signs this opposite at the first lag narrow the true band rather than widen it (Bartlett's formula),
+  but no correction for the dependence was computed, so band and p-values are approximate. One of the
   five metrics is the `active − new` proxy shown above to be unreliable; it is reported for completeness.
 * **The app table is a manual grouping** of the 40 largest contracts and relayers, which cover 90% of October 2026
   transactions. Allowing for the group's contracts outside a month's 40 largest, the +37% lies between +30% and +39%.

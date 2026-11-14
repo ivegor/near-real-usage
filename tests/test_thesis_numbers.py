@@ -111,7 +111,8 @@ def test_thesis_quotes_the_committed_summary():
     back, back3 = pay["independent_returning_accounts"], s["sponsors"]["three_month_mean"]["independent_returning_accounts"]
     sweat_by_month, met = s["sponsors"]["sponsored_by_month"]["sweat"], pay["old_core_sponsored_by_meteor"]
     old3 = [three["old_txs"][k] / three["txs"][k] * 100 for k in ("latest", "prior")]
-    # accounts that apps act for: a relayer with a daily quota, a game with the same accounts every month, claims in batches
+    # accounts that apps act for: a relayer whose monthly totals point to a daily quota, a game whose accounts were all
+    # active the month before, claims in batches
     quota, ember_by_month, claims = p["kaiching_relayed_txs_per_day"], s["sponsors"]["ember_accounts_by_month"], game["sample_claims"]["recent"]
     assert quota["median_month_to_the_nearest_thousand"] == 2_000_000 and claims["shared_first_letters"] == ["ab", "co", "fu", "le", "ne"]
     oct_, sep_ = ember_by_month["2025-10"], ember_by_month["2025-09"]
@@ -182,7 +183,7 @@ def test_thesis_quotes_the_committed_summary():
         f"self-paid transactions outside the reward apps ran {abs(last_full['pct_change']):.0f}% below October's rate",
         "its transactions run at almost twice October's daily rate",
         # the long-term case in short, and the wording of the nine months before the step
-        f"The revenue it earns covers {cov_lo:.0f}% to {cov_hi:.0f}% of the new NEAR issued, depending on the window",
+        f"The NEAR its revenue brings in equals {cov_lo:.0f}% to {cov_hi:.0f}% of the new NEAR issued, depending on the window",
         "What pays its own way averaged below the year before until autumn 2026",
         f"below the year before in {core_step['range_months_below_a_year_earlier']} of the {step['reference_range']['months']} months and "
         f"above it in May ({pct(above['2026-05'])}) and June ({pct(above['2026-06'])})",
@@ -240,7 +241,8 @@ def test_thesis_quotes_the_committed_summary():
         f"NearBlocks counted {oct_gone['deleted_accounts']:,} deleted accounts in October, {oct_days['deleted_accounts']:,} of them from 2 "
         f"to 8 October",
         f"of its {oct_['accounts']:,} in October 2025 all but {oct_['accounts'] - oct_['also_active_the_month_before']} had also been active "
-        f"in September, and so had all but {sep_['accounts'] - sep_['also_active_the_month_before']} of {sep_['accounts']:,} the month before",
+        f"in September, and of the {sep_['accounts']:,} it sponsored in September all but "
+        f"{sep_['accounts'] - sep_['also_active_the_month_before']} had been active in August",
         f"{claims['calls']} of the {calls['recent']['calls']} relayed calls to Meteor's game are reward claims, {claims['in_batches']} of them in "
         f"batches of up to {claims['largest_batch']} in one block",
         f"November 2025 already averaged ${iv_step['month_before_range']['value'] / 1e6:.1f}M (October 2026 is {pct(vs_spike)} on it)",
@@ -411,7 +413,8 @@ def test_thesis_quotes_the_committed_summary():
         f"low of {s['segments']['regular_accounts_low']['value']:,.0f} in August 2026",
         f"{pct(s['population']['core_direct_txs_change_by_window']['6'])} (six months), {pct(s['population']['core_direct_txs_change_by_window']['9'])} (nine)",
         f"${s['value_capture']['buyback_usd_annualized'] / 1e6:.1f}M a year",
-        f"**The buybacks equal {s['value_capture']['buyback_coverage_of_new_supply'] * 100:.0f}% of the dilution.**",
+        f"**The buybacks equal {s['value_capture']['buyback_coverage_of_new_supply'] * 100:.0f}% of the net new supply.**",
+        f"If all of it was bought and is held, it offsets at most {s['value_capture']['buyback_coverage_of_new_supply'] * 100:.0f}% of the dilution",
         f"{s['value_capture']['growth_needed_to_cover_new_supply']:.1f} times the captured revenue",
         f"{sum(w['blocks_found'] for w in s['signer_census']['windows'].values())} random blocks",
         f"each of the {sum(w['accounts'] for w in s['signer_census']['windows'].values()):,} accounts",
@@ -580,7 +583,7 @@ def test_readme_key_findings_quote_the_same_summary():
         f"activity carried by a few hundred heavy accounts",
         f"in its first {rates['days']} days HOT's namespace sent {rates['tg']['partial'] / 1e3:.0f} thousand transactions a day against "
         f"{rates['tg']['latest_complete'] / 1e3:.0f} thousand in October",
-        f"{quota['median_month_to_the_nearest_thousand']:,.0f} transactions a day, to within a thousandth in "
+        f"{quota['median_month_to_the_nearest_thousand']:,.0f} transactions a day, to within a thousandth, in "
         f"{len(quota['months_within_a_thousandth_of_it'])} of its {quota['months_with_relayed_transactions']} months from "
         f"{month(quota['first_month'])} to {month(quota['last_month'])} (every series of the census leaves out its first month, "
         f"{month(p['table_first_month'])}, which has no month before it)",
@@ -592,7 +595,7 @@ def test_readme_key_findings_quote_the_same_summary():
         f"of the reward-side contracts is outside the reward namespaces, and between "
         f"{pct(s['segments']['self_paid_txs_adjustments']['pct_change_without_both_both_ends'][0])} and "
         f"{pct(s['segments']['self_paid_txs_adjustments']['pct_change_without_both_both_ends'][1])} as far as the tables can say",
-        f"The revenue it earns covers {min(cov):.0f}% to {max(cov):.0f}% of the new NEAR issued, depending on the window",
+        f"The NEAR its revenue brings in equals {min(cov):.0f}% to {max(cov):.0f}% of the new NEAR issued, depending on the window",
         f"level with November 2025 (${iv_step['month_before_range']['value'] / 1e6:.0f}M) and {pct(vs_range)} on the nine months "
         f"in between (${iv_step['range_mean'] / 1e6:.1f}M)",
         f"{p['one_day']['accounts_created']:,} accounts created by {p['one_day']['account_creators']} creators",
@@ -613,7 +616,7 @@ def test_readme_key_findings_quote_the_same_summary():
         f"or {c['reward_apps_share_incl_kaiching_namespace'] * 100:.0f}% counting",
         f"**${intents['prior'] / 1e6:.0f}M → ${intents['recent'] / 1e6:.0f}M a day**",
         f"{n_out} of {17 * len(s['lead_vs_price'])} weekly lead-lag tests",
-        f"**${v['buyback_usd_annualized'] / 1e6:.1f}M a year** and cover **{v['buyback_coverage_of_new_supply'] * 100:.0f}%**",
+        f"**${v['buyback_usd_annualized'] / 1e6:.1f}M a year**, equal to **{v['buyback_coverage_of_new_supply'] * 100:.0f}%**",
     ]
     missing = [q for q in quoted if q not in text]
     assert not missing, f"README.md does not quote these summary values: {missing}"
@@ -1053,3 +1056,14 @@ def test_the_texts_quote_the_eighth_review_readings():
     in_notes = [f"(NearBlocks counted {pm['deleted_accounts']['2026-11-10']} that day)"]
     missing = [q for q in in_notes if q not in notes]
     assert not missing, f"PREDICTIONS.md does not quote these summary values: {missing}"
+
+
+def test_thesis_quotes_the_dependence_between_weeks():
+    """The lead-lag band treats weeks as independent; THESIS.md quotes how far they are not, from the summary."""
+    s = json.loads((ROOT / "data" / "snapshot" / "thesis_summary.json").read_text(encoding="utf-8"))
+    ac = s["lead_vs_price_lag1_autocorrelation"]
+    usage = [v for k, v in ac.items() if k != "price_usd"]
+    assert ac["price_usd"] > 0 and max(usage) < 0  # opposite signs at the first lag
+    quoted = f"weekly price changes correlate {ac['price_usd']:.2f} with the week before, the usage metrics' changes " \
+             f"−{abs(max(usage)):.2f} to −{abs(min(usage)):.2f}"
+    assert quoted in prose("THESIS.md"), quoted

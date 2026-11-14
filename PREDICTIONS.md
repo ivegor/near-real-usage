@@ -134,5 +134,9 @@ A5 counts both signs. A "positive lead" in its statement is a positive lag: the 
 that both move against the price are as much a timing signal, so from that day a pair of either sign counts, as long
 as both are of the same sign. That makes the prediction harder to hold, not easier; `predictions.csv` is unchanged,
 and on the data it was frozen with both counts are 0.
+A5's window is the whole series, so "covers every day of the window" means for A5 that every week from 2026-11-12 (the
+day after the data it was frozen with) to the check date has a value of the price and of each usage series that goes
+on after `/v1` (transactions, fees, Intents volume). Until then it stays open; without that rule it could be scored
+on the old weeks alone. This rule was added on 2026-11-14, before the check date.
 GitHub switches a scheduled workflow off after 60 days without activity in a public repository. If that happens
 before a check date, the prediction is scored when the workflow is switched on again or the build is run by hand.

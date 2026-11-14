@@ -11,16 +11,16 @@ stayed, which still send 43% of transactions (in October, close to their lowest 
 self-paid, financial activity carried by a few hundred heavy accounts. That activity grew in autumn 2026 in two steps: NEAR Intents volume and the buybacks it funds
 stepped up on 19 August and have held, while the load on the chain (its fees and gas) ran high only for the four weeks of the price
 rally, from 16 September to 15 October. What held is the volume and the buybacks in USD; the buybacks in NEAR have
-held by the median day and not by the mean. The revenue it earns covers 15% to 18% of the new NEAR issued, depending on the
+held by the median day and not by the mean. The NEAR its revenue brings in equals 15% to 18% of the new NEAR issued, depending on the
 window. That is a narrow case; nine dated predictions say what would widen it or close it.
 
 **Key findings (snapshot 2026-11-11; accounts: October 2026 vs October 2025, three-month means in brackets):**
 
 * Accounts acting on NEAR fell **97%** (43.6M → 1.38M a month). **The whole fall is accounts whose fees an app was
   paying**: 43.05M a year ago, 0.55M now (99.2% of the fall with a one-off deletion of old accounts taken out). One
-  app, KaiChing, had 40.4M of them; its relayer sent 2,000,000 transactions a day, to within a thousandth in 8 of its
-  17 months from December 2024 to April 2026 (every series of the census leaves out its first month, November 2024,
-  which has no month before it): a job with a quota.
+  app, KaiChing, had 40.4M of them; its relayer's monthly totals came to 2,000,000 transactions a day, to within a thousandth,
+  in 8 of its 17 months from December 2024 to April 2026 (every series of the census leaves out its first month,
+  November 2024, which has no month before it): that points to a job with a daily quota.
 * Outside the reward apps, **475 heavy accounts (1,000 or more transactions a month) send 91% of the self-paid
   transactions**. The regular ones (10 to 999 a month) number 17,105 against 27,078 a year earlier, but up to 15,162
   of last year's were players of one wallet's reward game whose calls are relayed now, so how many really left is not
@@ -46,7 +46,7 @@ window. That is a narrow case; nine dated predictions say what would widen it or
   August, as the price began to move and a month before it doubled, and has held since. In our tests no usage metric
   leads price: 6 of 85 weekly lead-lag tests fall outside the noise band where about 4 are expected by chance, and
   none stands after Holm's correction.
-* Value reaches the token only in part: buybacks funded by Intents revenue run at **$20.7M a year** and cover **18%**
+* Value reaches the token only in part: buybacks funded by Intents revenue run at **$20.7M a year**, equal to **18%**
   of the net new NEAR issued over the last 90 days, the sixth-best of 173 such windows since they began (15% to 18%
   over other windows; $11.2M a year at the pace of the whole programme). In NEAR their step was 1.6 times, in USD 3.5
   times: most of it is the price. Read from the chain with no key, the three wallets the revenue arrives at grew by
@@ -95,7 +95,7 @@ same commands: uv installs Python 3.12.12 and the locked libraries itself, with 
 | `make serve` | The tests and `python -m thesis build --offline` run while the image is built; the container serves the rebuilt `docs/` on <http://localhost:8000> |
 | `make build` (network) | `data/raw/*.json` (exact API responses), `data/daily.csv`, `docs/*.png`, `docs/index.html`, `docs/summary.json`; stdout gets a short digest: one sentence per chart and the status of the nine predictions. If an API is down, the build says so and uses the committed copy |
 | `make offline` | Same outputs rebuilt from the committed `data/raw/` files, no network |
-| `make test` | 137 tests: parsing, metric formulas, a planted 3-week lead recovered by the lead-lag test, the account census on a hand-made table, block parsing with relayed transactions, the scoring of all nine predictions, the numbers quoted in THESIS.md, APPENDIX.md, PREDICTIONS.md and this README against the frozen copy of the summary, full offline build, the build on tables extended the way a later run of the queries extends them, and one Python version named the same in `.python-version`, the Dockerfile, `pyproject.toml` and this README |
+| `make test` | 140 tests: parsing, metric formulas, a planted 3-week lead recovered by the lead-lag test, the account census on a hand-made table, block parsing with relayed transactions, the scoring of all nine predictions, the numbers quoted in THESIS.md, APPENDIX.md, PREDICTIONS.md and this README against the frozen copy of the summary, full offline build, the build on tables extended the way a later run of the queries extends them, and one Python version named the same in `.python-version`, the Dockerfile, `pyproject.toml` and this README |
 | `make protocol` (network, one request, no key) | `data/raw/protocol_config.json`: the maximum issuance in force, read from the protocol's own configuration; the build sets the approved cut (HSP-029) against it |
 | `make wallets` (network, about 2 minutes, no key) | `data/raw/revenue_wallets.json`: what NEAR's three revenue wallets hold at the start and the end of the 90-day window and 30 days before its end, read from an archival RPC node. The build sets their growth against the new supply and against DefiLlama's revenue series |
 | `make outcomes` (network, about 5 minutes, no key) | `data/raw/census_outcomes.csv`: how the transactions to NEAR Intents in the sampled blocks ended, by sender |
@@ -112,6 +112,10 @@ and daily ([`.github/workflows/build.yml`](.github/workflows/build.yml): the sam
 Pages), so the published charts are always the output of the code in this repository. A run that cannot
 download a source does not publish (`--require-fresh`, on every run: daily, on a push or by hand), so the page is not
 replaced by one built from the older committed copies; the page of the last good run stays.
+What is reproducible byte for byte is the committed snapshot (`docs/`, `data/snapshot/`, from `data/raw/`). A daily
+page is built from replies downloaded that day, which the providers may later revise; the page publishes them with
+itself under `inputs/` (the raw replies, the daily table and the commit), so it can be rebuilt offline from them while
+it is up. Earlier daily pages and their inputs are not archived.
 
 ## Metrics
 
@@ -124,7 +128,7 @@ replaced by one built from the older committed copies; the page of the last good
 | `active − new` (NearBlocks) | daily active accounts minus new accounts | The only "returning" proxy the aggregates allow. Shown to be wrong in direction; kept on the dashboard, labelled |
 | NEAR Intents volume | DefiLlama daily volume | Cross-chain demand routed through NEAR |
 | Who pays (account) | sponsored: a relayer submitted every transaction of the account in the month; self-paying: the account paid for at least one | Separates users an app is paying for from accounts that spend their own money. The line is the fee payer, not a threshold |
-| How often (account) | transactions in the month by powers of ten: occasional under 10, regular 10 to 999, heavy 1,000 or more | 1,000 a month is over 30 a day, which nobody does by hand; the lines are powers of ten, not tuned |
+| How often (account) | transactions in the month by powers of ten: occasional under 10, regular 10 to 999, heavy 1,000 or more | 1,000 a month is over 30 a day, which we read as likely automated (not checked account by account); the lines are powers of ten, not tuned |
 | Self-paid vs sponsored (transaction) | a transaction is sponsored when a relayer signs it for the user (meta transaction), self-paid otherwise | Separates activity someone pays for from activity an app subsidises |
 | YoY change | accounts: last complete month vs the same month a year earlier, and the same on three-month means; Intents: calendar month vs the same month a year earlier, and vs its level between the two autumns; prices and fees: last 90-day mean vs the 90 days a year earlier | One month can be an outlier; a 90-day window drifts as its base moves, and for Intents so does the calendar month, because last year's base was a ramp-up |
 | Lead-lag vs price | `corr(Δlog metric_t, Δlog price_{t+k})`, weekly, k = −8…+8; fees are taken in NEAR | Does usage move before price? ±2/√n noise band shown. Fees in USD contain the price, so their correlation with it is mechanical |

@@ -52,6 +52,17 @@ def load() -> pd.DataFrame | None:
     return pd.DataFrame(cols).sort_index()
 
 
+def window_total(s: pd.Series, a: pd.Timestamp, b: pd.Timestamp) -> float:
+    """What a daily series adds up to over the days a to b. A day without a value is not a day without revenue: when
+    days are missing, the total is the mean of the days present times the days of the window, and the summary says
+    how many days were missing (days_without_buyback_data)."""
+    w = s.loc[a:b]
+    n = int((b - a).days) + 1
+    if w.notna().sum() == n:
+        return float(w.sum())
+    return float(w.mean() * n) if w.notna().any() else float("nan")
+
+
 def covered_through(fees: pd.DataFrame) -> pd.Timestamp | None:
     """The last day on which all three fee series have a value."""
     full = fees.dropna()
@@ -74,17 +85,17 @@ def summarize(daily: pd.DataFrame, fees: pd.DataFrame, days: int = 90) -> dict |
     year = supply.asof(end) - supply.asof(end - pd.Timedelta(days=365))
     quarter = supply.asof(end) - supply.asof(start - pd.Timedelta(days=1))
     scale = 365 / days
-    buyback_year = float(f["holders_revenue"].sum() * scale)
+    buyback_year = window_total(fees["holders_revenue"], start, end) * scale
     new_supply_value = float(quarter * scale * price)
     nonzero = fees["holders_revenue"][fees["holders_revenue"] > 0]
     out = {
         "window": [str(start.date()), str(end.date())],
         "days_behind_the_daily_series": int((daily.index.max() - end).days),
         "days_without_buyback_data": int(days - f["holders_revenue"].notna().sum()),
-        "intents_gross_fees_usd": float(f["fees"].sum()),
-        "captured_revenue_usd": float(f["revenue"].sum()),
+        "intents_gross_fees_usd": window_total(fees["fees"], start, end),
+        "captured_revenue_usd": window_total(fees["revenue"], start, end),
         "captured_share_of_gross_fees": float(f["revenue"].sum() / f["fees"].sum()) if f["fees"].sum() else float("nan"),
-        "buyback_usd": float(f["holders_revenue"].sum()),
+        "buyback_usd": window_total(fees["holders_revenue"], start, end),
         "buyback_usd_annualized": buyback_year,
         "buyback_start": str(nonzero.index.min().date()) if len(nonzero) else None,
         "l1_fees_usd": float(daily["fees_usd"].loc[start:end].sum()),
@@ -144,7 +155,7 @@ def windows(daily: pd.DataFrame, fees: pd.DataFrame, step_day: str | None = None
     start = nonzero.index.min()
 
     def cover(a: pd.Timestamp, b: pd.Timestamp) -> float:
-        bought = float(fees["holders_revenue"].loc[a:b].sum())
+        bought = window_total(fees["holders_revenue"], a, b)
         new = float(supply.asof(b) - supply.asof(a - pd.Timedelta(days=1))) * float(price.loc[a:b].mean())
         return bought / new if new else float("nan")
 
@@ -169,10 +180,10 @@ def windows(daily: pd.DataFrame, fees: pd.DataFrame, step_day: str | None = None
         a = end - pd.Timedelta(days=n - 1)
         if a >= start:
             lengths[str(n)] = {"coverage": cover(a, end), "captured_share": captured(a, end),
-                               "buyback_usd_annualized": float(fees["holders_revenue"].loc[a:end].sum() * 365 / n)}
+                               "buyback_usd_annualized": window_total(fees["holders_revenue"], a, end) * 365 / n}
     n_all = int((end - start).days) + 1
     lengths["programme"] = {"days": n_all, "coverage": cover(start, end), "captured_share": captured(start, end),
-                            "buyback_usd_annualized": float(fees["holders_revenue"].loc[start:end].sum() * 365 / n_all)}
+                            "buyback_usd_annualized": window_total(fees["holders_revenue"], start, end) * 365 / n_all}
     out["by_length"] = lengths
     months = {}
     for m in pd.period_range(start, end, freq="M"):

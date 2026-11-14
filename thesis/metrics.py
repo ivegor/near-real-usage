@@ -244,5 +244,9 @@ def summarize(daily: pd.DataFrame) -> dict:
         "lead_vs_price_holm": holm([p for v in leads.values() for p in v.get("p_values", [])]),
         # reported apart from the scan above: USD fees contain the price, so this correlation is mechanical
         "lead_fees_usd_mechanical": best_lead(lead_lag(d["fees_usd"], d["price_usd"])),
+        # The band and the p-values treat the weeks as independent. Correlation of each series' weekly change with the
+        # week before: where both series of a pair have it of the same sign, the true noise band is wider than 2/sqrt(n).
+        "lead_vs_price_lag1_autocorrelation": {c: _sig(float(weekly_log_diff(d[c]).autocorr(1)))
+                                               for c in ["price_usd", *leads] if c in d},
         "checks": checks(daily),
     }

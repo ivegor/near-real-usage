@@ -118,3 +118,19 @@ def test_issuance_cut_scales_the_gap_by_the_change_in_the_maximum():
     assert c["growth_needed_at_target"] == pytest.approx(0.64 / 0.18)
     assert value.issuance_cut(v, {**protocol, "max_inflation_rate": [2, 125]})["in_force_yet"]   # 1.6%: adopted
     assert value.issuance_cut(v, None) is None
+
+
+def test_a_missing_day_of_revenue_is_not_a_day_without_revenue():
+    """With a day missing, the window's total is the mean of the days present times the days of the window."""
+    import numpy as np
+    idx = pd.date_range("2026-01-01", periods=120, freq="D")
+    daily = pd.DataFrame({"total_supply_yocto": np.linspace(1e33, 1.01e33, 120), "price_usd": 2.0, "fees_usd": 1.0,
+                          "market_cap_usd": 1e9}, index=idx)
+    fees = pd.DataFrame({"fees": 10.0, "revenue": 3.0, "holders_revenue": 3.0}, index=idx)
+    whole = value.summarize(daily, fees)
+    gap = fees.copy()
+    gap.loc[idx[100], :] = np.nan
+    holed = value.summarize(daily, gap)
+    assert holed["days_without_buyback_data"] == 1 and whole["days_without_buyback_data"] == 0
+    assert holed["buyback_usd"] == pytest.approx(whole["buyback_usd"])
+    assert holed["buyback_coverage_of_new_supply"] == pytest.approx(whole["buyback_coverage_of_new_supply"])

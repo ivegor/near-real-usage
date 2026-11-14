@@ -29,6 +29,12 @@ jobs:
       - run: >-
           docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/app" near-real-usage
           python -m thesis build --require-fresh
+      # The replies this page was built from go out with it (docs/inputs/), with the commit that built it, so that the
+      # published page can be rebuilt offline from them while it is up. Earlier daily pages and their inputs are not kept.
+      - run: |
+          mkdir -p docs/inputs
+          cp -r data/raw data/daily.csv docs/inputs/
+          git rev-parse HEAD > docs/inputs/COMMIT
       - uses: actions/upload-pages-artifact@v3
         with:
           path: docs
