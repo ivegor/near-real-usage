@@ -192,7 +192,7 @@ def _value_chart(d: pd.DataFrame, fees: pd.DataFrame, vc: dict, out: Path) -> Ch
     fig, ax = plt.subplots(figsize=(8, 3.6))
     ax.bar(x - 0.27, m["new_supply_value"] / 1e6, width=0.27, color=MUTED, label="value of net new NEAR supply")
     ax.bar(x, m["fees"] / 1e6, width=0.27, color="#9bd8c6", label="Intents gross fees")
-    ax.bar(x + 0.27, m["holders_revenue"] / 1e6, width=0.27, color=ACCENT, label="captured and used for buybacks")
+    ax.bar(x + 0.27, m["holders_revenue"] / 1e6, width=0.27, color=ACCENT, label="captured, arriving at the revenue wallets (DefiLlama: buybacks)")
     ax.set_xticks(x, [str(p) for p in m.index], fontsize=6.5)
     _style(ax, "USD millions per month")
     ax.legend(frameon=False, fontsize=8, loc="upper left")

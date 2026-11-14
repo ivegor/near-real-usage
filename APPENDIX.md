@@ -186,9 +186,9 @@ times, which together is the 3.1 times in revenue. By month the take was 2.3 to 
 the take. Two other entries in this hackathon traced the NEAR arriving at the revenue wallets on the chain, and both
 name one cause: a confidential pool inside NEAR Intents, opened in these months. One finds none of the wallets'
 inflow passing through accounts funded by it in June and 70% in October, and describes the swaps behind it as made
-during an airdrop ([Wilivms/near-revenue-audit](https://github.com/Wilivms/near-revenue-audit)); the other finds at
-least 72% of the last 30 days' revenue leaving that pool first, against none in June
-([abhirgfu/dark-matter](https://github.com/abhirgfu/dark-matter)). We did not reproduce their traces; our monthly
+during an airdrop ([Wilivms/near-revenue-audit](https://github.com/Wilivms/near-revenue-audit/blob/288ae4a94588d49c36ccdd3e4828b5021971c153/README.md#L121), README at commit `288ae4a`); the other
+finds at least 72% of the last 30 days' revenue leaving that pool's treasury first, against none in June
+([abhirgfu/dark-matter](https://github.com/abhirgfu/dark-matter/blob/984e491f5ff17484926030458ad8296654ec64ec/README.md#L31), README at commit `984e491`). We did not reproduce their traces; our monthly
 take (2.6 basis points in August, 5.5 in October) is the same rise they report. If they are right, most of the
 revenue behind the buybacks now comes through one channel that is three months old and rewarded for being used, which
 makes the level since August less tested than its 85 days suggest. That level is not flat either: over the last 30
@@ -368,7 +368,7 @@ NEAR, the balances do not say.
   earlier ($8,652 → $4,122 a day) and 68% in NEAR; on the 90 days just before them they are up (+138% in USD, +24%
   in NEAR). Most of the fall in NEAR is the step of 2 April, when KaiChing stopped: 1,967 NEAR of fees on 1 April,
   743 on 2 April, and 2,564 NEAR on the median day of March against 844 on the median day of May, 1,720 of the 2,285
-  NEAR a day the 90-day figure lost: the day KaiChing stopped took about two thirds of the network's fees with it. Intents volume is not revenue for the token: NEAR keeps 27% of Intents fees and the buybacks they fund cover
+  NEAR a day the 90-day figure lost: fees in NEAR fell by about two thirds in the step in which KaiChing stopped. The daily data have no fees by app, and KaiChing is at most half of that day's fall in transactions, so how much of the fees was KaiChing's is not measured. Intents volume is not revenue for the token: NEAR keeps 27% of Intents fees and the buybacks they fund cover
   18% of new supply (see "Does it reach the token?").
 * **The revenue step leans on a higher take, and the last month is down.** Since 19 August NEAR keeps 4.27 basis
   points of Intents volume against 2.62 before, and two other entries trace most of that revenue to one new,

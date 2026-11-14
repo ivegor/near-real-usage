@@ -1,4 +1,4 @@
-# Thesis: NEAR's collapse was accounts that apps were paying for. What pays its own way averaged below the year before until autumn 2026, then jumped, and a few hundred heavy accounts carry it
+# Thesis: NEAR's collapse was accounts that apps were paying for. What pays its own fees averaged below the year before until autumn 2026, then jumped, and a few hundred heavy accounts carry it
 
 *Snapshot as of 2026-11-11. The numbers below are those of the committed `docs/summary.json` (a test checks the key
 ones; a few supporting details, such as which accounts are an app's service accounts, are read from the committed
@@ -75,8 +75,8 @@ Four things follow; the appendix has each in full.
   those of the game Ember 387,762 → 0.
 * **Sponsored accounts measure what apps spent, not what users would pay.** That part of the collapse measures what
   apps were willing to spend on their users' fees, not whether those users would pay their own way. It is not nothing
-  for the token: the relayers paid those fees in NEAR, and the day KaiChing stopped took about two thirds of the
-  network's fees with it (see "Evidence against").
+  for the token: the relayers paid those fees in NEAR, and the network's fees fell by about two thirds in the step in
+  which KaiChing stopped (see "Evidence against"; how much of it was KaiChing's is not measured).
 * **The fall of the regular class cannot be read as users leaving.** The regular self-paying accounts outside the
   reward namespaces are the closest thing the chain has to a count of its own users, and the group held another
   app's users. In October 2025, 15,162 accounts called the reward game of the Meteor wallet
@@ -146,8 +146,8 @@ since depends on the statistic: by the mean of the last two half-months they hav
 19 August is both: volume grew 1.9 times and the take 1.6 times, from 2.62 to 4.27 basis points. Our data does not say
 what raised the take. Two other entries in this hackathon traced the NEAR arriving at the revenue wallets on the chain,
 and both name one cause: a confidential pool inside NEAR Intents, opened in these months
-([Wilivms/near-revenue-audit](https://github.com/Wilivms/near-revenue-audit),
-[abhirgfu/dark-matter](https://github.com/abhirgfu/dark-matter)). We did not reproduce their traces. If they are
+([Wilivms/near-revenue-audit](https://github.com/Wilivms/near-revenue-audit/blob/288ae4a94588d49c36ccdd3e4828b5021971c153/README.md#L121),
+[abhirgfu/dark-matter](https://github.com/abhirgfu/dark-matter/blob/984e491f5ff17484926030458ad8296654ec64ec/README.md#L31); both linked at the commit we read). We did not reproduce their traces. If they are
 right, most of the revenue behind the buybacks now comes through one channel that is three months old and rewarded for
 being used. And the level is not flat: over the last 30 days volume is 22% below the 30 days before, gross fees 26%,
 and captured revenue 20% in USD and 25% in NEAR.
@@ -251,8 +251,9 @@ tables above do not: a year ago 55% of sampled transactions were a single call, 
   50% of the core to 16%, and inside the self-paid transactions old accounts gained (36% → 39%).
 * **Fees fell over the year.** Network fees of the last 90 days are down 52% in USD on the same 90 days a year
   earlier ($8,652 → $4,122 a day) and 68% in NEAR; on the 90 days just before them they are up (+138% in USD, +24%
-  in NEAR). Most of the fall in NEAR is the step of 2 April: the day KaiChing stopped took about two thirds of the
-  network's fees with it.
+  in NEAR). Most of the fall in NEAR is the step of 2 April, the day KaiChing stopped: fees in NEAR fell by about two
+  thirds between the median days of March and May. The daily data have no fees by app, and KaiChing is at most half
+  of that day's fall in transactions, so how much of the fees was KaiChing's is not measured.
 * **The revenue step leans on a higher take, and the last month is down.** Since 19 August NEAR keeps 4.27 basis
   points of Intents volume against 2.62 before, and two other entries trace most of that revenue to one new,
   incentivised channel (see "Does it reach the token?"). Over the last 30 days volume, gross fees and captured revenue
@@ -279,7 +280,8 @@ of August, after 19 August, which makes their thresholds harder to stay above, n
 
 * **Regular self-paying accounts fall back to their low.** They bottomed at 7,201 in August 2026 and rebounded in
   September. A month at or below that low means the rebound was a spike and the base has not found a floor (B1
-  checks January 2027).
+  checks January 2027). A hold means only that the low was not broken: a January far below October, just above
+  7,201, holds too and would not show that the rebound held.
 * **Self-paid core transactions fall back into their old range.** From December 2025 to August 2026 their highest
   month was 10.38M (February 2026); earlier months were higher, up to 12.07M in December 2024. A quarter
   averaging below 10.38M means September and October did not set a level above that range. It would not mean that
@@ -308,7 +310,10 @@ of August, after 19 August, which makes their thresholds harder to stay above, n
   (`.sweat` itself is 11 service accounts; Sweat's users are relayed implicit accounts). Read the age and returning
   figures of that group with this in mind; the payer and frequency split is the cleaner count.
 * **Self-paying means the account paid for at least one transaction in the month.** It may also have sponsored ones.
-  A sponsored account is not a lesser one; it is one an app is paying for, and it goes when the app does.
+  A sponsored account is not a lesser one; it is one an app is paying for, and it goes when the app does. Self-paying
+  is a technical category: the account signed a transaction and paid its fee. Who funded the account, whether rewards
+  repaid the fees and who holds its keys is not checked, so it does not show that a user is willing to pay with money
+  of their own.
 * **An account an app acts for is not shown to be a person.** For a relayed transaction we count the account the
   relayer acted for, and the committed data shows such accounts acting like the app's own: KaiChing's relayer's monthly totals
   point to a daily quota, nearly all of the game Ember's sponsored accounts had also been active the month before, and Meteor's relayer claims rewards in

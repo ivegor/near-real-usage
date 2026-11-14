@@ -184,7 +184,7 @@ def test_thesis_quotes_the_committed_summary():
         "its transactions run at almost twice October's daily rate",
         # the long-term case in short, and the wording of the nine months before the step
         f"The NEAR its revenue brings in equals {cov_lo:.0f}% to {cov_hi:.0f}% of the new NEAR issued, depending on the window",
-        "What pays its own way averaged below the year before until autumn 2026",
+        "What pays its own fees averaged below the year before until autumn 2026",
         f"below the year before in {core_step['range_months_below_a_year_earlier']} of the {step['reference_range']['months']} months and "
         f"above it in May ({pct(above['2026-05'])}) and June ({pct(above['2026-06'])})",
         # November so far, as a rate per day
@@ -1067,3 +1067,13 @@ def test_thesis_quotes_the_dependence_between_weeks():
     quoted = f"weekly price changes correlate {ac['price_usd']:.2f} with the week before, the usage metrics' changes " \
              f"−{abs(max(usage)):.2f} to −{abs(min(usage)):.2f}"
     assert quoted in prose("THESIS.md"), quoted
+
+
+def test_predictions_quote_the_range_b4_is_scored_on():
+    s = json.loads((ROOT / "data" / "snapshot" / "thesis_summary.json").read_text(encoding="utf-8"))
+    lo, hi = s["clients"]["reward_minus_finance_share"]["latest_range"]
+    quoted = f"In October 2026 the range is +{lo * 100:.1f} to +{hi * 100:.1f} points, on one side"
+    assert quoted in prose("PREDICTIONS.md"), quoted
+    seg = s["segments"]["metrics"]["regular_accounts"]["latest"]
+    low = s["predictions"]["baselines"]["regular_self_paying_accounts_low"]
+    assert f"a fall of {(1 - (low + 1) / seg) * 100:.0f}% from October's {seg:,.0f}" in prose("PREDICTIONS.md")

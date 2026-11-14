@@ -17,8 +17,8 @@ are natural lines (rule 3), and each prediction answers a question someone runni
    August 2026 for the buybacks, which began on 23 February)? Above it, the step is a new level; back inside the old
    range, it was a spike. (A1, A2, A3, B2)
 2. **Has the decline stopped?** Accounts that pay their own fees and act regularly slid for a year to a low in
-   August 2026 and rebounded in September. The reference is **that low**: staying above it means a floor has been
-   found; touching it again means the rebound was a spike. (B1)
+   August 2026 and rebounded in September. The reference is **that low**: staying above it means the low was not
+   broken; touching it again means the rebound was a spike. (B1)
 3. **Which side of a natural line?** Where a product line exists, it is the threshold: buybacks offsetting **half** of
    dilution on the way to break-even (A4), **no** usable timing signal for the price (A5), **dozens rather than
    hundreds** of accounts sending half of the transactions (B3), and the point where reward apps and financial use are
@@ -89,6 +89,13 @@ counts accounts outside the reward apps' namespaces (`.kaiching`, `.tg`), as the
 sample, which starts on 14 August 2026, all 41 calls to the game come through the relayer. The August low and the
 January value are both counted after it. Both can still hold players who pay for a transaction of their own, because
 a relayed call counts towards the frequency class: up to 4,313 such accounts in October 2026.
+Its statement ends "the rebound holds", which says more than the threshold can: a January just above 7,201 would be
+a hold, and a fall of 58% from October's 17,105. A hold on B1 is read as "the August low was not broken", no more.
+B4 is scored on its range. The groups' contracts outside a month's 40 largest are not in its count, and each can
+have received up to the smallest entry of that list (`clients.groups_outside_the_40` in the summary). Until
+2026-11-14 the build scored B4 on the count as listed; from that day it scores the end of the range nearer the
+threshold and leaves B4 open when the range lies on both sides of it. In October 2026 the range is +1.3 to +2.8
+points, on one side.
 
 A third note, on what the data already held when the file was frozen. It ran through 2026-11-11. A1's window is the
 seven days to 17 November, so one of its seven days was known, and the first 11 days of November had averaged

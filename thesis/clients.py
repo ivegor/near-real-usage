@@ -109,6 +109,17 @@ def by_app(month: dict) -> pd.Series:
     return s.sort_values(ascending=False)
 
 
+def outside_the_40(month: dict, group: tuple) -> dict:
+    """The contracts and relayers of a group that are not among a month's 40 largest, and the most they can have received.
+
+    A month counts only the group's entries in its list of the 40 largest; the others sit in "Everything outside the
+    top 40". Each of them received at most as many transactions as the smallest entry of that month's list.
+    """
+    listed, floor = set(month["via"]["via"]), int(month["via"]["txs"].min())
+    missing = [v for app in group for v in APPS[app] if v not in listed]
+    return {"contracts": len(missing), "transactions_each_at_most": floor, "transactions_at_most": len(missing) * floor}
+
+
 def compared_months(data: dict) -> tuple[str, str]:
     """The latest month in the file and the month it is compared with: the same month a year earlier.
 
@@ -153,15 +164,8 @@ def summarize(data: dict) -> dict:
     for name, t in groups.items():
         out[name] = {**t, "pct_change": (t["latest"] / t["prior"] - 1) * 100 if t["prior"] else float("nan")}
 
-    # A group is a list of contracts and relayers, and a month counts only those among its 40 largest: the others sit
-    # in "Everything outside the top 40" for that month. Each of them received at most as many transactions as the
-    # smallest entry of that month's list, which bounds what a group can be missing and how far its change can be off.
-    def outside(month: str, group: tuple) -> dict:
-        listed, floor = set(data[month]["via"]["via"]), int(data[month]["via"]["txs"].min())
-        missing = [v for app in group for v in APPS[app] if v not in listed]
-        return {"contracts": len(missing), "transactions_each_at_most": floor, "transactions_at_most": len(missing) * floor}
-
-    unseen = {name: {k: outside(m, group) for k, m in both}
+    # What a group can be missing outside the 40 largest bounds how far its count and its change can be off.
+    unseen = {name: {k: outside_the_40(data[m], group) for k, m in both}
               for name, group in (("finance", FINANCE_APPS), ("reward_apps", REWARD_APPS))}
     out["groups_outside_the_40"] = unseen
     fin, total = groups["finance_txs"], data[latest]["conc"]["txs"]

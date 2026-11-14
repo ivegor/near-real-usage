@@ -26,6 +26,7 @@ def sha256(path: Path | None = None) -> str:
     return hashlib.sha256((path or CSV).read_bytes()).hexdigest()
 
 
+UNDECIDED = "undecided"  # a committed result whose bounds lie on both sides of the threshold
 FROZEN_DATA_THROUGH = "2026-11-11"  # the last day of the daily data when predictions.csv was frozen
 A5_CONTINUING = ("price_usd", "txns", "fees_usd", "intents_volume_usd")  # fees in NEAR are fees_usd over the price
 PLATEAU = ("2025-12", "2026-08")      # the nine complete months between the November 2025 spike and the September 2026 step
@@ -335,7 +336,14 @@ def _measure_committed(p: dict, census: pd.DataFrame | None, seg: pd.DataFrame |
         if name == "reward_minus_finance_tx_share":
             apps = clients.by_app(month)
             reward, finance = (sum(int(apps.get(a, 0)) for a in group) for group in (clients.REWARD_APPS, clients.FINANCE_APPS))
-            return (reward - finance) / c["txs"]
+            # The groups' contracts outside the month's 40 largest are not in the count, and each can have received up to
+            # the smallest listed entry. The result is scored only when no such contracts could reverse it: the end of
+            # the range that is nearer the threshold is used, and a range across the threshold leaves B4 undecided.
+            low = (reward - finance - clients.outside_the_40(month, clients.FINANCE_APPS)["transactions_at_most"]) / c["txs"]
+            high = (reward - finance + clients.outside_the_40(month, clients.REWARD_APPS)["transactions_at_most"]) / c["txs"]
+            if OPS[p["operator"]](low, p["threshold"]) == OPS[p["operator"]](high, p["threshold"]):
+                return low if OPS[p["operator"]](low, p["threshold"]) else high
+            return UNDECIDED
     return None
 
 
@@ -354,6 +362,10 @@ def evaluate(daily: pd.DataFrame, fees: pd.DataFrame | None, path: Path | None =
                 measured, waiting = _measure_committed(p, census, seg, top, daily), "open (needs the census query for that month)"
             else:
                 measured, waiting = _measure(p["metric"], on, daily, fees), "open (waiting for complete data)"
+            if measured == UNDECIDED:
+                rows.append({**p, "status": "open (undecided: the group's contracts outside the 40 largest could reverse it)",
+                             "measured": None})
+                continue
             if measured is not None and not np.isfinite(measured):
                 measured = None  # an empty or undefined measurement is not a miss
             if measured is None:
