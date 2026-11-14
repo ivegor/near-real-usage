@@ -29,10 +29,10 @@ appendix.
 
 | # | Claim | Result | Evidence |
 |---|---|---|---|
-| 1 | The collapse in activity is the exit of reward apps, not of NEAR's own users | **Supported** | Accounts whose fees an app paid: 43,049,960 → 552,826 (100.6% of the net fall as counted, 99.2% with the one-off deletion taken out). That is more than the whole net loss of accounts (43,642,992 → 1,379,518), because self-paying accounts rose, 593,032 → 826,692, and the rise is itself a one-off: 560,092 old KaiChing accounts paid for one transaction each in October. KaiChing: 40.39M accounts a year ago, gone since spring |
+| 1 | The collapse in activity is the exit of reward apps | **Supported for the size of the fall; what NEAR's own users did is open** | Accounts whose fees an app paid: 43,049,960 → 552,826 (100.6% of the net fall as counted, 99.2% with the one-off deletion taken out). That is more than the whole net loss of accounts (43,642,992 → 1,379,518), because self-paying accounts rose, 593,032 → 826,692, and the rise is itself a one-off: 560,092 old KaiChing accounts paid for one transaction each in October. KaiChing: 40.39M accounts a year ago, gone since spring. That says where the fall came from, not that NEAR's own users stayed: the independent accounts that returned fell 40,759 → 31,452, and how many regular self-paying accounts really left is not known (claim 3) |
 | 2 | A stable core of returning users remains (first draft) | **Refuted** | Accounts outside the reward namespaces 1,814,743 → 621,166 (−66%; −57%), and that group is mostly other apps' sponsored accounts (96% of the returning ones a year ago) |
 | 3 | The number of accounts that pay for themselves holds up | **Not established** | Outside the reward namespaces, regular self-paying accounts 27,078 → 17,105 (−37%; −50%), low of 7,201 in August 2026. But up to 15,162 of last year's were players of Meteor's reward game paying their own fees, whose calls a relayer submits now, so how many really left is not known (see "Who pays, and how often") |
-| 4 | The remaining accounts are used more intensively (second draft) | **Refuted** | 10.7 → 23.9 transactions per core account is a change of mix: 11.7 at last year's mix of account types |
+| 4 | The remaining accounts are used more intensively (second draft) | **Mostly a change of mix** | 10.7 → 23.9 transactions per core account is mostly a change of mix: 11.7 at last year's mix of account types, so +9% is left (implicit accounts 5.4 → 6.6, named 142.5 → 150.9). The same accounts were not followed from one October to the next |
 | 5 | Named `.near` accounts are a growing core (second draft) | **Not supported** | Accounts +13% (+2%); with more than one transaction −28% (−15%). Their transactions did grow: 8.96M → 10.77M (+20%; +42%) |
 | 6 | Self-paid activity outside reward apps is growing | **On average below the year before for nine months, up in autumn 2026** | Core transactions paid by the sender 9.75M → 12.49M (+28%; +35%); on longer windows +24% (six months), +6% (nine) and −5% (eleven). In the nine months before the step (December to August) they averaged 7.61M against 9.16M a year earlier (−17%; −21% without the February burst), and all of that fall is implicit and other accounts: named `.near` accounts sent 4% more than a year earlier, implicit accounts 49% less (those under a year old 77% less) and other accounts 53% less. The jump came in the weeks of a price rally, and November started lower (see "Evidence against") |
 | 7 | Financial use of the chain is growing | **Up in October 2026, and already above the year before in August, before the price doubled** | Transactions to the exchange, Intents, token contracts and bridges 6.72M → 9.18M a month (+37%); Ref/Rhea exchange +96%, token contracts +47%, bridges and chain signatures +43%. Without the transactions of one account whose sampled calls all failed, +29% |
@@ -41,8 +41,8 @@ appendix.
 | 10 | Intents revenue offsets the dilution of NEAR holders | **Not yet** | Buybacks (DefiLlama's name for the NEAR arriving at the revenue wallets) at $20.7M a year against $115M a year of net new NEAR: equal to 18% of the dilution over the last 90 days, 15% to 18% over other windows, and 13% in the median 90-day window since the buybacks began; 5.6 times the captured revenue needed |
 | 11 | Usage changes lead price changes | **Not supported** | 6 of 85 lag tests outside the noise band, about 4 expected by chance; none stands after Holm's correction for testing 85 lags together |
 
-Claims 2, 4 and 5 are what is left of three readings in our own drafts that did not survive closer measurement; the
-appendix says what each was and what replaced it.
+Claims 2, 4 and 5 are what is left of three readings in our own drafts that did not survive closer measurement as
+written; the appendix says what each was and what replaced it.
 
 ## Who pays, and how often
 
@@ -187,8 +187,10 @@ tables above do not: a year ago 55% of sampled transactions were a single call, 
   2025) and averaged under 2 transactions per account a month; it was 93% of all active accounts in October 2025 and
   stopped between March and April 2026. Its relayer worked to a quota: 2,000,000 transactions a day, to within a
   thousandth, in 8 of its 17 months in the census. The step that analyses of the daily aggregates see and cannot name
-  is this app stopping: NearBlocks' daily transactions went from 3,758,663 on 2026-04-01 to 1,063,375 on 2026-04-02,
-  and KaiChing is between 44% and 51% of that one-day fall. *(chart: population)*
+  is this app stopping: NearBlocks' daily transactions went from 3,758,663 on 2026-04-01 to 1,063,375 on 2026-04-02.
+  KaiChing can be at most 51% of that one-day fall (everything it sent in April); the census is monthly, so how much
+  it was is not measured. If its relayer sent all of April's relayed transactions on 1 April, as a column of the daily
+  data suggests, it is at least 38%. *(chart: population)*
 * **Self-paid transactions rose in autumn 2026.** Outside the reward apps, transactions paid by the sender rose from 9.75M
   to 12.49M a month; September and October 2026 are two of the three highest of the 23 months from December 2024 to
   October 2026. The whole fall in core transactions (−23%) is sponsored transactions disappearing. Both Octobers also
@@ -200,7 +202,7 @@ tables above do not: a year ago 55% of sampled transactions were a single call, 
   2025 on the keyless sample: 207 thousand transactions a day against 61 thousand. *(chart: clients)*
 * **Intents is a real flow, at a higher level since 19 August.** The step came as the price began to move, on a day it
   was $1.59, and since then every half-month has averaged above the range of the nine months before ($63.2M to
-  $89.6M a month), also the first 11 days of November ($129.7M). After the step the price never fell below $1.73
+  $89.6M a day), also the first 11 days of November ($129.7M). After the step the price never fell below $1.73
   (20 August), so the new level of volume has not yet been seen at the price of the old one. *(chart: intents)*
 
 ## Evidence against
@@ -223,8 +225,8 @@ tables above do not: a year ago 55% of sampled transactions were a single call, 
   burned were above their earlier top only in the two half-months from 16 September to 15 October, and on the keyless
   sample the exchange's transactions rose from 1 September and were back down by the second half of October. So the
   exchange's transactions of the rally, and the extra load on the chain, have left with it, while the flow through
-  Intents has held. Predictions A2, A3 and B2 state that the new level holds; a miss on them means the trading reading
-  was the right one for all of it.
+  Intents has held. Predictions A2, A3 and B2 state that the new level holds; a miss on them would mean that the new level
+  did not outlast the rally, which fits the trading reading but would not show what caused the step.
 * **Very few accounts carry it, and a large count is not always use.** Seven of the ten largest accounts in October
   2026 are relays or service accounts (`intents.near`, three of Sweat, two bridge relayers and `escrow.ai.near`), so
   the count says who submits transactions, not how many people stand behind them; either way the chain depends on a
@@ -274,9 +276,11 @@ of August, after 19 August, which makes their thresholds harder to stay above, n
   checks January 2027).
 * **Self-paid core transactions fall back into their old range.** From December 2025 to August 2026 their highest
   month was 10.38M (February 2026); earlier months were higher, up to 12.07M in December 2024. A quarter
-  averaging below 10.38M means September and October were a spike, and nothing outside the reward apps is growing.
-  A third of that February was a one-off burst (see "Limits"): without it the top of the range is 8.65M (June 2026),
-  so the threshold we wrote down is the harder of the two to stay above. The first 11 days of that quarter are in the
+  averaging below 10.38M means September and October did not set a level above that range. It would not mean that
+  nothing outside the reward apps grows: a third of that February was a one-off burst (see "Limits"), without it the
+  top of the range is 8.65M (June 2026), so a quarter can miss B2 and still be above
+  the top of the range without that burst.
+  The threshold we wrote down is the harder of the two to stay above. The first 11 days of that quarter are in the
   census already, at a rate of 10.68M a month, or 10.41M without the one-off of 10 November (B2 checks November to
   January).
 * **A reward app re-inflates the headline.** Active accounts jumping by millions with under 2 transactions per account
@@ -287,7 +291,8 @@ of August, after 19 August, which makes their thresholds harder to stay above, n
 * **Intents volume falls back into its old range.** From December 2025 to August 2026 no month averaged above $89.6M
   a day, and August, the highest at $89.6M, owes it to its last 13 days; November 2025 had spiked to $122M and fell straight back. A month below $89.6M means autumn 2026 was a second
   spike, not a new level, and the buybacks it funds fall with it (A1 checks the week to 17 November, A2 December).
-* **A re-run shows a lead**: two neighbouring positive lags outside the band for any one metric (A5), and all the
+* **A re-run shows a lead**: two neighbouring positive lags outside the band with correlations of one sign, with or
+  against the price, for any one metric (A5), and all the
   more so for several.
 
 ## Limits

@@ -171,8 +171,9 @@ def _population_chart(pop: pd.DataFrame, summary: dict, out: Path) -> Chart:
         f"sender changed {_pct(c['direct_txs']['pct_change'])} ({_pct(c3['direct_txs']['pct_change'])} on three-month means) "
         f"while those sponsored through relayers changed {_pct(c['relayed_txs']['pct_change'])}.{so_far} Transactions per account in that group "
         f"rose from {c['txs_per_account']['prior']:.1f} to {c['txs_per_account']['latest']:.1f} a month, but with last year's "
-        f"mix of account types it would be {ps['core_txs_per_account_at_prior_mix']:.1f}: low-activity accounts left, "
-        f"the rest did not get busier. Named .near accounts: {_pct(n['accounts']['pct_change'])} "
+        f"mix of account types it would be {ps['core_txs_per_account_at_prior_mix']:.1f} "
+        f"({_pct((ps['core_txs_per_account_at_prior_mix'] / c['txs_per_account']['prior'] - 1) * 100)}): most of the rise is "
+        f"low-activity accounts leaving. Named .near accounts: {_pct(n['accounts']['pct_change'])} "
         f"({_pct(n['three_month_mean']['accounts']['pct_change'])} on three-month means).",
         "sql/account_age.sql on the NEAR BigQuery public dataset (all transactions, 482.64 GB scanned, result in "
         "data/bq/account_age.csv). The actor of a relayed transaction is the user, not the relayer. Core = accounts outside "

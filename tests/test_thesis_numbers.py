@@ -261,7 +261,7 @@ def test_thesis_quotes_the_committed_summary():
         f"the largest were `{was[0]}`, `{was[1]}` and `{was[2]}`; now they are `{now_[0]['contract']}`, with "
         f"{now_[0]['transactions']:,} transactions from {now_[0]['accounts']} accounts, and `{now_[1]['contract']}`",
         f"every half-month has averaged above the range of the nine months before (${iv_step['range_low'] / 1e6:.1f}M to "
-        f"${iv_step['range_top'] / 1e6:.1f}M a month), also the first {so_far['days']} days of November (${so_far['recent'] / 1e6:.1f}M), when "
+        f"${iv_step['range_top'] / 1e6:.1f}M a day), also the first {so_far['days']} days of November (${so_far['recent'] / 1e6:.1f}M), when "
         f"the price averaged {abs(below_peak_mean):.0f}% below its October peak ({abs(below_peak):.0f}% on 11 November)",
         f"({old3[0]:.0f}% against {old3[1]:.0f}% over three months)",
         f"({pct(intents['pct_change'])} for October, about {pct(so_far['pct_change'])} for November so far)",
@@ -359,7 +359,8 @@ def test_thesis_quotes_the_committed_summary():
         f"{M(core['relayed_txs']['prior'])} → {M(core['relayed_txs']['latest'])}",
         f"({pct(core['relayed_txs']['pct_change'])}; {pct(three['relayed_txs']['pct_change'])})",
         f"{core['txs_per_account']['prior']:.1f} → {core['txs_per_account']['latest']:.1f}",
-        f"{p['core_txs_per_account_at_prior_mix']:.1f} at last year's mix",
+        f"{p['core_txs_per_account_at_prior_mix']:.1f} at last year's mix of account types, so "
+        f"{pct((p['core_txs_per_account_at_prior_mix'] / core['txs_per_account']['prior'] - 1) * 100)} is left",
         f"{near['multi_tx_accounts']['prior']:,.0f} to {near['multi_tx_accounts']['latest']:,.0f}",
         f"between {near['accounts_range_12m']['min']:,.0f} and {near['accounts_range_12m']['max']:,.0f}",
         f"{p['reward_apps_share_of_lost']['accounts'] * 100:.1f}% of the accounts lost",
@@ -813,9 +814,15 @@ def test_the_texts_quote_the_readings_by_window_half_month_and_family():
         # the day KaiChing stopped
         f"on {ac['one_day']['date']} it is {ac['one_day']['value']:,} against {ac['one_day']['relayed_users']:,} users behind relayers",
         f"It fell by {ac['fall']:,} from 1 to 2 April, against {ac['kaiching_relayed_txs_in_the_month_of']:,} transactions that "
-        f"KaiChing's relayer submitted in the whole of April: the relayer's last day was 1 April, and KaiChing is between "
-        f"{fall['kaiching_share_of_the_fall_at_least'] * 100:.0f}% and {fall['kaiching_share_of_the_fall_at_most'] * 100:.0f}% of the "
-        f"one-day fall",
+        f"KaiChing's relayer submitted in the whole of April. That match suggests the relayer's last day was 1 April",
+        f"KaiChing sent at least those {ac['kaiching_relayed_txs_in_the_month_of']:,} on 1 April and at most the other "
+        f"{fall['kaiching']['month_of']['txs'] - fall['kaiching']['month_of']['relayed_txs']:,} of its April transactions on 2 April, so it is at least "
+        f"{fall['kaiching_share_of_the_fall_at_least_if_relayer_ended_the_day_before'] * 100:.0f}% of the one-day fall, and at most "
+        f"{fall['kaiching_share_of_the_fall_at_most'] * 100:.0f}% in any case",
+        f"KaiChing can be at most {fall['kaiching_share_of_the_fall_at_most'] * 100:.0f}% of that one-day fall (everything it sent in "
+        f"April); the census is monthly, so how much it was is not measured. If its relayer sent all of April's relayed "
+        f"transactions on 1 April, as a column of the daily data suggests, it is at least "
+        f"{fall['kaiching_share_of_the_fall_at_least_if_relayer_ended_the_day_before'] * 100:.0f}%",
         f"on every day from {day(run['first'])} to {day(run['last'])}, {M(run['transactions_above_it_in_the_month_before'])} above the "
         f"median of the days before in March alone, against {burst_apr['2026-03']['accounts'] / 1e6:.1f} million accounts of the burst in "
         f"March, while `active_contracts` stayed within the range of the days before ({run['active_contracts_range_before'][0] / 1e6:.2f}M "

@@ -254,11 +254,23 @@ def load_daily(offline: bool = False) -> pd.DataFrame:
         daily = continue_with_v3(daily, parse_nearblocks_v3(raw))
     intents = parse_defillama(raw["defillama_intents"])
     daily = daily.join(intents, how="left")
-    # Drop today's partial day if present: only keep days strictly before the last row
-    # when the last row looks incomplete (far fewer txns than the 7-day median).
-    if len(daily) > 8:
-        last = daily["txns"].iloc[-1]
-        med = daily["txns"].iloc[-8:-1].median()
-        if pd.notna(last) and pd.notna(med) and last < 0.5 * med:
-            daily = daily.iloc[:-1]
-    return daily
+    return drop_unfinished_days(daily, fetched_on())
+
+
+def fetched_on() -> pd.Timestamp | None:
+    """The UTC day the saved replies were downloaded on (data/raw/_meta.json), or None if it is not recorded."""
+    meta_path = RAW_DIR / "_meta.json"
+    if not meta_path.exists():
+        return None
+    at = json.loads(meta_path.read_text(encoding="utf-8")).get("fetched_at_utc")
+    return pd.Timestamp(at).tz_convert("UTC").tz_localize(None).normalize() if at else None
+
+
+def drop_unfinished_days(daily: pd.DataFrame, fetched: pd.Timestamp | None) -> pd.DataFrame:
+    """Leave out the days that had not ended (UTC) when the replies were downloaded: their counts are partial.
+
+    A day is unfinished because of its date, not because of its size: a day with far fewer transactions than the days
+    before can be a real fall (2026-04-02 lost 72% of them), and a filter by size would drop it whenever it is the last
+    day of a download. The daily APIs have so far returned finished days only, so this usually leaves the table as it is.
+    """
+    return daily if fetched is None else daily[daily.index < fetched]

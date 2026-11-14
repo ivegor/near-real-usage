@@ -55,8 +55,9 @@ window. That is a narrow case; nine dated predictions say what would widen it or
   times more volume and a 1.6 times higher take (2.62 → 4.27 basis points of volume); over the last 30 days volume is
   down 22% and captured revenue 20%. At the issuance the approved HSP-029 ends at (1.6% a year, not yet in force) the
   18% would be 28%.
-* Our own drafts got three readings wrong ("returning accounts grew", "remaining accounts are busier", "the base
-  outside reward apps fell by two thirds"); APPENDIX.md lists each with what replaced it.
+* Our own drafts got three readings wrong or overstated ("returning accounts grew", "remaining accounts are busier",
+  mostly a change of mix, and "the base outside reward apps fell by two thirds"); APPENDIX.md lists each with what
+  replaced it.
 
 Full argument, evidence against, and kill criteria: [`THESIS.md`](THESIS.md); the detail behind each of its sections,
 the side analyses and the history of our drafts: [`APPENDIX.md`](APPENDIX.md). Nine dated predictions, their
@@ -94,7 +95,7 @@ same commands: uv installs Python 3.12.12 and the locked libraries itself, with 
 | `make serve` | The tests and `python -m thesis build --offline` run while the image is built; the container serves the rebuilt `docs/` on <http://localhost:8000> |
 | `make build` (network) | `data/raw/*.json` (exact API responses), `data/daily.csv`, `docs/*.png`, `docs/index.html`, `docs/summary.json`; stdout gets a short digest: one sentence per chart and the status of the nine predictions. If an API is down, the build says so and uses the committed copy |
 | `make offline` | Same outputs rebuilt from the committed `data/raw/` files, no network |
-| `make test` | 134 tests: parsing, metric formulas, a planted 3-week lead recovered by the lead-lag test, the account census on a hand-made table, block parsing with relayed transactions, the scoring of all nine predictions, the numbers quoted in THESIS.md, APPENDIX.md, PREDICTIONS.md and this README against the frozen copy of the summary, full offline build, the build on tables extended the way a later run of the queries extends them, and one Python version named the same in `.python-version`, the Dockerfile, `pyproject.toml` and this README |
+| `make test` | 136 tests: parsing, metric formulas, a planted 3-week lead recovered by the lead-lag test, the account census on a hand-made table, block parsing with relayed transactions, the scoring of all nine predictions, the numbers quoted in THESIS.md, APPENDIX.md, PREDICTIONS.md and this README against the frozen copy of the summary, full offline build, the build on tables extended the way a later run of the queries extends them, and one Python version named the same in `.python-version`, the Dockerfile, `pyproject.toml` and this README |
 | `make protocol` (network, one request, no key) | `data/raw/protocol_config.json`: the maximum issuance in force, read from the protocol's own configuration; the build sets the approved cut (HSP-029) against it |
 | `make wallets` (network, about 2 minutes, no key) | `data/raw/revenue_wallets.json`: what NEAR's three revenue wallets hold at the start and the end of the 90-day window and 30 days before its end, read from an archival RPC node. The build sets their growth against the new supply and against DefiLlama's revenue series |
 | `make outcomes` (network, about 5 minutes, no key) | `data/raw/census_outcomes.csv`: how the transactions to NEAR Intents in the sampled blocks ended, by sender |
@@ -108,8 +109,9 @@ same commands: uv installs Python 3.12.12 and the locked libraries itself, with 
 
 **Live dashboard:** <https://ivegor.github.io/near-real-usage/>, rebuilt from scratch by GitHub Actions on every push
 and daily ([`.github/workflows/build.yml`](.github/workflows/build.yml): the same Docker image, tests → `python -m thesis build` → GitHub
-Pages), so the published charts are always the output of the code in this repository. A daily run that cannot
-download a source does not publish (`--require-fresh`), so the page never falls back to older data.
+Pages), so the published charts are always the output of the code in this repository. A run that cannot
+download a source does not publish (`--require-fresh`, on every run: daily, on a push or by hand), so the page is not
+replaced by one built from the older committed copies; the page of the last good run stays.
 
 ## Metrics
 

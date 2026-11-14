@@ -305,3 +305,14 @@ def test_v3_carries_the_same_values_as_v1_for_the_columns_it_continues():
     assert "active_accounts" not in v3.columns and "new_accounts" not in v3.columns
     relayed = sources.relayed_daily()
     assert (relayed.loc[days, "accounts_with_relayed_users"] > v1.loc[days, "active_accounts"]).all()
+
+
+def test_a_day_is_left_out_for_its_date_not_for_its_size():
+    """A day that had not ended when the data was downloaded is partial; a real fall on the last day is not."""
+    idx = pd.date_range("2026-03-20", "2026-04-02", freq="D")
+    daily = pd.DataFrame({"txns": 3_700_000.0}, index=idx)
+    daily.loc["2026-04-02", "txns"] = 1_063_375.0                        # the day KaiChing stopped, as the last day
+    kept = sources.drop_unfinished_days(daily, pd.Timestamp("2026-04-03"))
+    assert kept.index.max() == pd.Timestamp("2026-04-02")                # a finished day stays, however small
+    assert sources.drop_unfinished_days(daily, pd.Timestamp("2026-04-02")).index.max() == pd.Timestamp("2026-04-01")
+    assert sources.drop_unfinished_days(daily, None).equals(daily)       # no download date: nothing to go by

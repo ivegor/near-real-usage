@@ -522,9 +522,13 @@ def largest_daily_fall(df: pd.DataFrame, daily: pd.DataFrame) -> dict | None:
             users = one_day()["relayed_users"]
             out["active_contracts"]["one_day"] = {"date": ONE_DAY, "value": int(ac[pd.Timestamp(ONE_DAY)]), "relayed_users": int(users),
                                                   "ratio": float(ac[pd.Timestamp(ONE_DAY)] / users)}
-        # If the relayer's transactions all fell on the day before the fall, KaiChing is between its relayed
-        # transactions of that month and everything it sent in that month: a share of the one-day fall.
-        out["kaiching_share_of_the_fall_at_least"] = min(1.0, k_rel / fall) if fall > 0 else float("nan")
+        # A conditional figure, not a bound: the census is monthly and does not say which day of the month the relayer
+        # sent its transactions on. IF it sent all of that month's relayed transactions on the day before the fall (what
+        # the match above suggests), KaiChing sent at least those on that day and, on the day of the fall, at most what
+        # it sent in the month without them. The difference is the least its part of the one-day fall can then be.
+        sent_of = out["kaiching"]["month_of"]["txs"]
+        out["kaiching_share_of_the_fall_at_least_if_relayer_ended_the_day_before"] = (
+            min(1.0, max(0, k_rel - (sent_of - k_rel)) / fall) if fall > 0 else float("nan"))
         # The burst of sponsored accounts of the month before, dated: the run of days at the end of that month above its
         # median day, and their transactions above the median of the days before the run. The column tracking relayed
         # users is given over the same days.

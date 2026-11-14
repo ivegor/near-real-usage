@@ -129,5 +129,10 @@ price, market capitalisation, total supply), which is all that A1 to A4 and the 
 daily transaction counts need. The new API has no count of signers or of new accounts, so two of the five usage
 metrics behind A5 stop in November 2026; A5 is scored on the series as they then stand, and that is said here now,
 before the date, and not after it.
+A5 counts both signs. A "positive lead" in its statement is a positive lag: the usage metric moves first. Until
+2026-11-14 the build counted a pair of neighbouring lags only when both correlations were above zero; two neighbours
+that both move against the price are as much a timing signal, so from that day a pair of either sign counts, as long
+as both are of the same sign. That makes the prediction harder to hold, not easier; `predictions.csv` is unchanged,
+and on the data it was frozen with both counts are 0.
 GitHub switches a scheduled workflow off after 60 days without activity in a public repository. If that happens
 before a check date, the prediction is scored when the workflow is switched on again or the build is run by hand.

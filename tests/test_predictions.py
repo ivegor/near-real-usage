@@ -1,4 +1,5 @@
 """Predictions: frozen by a hash, thresholds taken from the data, scored only when the data reaches the check date."""
+import json
 import re
 from pathlib import Path
 
@@ -379,11 +380,19 @@ def test_step_reports_what_the_series_did_in_the_range_before_it():
     assert c["base_of_the_months_above"]["2026-02"]["base_month"] == "2025-02"
 
 
-def test_adjacent_positive_leads_counts_only_neighbouring_positive_lags():
+def test_adjacent_positive_leads_counts_neighbouring_positive_lags_of_one_sign():
     def lv(*pairs):
         return {"outside_band": [{"lag_weeks": k, "corr": c} for k, c in pairs]}
-    assert predictions.adjacent_positive_leads({"a": lv((2, 0.2), (3, 0.2)), "b": lv((2, 0.2), (4, 0.2)),
-                                               "c": lv((-2, 0.2), (-1, 0.2)), "d": lv((5, 0.2), (6, -0.2))}) == 1
+    cases = {"a": lv((2, 0.2), (3, 0.2)), "b": lv((2, 0.2), (4, 0.2)), "c": lv((-2, 0.2), (-1, 0.2)),
+             "d": lv((5, 0.2), (6, -0.2)), "e": lv((1, -0.9), (2, -0.9))}
+    # a pair that moves against the price is a timing signal too (e); a pair of opposite signs is not one signal (d)
+    assert predictions.adjacent_positive_leads(cases) == 2
+    assert predictions.adjacent_positive_leads(cases, positive_only=True) == 1  # the count until 2026-11-14
+
+
+def test_a5_is_zero_on_the_frozen_data_either_way():
+    lead = json.loads((ROOT / "data" / "snapshot" / "thesis_summary.json").read_text(encoding="utf-8"))["lead_vs_price"]
+    assert predictions.adjacent_positive_leads(lead) == predictions.adjacent_positive_leads(lead, positive_only=True) == 0
 
 
 def test_scored_only_after_the_check_date(tmp_path):

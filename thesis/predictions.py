@@ -30,12 +30,18 @@ PLATEAU = ("2025-12", "2026-08")      # the nine complete months between the Nov
 BUYBACK_PLATEAU = ("2026-03", "2026-08")  # complete months of the buyback programme before the step (it began 2026-02-23)
 
 
-def adjacent_positive_leads(lead_vs_price: dict) -> int:
-    """Metrics with two neighbouring positive lags (metric moves first) outside the noise band, both with r > 0."""
+def adjacent_positive_leads(lead_vs_price: dict, same_sign_only: bool = True, positive_only: bool = False) -> int:
+    """Metrics with two neighbouring positive lags (metric moves first) outside the noise band, with r of one sign.
+
+    A positive lead is a positive lag: the metric moves first. Two neighbours that both move against the price are as
+    much a timing signal as two that move with it, so A5 counts both signs; two neighbours of opposite signs are not one
+    signal and are not counted. Until 2026-11-14 the build counted r > 0 only (`positive_only=True` gives that count).
+    """
     n = 0
     for v in lead_vs_price.values():
-        lags = sorted(o["lag_weeks"] for o in v["outside_band"] if o["lag_weeks"] > 0 and o["corr"] > 0)
-        n += any(b - a == 1 for a, b in zip(lags, lags[1:]))
+        out = {o["lag_weeks"]: o["corr"] for o in v["outside_band"] if o["lag_weeks"] > 0 and (o["corr"] > 0 or not positive_only)}
+        lags = sorted(out)
+        n += any(b - a == 1 and (not same_sign_only or (out[a] > 0) == (out[b] > 0)) for a, b in zip(lags, lags[1:]))
     return n
 
 

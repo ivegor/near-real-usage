@@ -2473,7 +2473,7 @@
           "ratio": 0.9982880576804295
         }
       },
-      "kaiching_share_of_the_fall_at_least": 0.4436501776433539,
+      "kaiching_share_of_the_fall_at_least_if_relayer_ended_the_day_before": 0.3778668550448041,
       "run_before_the_fall": {
         "first": "2026-03-23",
         "last": "2026-04-01",

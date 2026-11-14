@@ -309,6 +309,12 @@ def test_the_app_is_at_most_what_it_sent_in_the_month_of_the_fall():
     real = population.largest_daily_fall(snapshot.census(), sources.load_daily(offline=True))
     assert real["date"] == "2026-04-02" and 0.45 < real["kaiching_share_of_the_fall_at_most"] < 0.55
     assert 0.85 < real["median_day"]["kaiching_share_of_it"] < 0.95       # while the level on either side is its own
+    # The least it can be is conditional: if the relayer sent all of April's relayed transactions on 1 April, the rest of
+    # April's transactions may still have come on 2 April. It is not a bound and is not named as one.
+    of = real["kaiching"]["month_of"]
+    assert "kaiching_share_of_the_fall_at_least" not in real
+    assert real["kaiching_share_of_the_fall_at_least_if_relayer_ended_the_day_before"] == pytest.approx(
+        (of["relayed_txs"] - (of["txs"] - of["relayed_txs"])) / real["fall_txs"])
 
 
 def test_the_unfinished_month_is_given_for_every_part_of_the_chain(tmp_path):

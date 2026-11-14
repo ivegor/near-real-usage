@@ -23,11 +23,12 @@ jobs:
       - uses: actions/checkout@v4
       # The same image as everywhere else (Dockerfile): building it runs the tests and the offline build.
       - run: docker build -t near-real-usage .
-      # A scheduled run starts from the committed copies of the data. If a source cannot be downloaded it stops here and
-      # the page of the last good run stays in place; a push or a manual run falls back to the committed copies instead.
+      # Every run starts from the committed copies of the data, which are older than the page a daily run published.
+      # If a source cannot be downloaded the run stops here, whatever started it (schedule, push or by hand), and the
+      # page of the last good run stays in place. To publish from the committed copies, run `make offline` locally.
       - run: >-
           docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/app" near-real-usage
-          python -m thesis build ${{ github.event_name == 'schedule' && '--require-fresh' || '' }}
+          python -m thesis build --require-fresh
       - uses: actions/upload-pages-artifact@v3
         with:
           path: docs
